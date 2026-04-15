@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git — обязательные правила
+
+- **После каждого масштабного изменения** (новый экран, изменение БД, новая фича, рефакторинг) — пушить в GitHub:
+```bash
+git add .
+git commit -m "описание изменений"
+git push origin main
+```
+- Репозиторий: `https://github.com/KrakovA05/Zface`
+- Не накапливать изменения — пушить сразу, не дожидаясь просьбы.
+
 ## Commands
 
 All commands run from `ustal/`:
