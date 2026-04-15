@@ -1,10 +1,28 @@
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_DATA } from '../constants';
+import { LEVEL_DATA, LEVEL_COLORS } from '../constants';
 import { colors, shared } from '../theme';
+
+function isSameDay(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+}
+
+function timeUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date();
+  midnight.setHours(24, 0, 0, 0);
+  const diff = midnight - now;
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return `${h} ч ${m} мин`;
+}
 
 const QUESTIONS = [
   {
@@ -85,6 +103,30 @@ export default function TestScreen({ navigation }) {
   const [finished, setFinished] = useState(false);
   const [level, setLevel] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [alreadyDone, setAlreadyDone] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
+
+  useEffect(() => {
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('test_results')
+          .select('level, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (data && isSameDay(data.created_at)) {
+          setAlreadyDone(true);
+          setLastResult(data);
+        }
+      }
+      setChecking(false);
+    };
+    check();
+  }, []);
 
   const saveResult = async (lvl, score) => {
     store.level = lvl;
@@ -116,6 +158,49 @@ export default function TestScreen({ navigation }) {
       setCurrent(current + 1);
     }
   };
+
+  if (checking) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </SafeAreaView>
+    );
+  }
+
+  if (alreadyDone && lastResult) {
+    const lvlData = LEVEL_DATA[lastResult.level];
+    const lvlColor = LEVEL_COLORS[lastResult.level];
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.blockedEmoji}>🕐</Text>
+        <Text style={styles.blockedTitle}>Тест уже пройден сегодня</Text>
+        <View style={[styles.blockedCard, { borderColor: lvlColor }]}>
+          <Text style={styles.blockedCardLabel}>Результат сегодня</Text>
+          <Text style={[styles.blockedCardLevel, { color: lvlColor }]}>
+            {lvlData.emoji} {lvlData.label}
+          </Text>
+        </View>
+        <Text style={styles.blockedHint}>
+          Следующий тест через{'\n'}
+          <Text style={{ color: colors.accent, fontWeight: 'bold' }}>
+            {timeUntilMidnight()}
+          </Text>
+        </Text>
+        <TouchableOpacity
+          style={[shared.button, { backgroundColor: lvlColor, marginTop: 8 }]}
+          onPress={() => navigation.replace('Recommendations', { level: lastResult.level })}
+        >
+          <Text style={shared.buttonText}>Смотреть рекомендации →</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.navigate('Main')}
+        >
+          <Text style={styles.backBtnText}>На главную</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   if (finished && level) {
     const lvlData = LEVEL_DATA[level];
@@ -225,5 +310,50 @@ const styles = StyleSheet.create({
   },
   saving: {
     marginTop: 8,
+  },
+  blockedEmoji: {
+    fontSize: 64,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  blockedTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  blockedCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 24,
+    width: '100%',
+  },
+  blockedCardLabel: {
+    fontSize: 13,
+    color: colors.muted,
+    marginBottom: 6,
+  },
+  blockedCardLevel: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  blockedHint: {
+    fontSize: 16,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: 24,
+  },
+  backBtn: {
+    marginTop: 12,
+    padding: 12,
+  },
+  backBtnText: {
+    color: colors.muted,
+    fontSize: 15,
   },
 });
