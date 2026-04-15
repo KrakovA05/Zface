@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
+  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { store } from '../store';
 import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
 import { colors } from '../theme';
 import { markRead } from '../utils/unread';
+import Avatar from '../components/Avatar';
 
 const ROOMS = [
   { id: 'green',  label: '🌿 Зелёная комната', desc: 'Для тех кто держится', color: '#4CAF50' },
@@ -17,7 +18,7 @@ const ROOMS = [
   { id: 'red',    label: '🌪 Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336' },
 ];
 
-export default function RoomsScreen({ route }) {
+export default function RoomsScreen({ route, navigation }) {
   const userLevel = store.level || 'green';
   const openRoom = route?.params?.openRoom;
   const [room, setRoom] = useState(openRoom === userLevel ? openRoom : null);
@@ -26,8 +27,11 @@ export default function RoomsScreen({ route }) {
   const [text2, setText2] = useState('');
   const [onlineCount, setOnlineCount] = useState({});
   const [sending, setSending] = useState(false);
+  const [participants, setParticipants] = useState([]);
+  const [showParticipants, setShowParticipants] = useState(false);
   const flatRef = useRef(null);
   const channelRef = useRef(null);
+  const participantsChannelRef = useRef(null);
 
   // Загрузка количества онлайн в каждой комнате
   useFocusEffect(useCallback(() => {
@@ -50,11 +54,23 @@ export default function RoomsScreen({ route }) {
     if (openRoom && openRoom === userLevel) enterRoom(openRoom);
   }, []);
 
+  const loadParticipants = async (roomId) => {
+    const { data } = await supabase
+      .from('users')
+      .select('user_id, username, level, avatar_url, status')
+      .eq('level', roomId);
+    setParticipants(data || []);
+  };
+
   const enterRoom = async (roomId) => {
     if (roomId !== userLevel) return; // защита на уровне функции
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
+    }
+    if (participantsChannelRef.current) {
+      supabase.removeChannel(participantsChannelRef.current);
+      participantsChannelRef.current = null;
     }
     setMessages([]);
     setRoom(roomId);
@@ -69,7 +85,10 @@ export default function RoomsScreen({ route }) {
       .limit(50);
     setMessages((data || []).reverse());
 
-    // Realtime подписка
+    // Загружаем участников
+    await loadParticipants(roomId);
+
+    // Realtime подписка на сообщения
     const channel = supabase
       .channel(`room_${roomId}`)
       .on('postgres_changes', {
@@ -83,11 +102,32 @@ export default function RoomsScreen({ route }) {
       })
       .subscribe();
     channelRef.current = channel;
+
+    // Realtime подписка на изменения уровней участников
+    const pChannel = supabase
+      .channel(`participants_${roomId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'users',
+      }, () => {
+        loadParticipants(roomId);
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'users',
+      }, () => {
+        loadParticipants(roomId);
+      })
+      .subscribe();
+    participantsChannelRef.current = pChannel;
   };
 
   useEffect(() => {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
+      if (participantsChannelRef.current) supabase.removeChannel(participantsChannelRef.current);
     };
   }, []);
 
@@ -170,7 +210,36 @@ export default function RoomsScreen({ route }) {
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
           <Text style={styles.roomHeaderLabel}>{roomData.label}</Text>
+          <TouchableOpacity
+            style={styles.participantsToggle}
+            onPress={() => setShowParticipants(v => !v)}
+          >
+            <Text style={[styles.participantsToggleText, { color: roomData.color }]}>
+              👥 {participants.length}
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {showParticipants && (
+          <View style={[styles.participantsPanel, { borderBottomColor: roomData.color }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.participantsList}>
+              {participants.map(p => (
+                <TouchableOpacity
+                  key={p.user_id}
+                  style={styles.participantItem}
+                  onPress={() => navigation.navigate('UserProfile', {
+                    user: { username: p.username, userId: p.user_id, level: p.level, avatarUrl: p.avatar_url, status: p.status },
+                  })}
+                >
+                  <Avatar uri={p.avatar_url} username={p.username} level={p.level} size={38} />
+                  <Text style={[styles.participantName, { color: LEVEL_COLORS[p.level] || colors.white }]} numberOfLines={1}>
+                    {p.username}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <FlatList
           ref={flatRef}
@@ -306,4 +375,14 @@ const styles = StyleSheet.create({
   sendBtn: { borderRadius: 12, width: 44, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
   sendText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  participantsToggle: { marginLeft: 'auto', paddingHorizontal: 4 },
+  participantsToggleText: { fontSize: 14, fontWeight: '600' },
+  participantsPanel: {
+    borderBottomWidth: 1,
+    paddingVertical: 10,
+    backgroundColor: colors.background,
+  },
+  participantsList: { paddingHorizontal: 12, gap: 16 },
+  participantItem: { alignItems: 'center', width: 56 },
+  participantName: { fontSize: 10, marginTop: 4, textAlign: 'center' },
 });
