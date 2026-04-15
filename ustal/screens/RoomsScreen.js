@@ -228,7 +228,7 @@ export default function RoomsScreen({ route, navigation }) {
                   key={p.user_id}
                   style={styles.participantItem}
                   onPress={() => navigation.navigate('UserProfile', {
-                    user: { username: p.username, userId: p.user_id, level: p.level, avatarUrl: p.avatar_url, status: p.status },
+                    user: { username: p.username, user_id: p.user_id, level: p.level, avatar_url: p.avatar_url, status: p.status },
                   })}
                 >
                   <Avatar uri={p.avatar_url} username={p.username} level={p.level} size={38} />
@@ -252,11 +252,12 @@ export default function RoomsScreen({ route, navigation }) {
             const lvlColor = LEVEL_COLORS[item.level] || colors.accent;
             return (
               <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
-                {!isMe && (
-                  <View style={[styles.msgAvatar, { backgroundColor: lvlColor }]}>
-                    <Text style={styles.msgAvatarText}>{item.username?.[0]?.toUpperCase()}</Text>
-                  </View>
-                )}
+                <Avatar
+                  uri={isMe ? store.avatarUrl : null}
+                  username={item.username}
+                  level={item.level}
+                  size={30}
+                />
                 <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
                   {!isMe && <Text style={[styles.msgUsername, { color: lvlColor }]}>{item.username}</Text>}
                   <Text style={styles.msgText}>{item.text}</Text>

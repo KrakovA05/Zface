@@ -99,6 +99,34 @@ export default function UserProfileScreen({ route, navigation }) {
     setFriendStatus(STATUS_NONE);
   };
 
+  const removeFriend = () => {
+    Alert.alert(
+      'Удалить из друзей',
+      `Удалить ${user.username} из друзей?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить', style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            await Promise.all([
+              supabase.from('friendships')
+                .delete()
+                .eq('requester_id', store.userId)
+                .eq('receiver_id', user.user_id),
+              supabase.from('friendships')
+                .delete()
+                .eq('requester_id', user.user_id)
+                .eq('receiver_id', store.userId),
+            ]);
+            setActionLoading(false);
+            setFriendStatus(STATUS_NONE);
+          },
+        },
+      ]
+    );
+  };
+
   const openDm = () => {
     navigation.navigate('DirectMessage', {
       friend: { username: user.username, userId: user.user_id, level: user.level, avatarUrl: liveAvatarUrl },
@@ -106,39 +134,56 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const renderAction = () => {
-    if (friendStatus === null) return <ActivityIndicator color={colors.accent} />;
-    if (actionLoading) return <ActivityIndicator color={colors.accent} />;
+    if (friendStatus === null || actionLoading) return <ActivityIndicator color={colors.accent} />;
+
+    const dmButton = (
+      <TouchableOpacity style={[shared.button, styles.dmBtn]} onPress={openDm}>
+        <Text style={shared.buttonText}>💬 Написать</Text>
+      </TouchableOpacity>
+    );
 
     switch (friendStatus) {
       case STATUS_FRIENDS:
         return (
-          <TouchableOpacity style={[shared.button, styles.dmBtn]} onPress={openDm}>
-            <Text style={shared.buttonText}>💬 Написать</Text>
-          </TouchableOpacity>
+          <View style={styles.actionCol}>
+            {dmButton}
+            <TouchableOpacity style={[shared.button, styles.removeBtn]} onPress={removeFriend}>
+              <Text style={shared.buttonText}>Удалить из друзей</Text>
+            </TouchableOpacity>
+          </View>
         );
       case STATUS_SENT:
         return (
-          <View style={[shared.button, styles.sentBtn]}>
-            <Text style={shared.buttonText}>Заявка отправлена ✓</Text>
+          <View style={styles.actionCol}>
+            {dmButton}
+            <View style={[shared.button, styles.sentBtn]}>
+              <Text style={shared.buttonText}>Заявка отправлена ✓</Text>
+            </View>
           </View>
         );
       case STATUS_RECEIVED:
         return (
-          <View style={styles.requestActions}>
-            <TouchableOpacity style={[styles.acceptBtn]} onPress={acceptRequest}>
-              <Text style={styles.acceptBtnText}>Принять</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.rejectBtn]} onPress={rejectRequest}>
-              <Text style={styles.rejectBtnText}>Отклонить</Text>
-            </TouchableOpacity>
+          <View style={styles.actionCol}>
+            {dmButton}
+            <View style={styles.requestActions}>
+              <TouchableOpacity style={styles.acceptBtn} onPress={acceptRequest}>
+                <Text style={styles.acceptBtnText}>Принять</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.rejectBtn} onPress={rejectRequest}>
+                <Text style={styles.rejectBtnText}>Отклонить</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         );
       case STATUS_NONE:
       default:
         return (
-          <TouchableOpacity style={shared.button} onPress={sendRequest}>
-            <Text style={shared.buttonText}>+ Добавить в друзья</Text>
-          </TouchableOpacity>
+          <View style={styles.actionCol}>
+            {dmButton}
+            <TouchableOpacity style={shared.button} onPress={sendRequest}>
+              <Text style={shared.buttonText}>+ Добавить в друзья</Text>
+            </TouchableOpacity>
+          </View>
         );
     }
   };
@@ -214,8 +259,10 @@ const styles = StyleSheet.create({
   },
 
   actionRow: { marginBottom: 24 },
+  actionCol: { gap: 10 },
   dmBtn: { backgroundColor: colors.accent },
   sentBtn: { backgroundColor: colors.muted, opacity: 0.8 },
+  removeBtn: { backgroundColor: '#c0392b' },
   requestActions: { flexDirection: 'row', gap: 12 },
   acceptBtn: {
     flex: 1, backgroundColor: '#4CAF50',

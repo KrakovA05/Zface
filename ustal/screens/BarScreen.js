@@ -10,6 +10,7 @@ import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { markRead } from '../utils/unread';
+import Avatar from '../components/Avatar';
 
 const TABLES = [
   { id: 'main',    label: '🍸 Общий бар',       desc: 'Для всех',                seats: 20 },
@@ -171,14 +172,14 @@ export default function BarScreen({ route }) {
           onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => {
             const isMe = item.username === store.username;
-            const lvlColor = LEVEL_COLORS[item.level?.replace('bar_', '')] || colors.accent;
             return (
               <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
-                {!isMe && (
-                  <View style={[styles.msgAvatar, { backgroundColor: '#2a2a4a' }]}>
-                    <Text style={styles.msgAvatarText}>{item.username?.[0]?.toUpperCase()}</Text>
-                  </View>
-                )}
+                <Avatar
+                  uri={isMe ? store.avatarUrl : null}
+                  username={item.username}
+                  level={isMe ? store.level : null}
+                  size={30}
+                />
                 <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
                   {!isMe && <Text style={[styles.msgUsername, { color: colors.accent }]}>{item.username}</Text>}
                   <Text style={styles.msgText}>{item.text}</Text>

@@ -100,9 +100,12 @@ export default function DirectMessageScreen({ route, navigation }) {
             const isOwn = item.sender_id === store.userId;
             return (
               <View style={[styles.bubbleWrap, isOwn ? styles.bubbleWrapOwn : styles.bubbleWrapOther]}>
-                {!isOwn && (
-                  <Avatar uri={friend.avatarUrl} username={friend.username} level={friend.level} size={30} />
-                )}
+                <Avatar
+                  uri={isOwn ? store.avatarUrl : friend.avatarUrl}
+                  username={isOwn ? store.username : friend.username}
+                  level={isOwn ? store.level : friend.level}
+                  size={30}
+                />
                 <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
                   <Text style={styles.bubbleText}>{item.text}</Text>
                 </View>
@@ -170,14 +173,14 @@ const styles = StyleSheet.create({
   bubbleWrap: {
     marginBottom: 8,
     flexDirection: 'row',
-  },
-  bubbleWrapOwn: {
-    justifyContent: 'flex-end',
-  },
-  bubbleWrapOther: {
-    justifyContent: 'flex-start',
     alignItems: 'flex-end',
     gap: 6,
+  },
+  bubbleWrapOwn: {
+    flexDirection: 'row-reverse',
+  },
+  bubbleWrapOther: {
+    flexDirection: 'row',
   },
   bubble: {
     maxWidth: '75%',
