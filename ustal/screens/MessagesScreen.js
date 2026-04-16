@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
+import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { getConversationId } from '../utils';
 import { getLastRead } from '../utils/unread';
@@ -45,6 +45,7 @@ async function countUnread(table, field, value, excludeField, excludeValue, last
 
 export default function MessagesScreen({ navigation }) {
   const userLevel = store.level || 'green';
+  const [tab, setTab] = useState('chats');
   const [friends, setFriends] = useState([]);
   const [dmUnread, setDmUnread] = useState({});
   const [roomUnread, setRoomUnread] = useState({});
@@ -67,13 +68,50 @@ export default function MessagesScreen({ navigation }) {
       r.requester_id === store.userId ? r.receiver_id : r.requester_id
     );
 
+    // ── Собеседники из direct_messages (отправленные и полученные) ──
+    const { data: allDms } = await supabase
+      .from('direct_messages')
+      .select('conversation_id, sender_id')
+      .or(`sender_id.eq.${store.userId},conversation_id.like.%${store.userId}%`);
+
+    const dmConvIds = [...new Set((allDms || []).map(m => m.conversation_id))];
+    const dmPartnerIds = dmConvIds
+      .map(cid => cid.split('_').find(id => id !== store.userId))
+      .filter(Boolean);
+
+    // Объединяем всех уникальных собеседников
+    const allIds = [...new Set([...friendIds, ...dmPartnerIds])];
+
     let friendsList = [];
-    if (friendIds.length) {
+    if (allIds.length) {
       const { data: users } = await supabase
         .from('users')
         .select('username, level, user_id, avatar_url, status')
-        .in('user_id', friendIds);
-      friendsList = users || [];
+        .in('user_id', allIds);
+
+      // Получаем дату последнего сообщения для каждого чата
+      const convIds = (users || []).map(u => getConversationId(store.userId, u.user_id));
+      const { data: lastMsgs } = await supabase
+        .from('direct_messages')
+        .select('conversation_id, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false });
+
+      // Берём самое свежее сообщение на каждый чат
+      const lastMsgMap = {};
+      (lastMsgs || []).forEach(m => {
+        if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m.created_at;
+      });
+
+      // Сортируем: сначала с сообщениями (по дате), потом без
+      friendsList = (users || []).sort((a, b) => {
+        const aDate = lastMsgMap[getConversationId(store.userId, a.user_id)];
+        const bDate = lastMsgMap[getConversationId(store.userId, b.user_id)];
+        if (!aDate && !bDate) return 0;
+        if (!aDate) return 1;
+        if (!bDate) return -1;
+        return new Date(bDate) - new Date(aDate);
+      });
     }
     setFriends(friendsList);
 
@@ -120,19 +158,10 @@ export default function MessagesScreen({ navigation }) {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    loadAll().then(() => {
-      // Выставляем бейдж на таб
-      const dmTotal = Object.values(dmUnread).reduce((s, n) => s + n, 0);
-      const roomTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0);
-      const barTotal = Object.values(barUnread).reduce((s, n) => s + n, 0);
-      const total = dmTotal + roomTotal + barTotal;
-      navigation.getParent()?.setOptions({
-        tabBarBadge: total > 0 ? total : null,
-      });
-    });
+    loadAll();
   }, [loadAll]));
 
-  // Пересчитываем бейдж после загрузки
+  // Бейдж на таб
   useFocusEffect(useCallback(() => {
     const dmTotal = Object.values(dmUnread).reduce((s, n) => s + n, 0);
     const roomTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0);
@@ -143,134 +172,180 @@ export default function MessagesScreen({ navigation }) {
     });
   }, [dmUnread, roomUnread, barUnread]));
 
+  const dmTotal = Object.values(dmUnread).reduce((s, n) => s + n, 0);
+  const chatsTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0)
+    + Object.values(barUnread).reduce((s, n) => s + n, 0);
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>💬 Сообщения</Text>
+      {/* Свитч */}
+      <View style={styles.switchRow}>
+        <TouchableOpacity
+          style={[styles.switchBtn, tab === 'chats' && styles.switchBtnActive]}
+          onPress={() => setTab('chats')}
+        >
+          <Text style={[styles.switchLabel, tab === 'chats' && styles.switchLabelActive]}>
+            Чаты
+          </Text>
+          {chatsTotal > 0 && <Badge count={chatsTotal} />}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.switchBtn, tab === 'dms' && styles.switchBtnActive]}
+          onPress={() => setTab('dms')}
+        >
+          <Text style={[styles.switchLabel, tab === 'dms' && styles.switchLabelActive]}>
+            Личные
+          </Text>
+          {dmTotal > 0 && <Badge count={dmTotal} />}
+        </TouchableOpacity>
+      </View>
 
-        {loading ? (
-          <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
-        ) : (
-          <>
-            {/* ── Общий чат ── */}
-            <Text style={styles.sectionTitle}>🌐 Общий чат</Text>
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => navigation.navigate('Chat')}
-            >
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowLabel}>Общий чат</Text>
-                <Text style={styles.rowSub}>Для всех пользователей</Text>
-              </View>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
+      {loading ? (
+        <ActivityIndicator color={colors.accent} style={{ marginTop: 40 }} />
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          {tab === 'chats' ? (
+            <>
+              {/* ── Общий чат ── */}
+              <Text style={styles.sectionTitle}>🌐 Общий чат</Text>
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => navigation.navigate('Chat')}
+              >
+                <View style={styles.rowInfo}>
+                  <Text style={styles.rowLabel}>Общий чат</Text>
+                  <Text style={styles.rowSub}>Для всех пользователей</Text>
+                </View>
+                <Text style={styles.arrow}>›</Text>
+              </TouchableOpacity>
 
-            {/* ── Личные сообщения ── */}
-            <Text style={styles.sectionTitle}>📩 Личные сообщения</Text>
-            {friends.length === 0 ? (
-              <View style={styles.emptyBlock}>
-                <Text style={styles.emptyText}>Нет друзей для переписки</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Friends')}>
-                  <Text style={styles.emptyLink}>Найти своих →</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              friends.map(f => {
-                const unread = dmUnread[f.user_id] || 0;
+              {/* ── Комнаты ── */}
+              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🚪 Комнаты по статусу</Text>
+              {ROOMS.map(r => {
+                const isMyRoom = r.id === userLevel;
+                const unread = roomUnread[r.id] || 0;
+                const online = roomOnline[r.id] ?? '—';
                 return (
                   <TouchableOpacity
-                    key={f.user_id}
-                    style={styles.row}
-                    onPress={() => navigation.navigate('DirectMessage', {
-                      friend: { username: f.username, userId: f.user_id, level: f.level, avatarUrl: f.avatar_url },
-                    })}
+                    key={r.id}
+                    style={[
+                      styles.roomCard,
+                      { borderLeftColor: r.color },
+                      isMyRoom && styles.roomCardMine,
+                      !isMyRoom && styles.roomCardLocked,
+                    ]}
+                    onPress={() => isMyRoom ? navigation.navigate('Rooms', { openRoom: r.id }) : null}
+                    activeOpacity={isMyRoom ? 0.7 : 1}
                   >
-                    <Avatar uri={f.avatar_url} username={f.username} level={f.level} size={42} />
                     <View style={styles.rowInfo}>
-                      <Text style={[styles.rowLabel, { color: LEVEL_COLORS[f.level] || colors.white }]}>
-                        {f.username}
-                      </Text>
-                      {f.status ? <Text style={styles.rowSub}>{f.status}</Text> : null}
+                      <Text style={[styles.roomLabel, !isMyRoom && styles.roomLabelLocked]}>{r.label}</Text>
+                      <Text style={styles.rowSub}>{r.desc}</Text>
+                    </View>
+                    {isMyRoom ? (
+                      <View style={styles.roomRight}>
+                        <Badge count={unread} />
+                        <View style={styles.roomOnline}>
+                          <Text style={styles.roomOnlineCount}>{online}</Text>
+                          <Text style={styles.roomOnlineLabel}>чел.</Text>
+                        </View>
+                        <View style={[styles.myBadge, { backgroundColor: r.color }]}>
+                          <Text style={styles.myBadgeText}>ТВОЯ</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Text style={styles.lockIcon}>🔒</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* ── Бар ── */}
+              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🍸 Онлайн-бар</Text>
+              {BAR_TABLES.map(t => {
+                const unread = barUnread[t.id] || 0;
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={styles.row}
+                    onPress={() => navigation.navigate('Bar', { openTable: t.id })}
+                  >
+                    <View style={styles.rowInfo}>
+                      <Text style={styles.rowLabel}>{t.label}</Text>
                     </View>
                     <Badge count={unread} />
                     <Text style={styles.arrow}>›</Text>
                   </TouchableOpacity>
                 );
-              })
-            )}
-
-            {/* ── Комнаты ── */}
-            <Text style={[styles.sectionTitle, { marginTop: 28 }]}>🚪 Комнаты по статусу</Text>
-            {ROOMS.map(r => {
-              const isMyRoom = r.id === userLevel;
-              const unread = roomUnread[r.id] || 0;
-              const online = roomOnline[r.id] ?? '—';
-              return (
-                <TouchableOpacity
-                  key={r.id}
-                  style={[
-                    styles.roomCard,
-                    { borderLeftColor: r.color },
-                    isMyRoom && styles.roomCardMine,
-                    !isMyRoom && styles.roomCardLocked,
-                  ]}
-                  onPress={() => isMyRoom ? navigation.navigate('Rooms', { openRoom: r.id }) : null}
-                  activeOpacity={isMyRoom ? 0.7 : 1}
-                >
-                  <View style={styles.rowInfo}>
-                    <Text style={[styles.roomLabel, !isMyRoom && styles.roomLabelLocked]}>{r.label}</Text>
-                    <Text style={styles.rowSub}>{r.desc}</Text>
-                  </View>
-                  {isMyRoom ? (
-                    <View style={styles.roomRight}>
+              })}
+            </>
+          ) : (
+            <>
+              {/* ── Личные сообщения ── */}
+              {friends.length === 0 ? (
+                <View style={styles.emptyBlock}>
+                  <Text style={styles.emptyEmoji}>💬</Text>
+                  <Text style={styles.emptyText}>Нет друзей для переписки</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('Friends')}>
+                    <Text style={styles.emptyLink}>Найти своих →</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                friends.map(f => {
+                  const unread = dmUnread[f.user_id] || 0;
+                  return (
+                    <TouchableOpacity
+                      key={f.user_id}
+                      style={styles.row}
+                      onPress={() => navigation.navigate('DirectMessage', {
+                        friend: { username: f.username, userId: f.user_id, level: f.level, avatarUrl: f.avatar_url },
+                      })}
+                    >
+                      <Avatar uri={f.avatar_url} username={f.username} level={f.level} size={42} />
+                      <View style={styles.rowInfo}>
+                        <Text style={[styles.rowLabel, { color: LEVEL_COLORS[f.level] || colors.white }]}>
+                          {f.username}
+                        </Text>
+                        {f.status ? <Text style={styles.rowSub}>{f.status}</Text> : null}
+                      </View>
                       <Badge count={unread} />
-                      <View style={styles.roomOnline}>
-                        <Text style={styles.roomOnlineCount}>{online}</Text>
-                        <Text style={styles.roomOnlineLabel}>чел.</Text>
-                      </View>
-                      <View style={[styles.myBadge, { backgroundColor: r.color }]}>
-                        <Text style={styles.myBadgeText}>ТВОЯ</Text>
-                      </View>
-                    </View>
-                  ) : (
-                    <Text style={styles.lockIcon}>🔒</Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-
-            {/* ── Бар ── */}
-            <Text style={[styles.sectionTitle, { marginTop: 28 }]}>🍸 Онлайн-бар</Text>
-            {BAR_TABLES.map(t => {
-              const unread = barUnread[t.id] || 0;
-              return (
-                <TouchableOpacity
-                  key={t.id}
-                  style={styles.row}
-                  onPress={() => navigation.navigate('Bar', { openTable: t.id })}
-                >
-                  <View style={styles.rowInfo}>
-                    <Text style={styles.rowLabel}>{t.label}</Text>
-                  </View>
-                  <Badge count={unread} />
-                  <Text style={styles.arrow}>›</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </>
-        )}
-      </ScrollView>
+                      <Text style={styles.arrow}>›</Text>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: 'bold', color: colors.white, marginBottom: 24 },
+  switchRow: {
+    flexDirection: 'row',
+    margin: 16,
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 4,
+  },
+  switchBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 11,
+    gap: 6,
+  },
+  switchBtnActive: { backgroundColor: colors.accent },
+  switchLabel: { fontSize: 15, fontWeight: '600', color: colors.muted },
+  switchLabelActive: { color: colors.white },
+  content: { paddingHorizontal: 16, paddingBottom: 40 },
   sectionTitle: {
     fontSize: 13, fontWeight: '700', color: colors.muted,
-    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12,
+    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10,
   },
   row: {
     flexDirection: 'row',
@@ -295,7 +370,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  emptyBlock: { alignItems: 'center', paddingVertical: 20, gap: 8 },
+  emptyBlock: { alignItems: 'center', paddingVertical: 60, gap: 10 },
+  emptyEmoji: { fontSize: 48 },
   emptyText: { color: colors.muted, fontSize: 15 },
   emptyLink: { color: colors.accent, fontSize: 15, fontWeight: '600' },
 
