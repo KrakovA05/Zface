@@ -101,6 +101,7 @@ function GlobalChat() {
           placeholderTextColor={colors.muted}
           value={text}
           onChangeText={setText}
+          maxLength={500}
         />
         <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
           <Text style={styles.sendText}>→</Text>

@@ -77,8 +77,7 @@ export default function App() {
         } else {
           setInitialRoute('Login');
         }
-      } catch (e) {
-        console.error('Session init error:', e);
+      } catch {
         setInitialRoute('Login');
       }
     };

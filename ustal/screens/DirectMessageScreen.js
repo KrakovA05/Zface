@@ -120,6 +120,7 @@ export default function DirectMessageScreen({ route, navigation }) {
             placeholderTextColor={colors.muted}
             value={text}
             onChangeText={setText}
+            maxLength={500}
           />
           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
             <Text style={styles.sendText}>→</Text>

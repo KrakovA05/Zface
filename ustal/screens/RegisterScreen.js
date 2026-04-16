@@ -22,11 +22,14 @@ const validateEmail = (v) => {
 
 const validatePassword = (v) => {
   if (!v) return 'Введи пароль';
-  if (v.length < 6) return 'Пароль слишком короткий — минимум 6 символов';
+  if (v.length < 8) return 'Пароль слишком короткий — минимум 8 символов';
   if (v.length > 50) return 'Пароль слишком длинный — максимум 50 символов';
   if (/[а-яёА-ЯЁ]/.test(v)) return 'Пароль не должен содержать кириллицу';
-  if (!/[0-9]/.test(v) && !/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(v))
-    return 'Пароль должен содержать хотя бы одну цифру или спецсимвол (!@#$%...)';
+  if (!/[A-Z]/.test(v)) return 'Пароль должен содержать хотя бы одну заглавную букву (A-Z)';
+  if (!/[a-z]/.test(v)) return 'Пароль должен содержать хотя бы одну строчную букву (a-z)';
+  if (!/[0-9]/.test(v)) return 'Пароль должен содержать хотя бы одну цифру';
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(v))
+    return 'Пароль должен содержать хотя бы один спецсимвол (!@#$%...)';
   return '';
 };
 
@@ -74,12 +77,15 @@ export default function RegisterScreen({ navigation }) {
       email,
     });
 
-    setLoading(false);
-
     if (insertError) {
+      // Удаляем auth-аккаунт чтобы не оставлять сироту без профиля
+      await supabase.auth.signOut();
+      setLoading(false);
       Alert.alert('Ошибка', 'Не удалось создать профиль. Попробуй ещё раз.');
       return;
     }
+
+    setLoading(false);
 
     store.userId = data.user.id;
     store.username = name.trim();
@@ -116,7 +122,7 @@ export default function RegisterScreen({ navigation }) {
 
         <TextInput
           style={[shared.input, errors.password ? styles.inputError : null]}
-          placeholder="Пароль (минимум 6 символов)"
+          placeholder="Пароль (мин. 8 симв., A-z, цифра, спецсимвол)"
           placeholderTextColor={colors.muted}
           value={password}
           onChangeText={v => { setPassword(v); setErrors(e => ({ ...e, password: '' })); }}

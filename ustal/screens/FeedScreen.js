@@ -30,7 +30,6 @@ export default function FeedScreen() {
 
     const { data, error } = await query;
     if (error) {
-      console.error('Feed load error:', error);
       Alert.alert('Ошибка', 'Не удалось загрузить ленту');
     }
     setPosts(data || []);

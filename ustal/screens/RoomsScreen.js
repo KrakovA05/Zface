@@ -281,6 +281,7 @@ export default function RoomsScreen({ route, navigation }) {
             onChangeText={setText2}
             onSubmitEditing={sendMessage}
             returnKeyType="send"
+            maxLength={500}
           />
           <TouchableOpacity
             style={[styles.sendBtn, { backgroundColor: roomData.color }, !text2.trim() && styles.sendBtnDisabled]}

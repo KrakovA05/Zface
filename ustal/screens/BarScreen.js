@@ -205,6 +205,7 @@ export default function BarScreen({ route }) {
             onChangeText={setText}
             onSubmitEditing={send}
             returnKeyType="send"
+            maxLength={500}
           />
           <TouchableOpacity
             style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}

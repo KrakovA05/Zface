@@ -39,8 +39,8 @@ export default function ProfileScreen({ navigation }) {
             setStatus(data.status || '');
             setAvatarUri(data.avatar_url || null);
           }
-        } catch (e) {
-          console.error('Profile load error:', e);
+        } catch {
+          // тихий fallback — не раскрываем детали ошибки
         }
       };
       loadProfile();
@@ -59,7 +59,7 @@ export default function ProfileScreen({ navigation }) {
       .single();
     setSavingStatus(false);
     if (error || !data) {
-      Alert.alert('Ошибка', 'Не удалось сохранить статус.\nПроверь настройки RLS в Supabase — нужна политика UPDATE для таблицы users.');
+      Alert.alert('Ошибка', 'Не удалось сохранить статус. Попробуй ещё раз.');
       return;
     }
     store.status = data.status;
@@ -81,7 +81,24 @@ export default function ProfileScreen({ navigation }) {
     });
     if (result.canceled) return;
 
-    const base64 = result.assets[0].base64;
+    const asset = result.assets[0];
+
+    // Проверяем тип файла
+    const mimeType = asset.mimeType || '';
+    if (!mimeType.startsWith('image/')) {
+      Alert.alert('Ошибка', 'Можно загружать только изображения');
+      return;
+    }
+
+    // Проверяем размер (base64 ~= 4/3 * размер файла)
+    const base64Size = (asset.base64?.length || 0) * 0.75;
+    const maxSize = 2 * 1024 * 1024; // 2 MB
+    if (base64Size > maxSize) {
+      Alert.alert('Файл слишком большой', 'Максимальный размер аватара — 2 МБ. Выбери другое фото.');
+      return;
+    }
+
+    const base64 = asset.base64;
     const dataUri = `data:image/jpeg;base64,${base64}`;
 
     setUploadingAvatar(true);
@@ -94,7 +111,7 @@ export default function ProfileScreen({ navigation }) {
     setUploadingAvatar(false);
 
     if (error || !data) {
-      Alert.alert('Ошибка', 'Не удалось сохранить аватар.\nПроверь настройки RLS в Supabase — нужна политика UPDATE для таблицы users.');
+      Alert.alert('Ошибка', 'Не удалось сохранить аватар. Попробуй ещё раз.');
       return;
     }
     store.avatarUrl = data.avatar_url;
@@ -108,17 +125,24 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const logout = async () => {
+    // Отписываемся от всех активных realtime-каналов
+    const channels = supabase.getChannels();
+    await Promise.all(channels.map(ch => supabase.removeChannel(ch)));
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       Alert.alert('Ошибка', 'Не удалось выйти. Попробуй ещё раз.');
       return;
     }
+
+    // Чистим store
     store.username = '';
     store.email = '';
     store.level = 'green';
     store.userId = '';
     store.avatarUrl = '';
     store.status = '';
+
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 

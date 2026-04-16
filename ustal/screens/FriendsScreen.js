@@ -102,12 +102,19 @@ export default function FriendsScreen({ navigation }) {
   const search = async () => {
     const nick = searchNick.trim();
     if (!nick && selectedLabels.length === 0) return;
+    if (nick && nick.length < 2) {
+      Alert.alert('Слишком короткий запрос', 'Введи минимум 2 символа для поиска по нику');
+      return;
+    }
     setSearching(true);
     setSearched(false);
 
-    let query = supabase.from('users').select('*').neq('user_id', store.userId);
+    let query = supabase.from('users')
+      .select('user_id, username, level, avatar_url, status, labels')
+      .neq('user_id', store.userId);
     if (nick) query = query.ilike('username', `%${nick}%`);
     if (selectedLabels.length > 0) query = query.overlaps('labels', selectedLabels);
+    query = query.limit(50);
 
     const { data, error } = await query;
     setSearching(false);
@@ -226,7 +233,7 @@ export default function FriendsScreen({ navigation }) {
       <TouchableOpacity
         style={[shared.button, (!searchNick.trim() && selectedLabels.length === 0) && shared.buttonDisabled]}
         onPress={search}
-        disabled={(!searchNick.trim() && selectedLabels.length === 0) || searching}
+        disabled={(!searchNick.trim() && selectedLabels.length === 0) || (searchNick.trim().length > 0 && searchNick.trim().length < 2) || searching}
       >
         {searching
           ? <ActivityIndicator color={colors.white} />
