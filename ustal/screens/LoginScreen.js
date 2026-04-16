@@ -38,7 +38,8 @@ export default function LoginScreen({ navigation }) {
     navigation.navigate('Main');
   };
 
-  const isValid = !!email && !!password;
+  const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const isValid = isValidEmail(email) && password.length >= 6;
 
   return (
     <SafeAreaView style={styles.container}>

@@ -23,7 +23,6 @@ export default function RoomsScreen({ route, navigation }) {
   const openRoom = route?.params?.openRoom;
   const [room, setRoom] = useState(openRoom === userLevel ? openRoom : null);
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState([]);
   const [text2, setText2] = useState('');
   const [onlineCount, setOnlineCount] = useState({});
   const [sending, setSending] = useState(false);
@@ -62,7 +61,10 @@ export default function RoomsScreen({ route, navigation }) {
     setParticipants(data || []);
   };
 
+  const VALID_ROOMS = ['green', 'yellow', 'red'];
+
   const enterRoom = async (roomId) => {
+    if (!VALID_ROOMS.includes(roomId)) return;
     if (roomId !== userLevel) return; // защита на уровне функции
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);

@@ -54,26 +54,35 @@ export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('username, level, email, avatar_url, status')
-          .eq('user_id', session.user.id)
-          .single();
-        store.userId = session.user.id;
-        if (userData) {
-          store.username = userData.username;
-          store.level = userData.level || 'green';
-          store.email = userData.email || session.user.email;
-          store.avatarUrl = userData.avatar_url || '';
-          store.status = userData.status || '';
+    const init = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (session?.user) {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('username, level, email, avatar_url, status')
+            .eq('user_id', session.user.id)
+            .single();
+          if (userError) throw userError;
+          store.userId = session.user.id;
+          if (userData) {
+            store.username = userData.username;
+            store.level = userData.level || 'green';
+            store.email = userData.email || session.user.email;
+            store.avatarUrl = userData.avatar_url || '';
+            store.status = userData.status || '';
+          }
+          setInitialRoute('Main');
+        } else {
+          setInitialRoute('Login');
         }
-        setInitialRoute('Main');
-      } else {
+      } catch (e) {
+        console.error('Session init error:', e);
         setInitialRoute('Login');
       }
-    });
+    };
+    init();
   }, []);
 
   if (!initialRoute) {

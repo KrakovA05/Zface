@@ -273,7 +273,7 @@ export default function FriendsScreen({ navigation }) {
         <View style={styles.tabBar}>
           <TouchableOpacity
             style={[styles.tabBtn, tab === 'friends' && styles.tabBtnActive]}
-            onPress={() => setTab('friends')}
+            onPress={() => { setTab('friends'); setSearched(false); setResults([]); }}
           >
             <Text style={[styles.tabLabel, tab === 'friends' && styles.tabLabelActive]}>
               Друзья{requestsBadge ? ' 🔴' : ''}

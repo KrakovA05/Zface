@@ -25,19 +25,25 @@ export default function ProfileScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       if (!store.userId) return;
-      supabase
-        .from('users')
-        .select('status, avatar_url')
-        .eq('user_id', store.userId)
-        .single()
-        .then(({ data }) => {
+      const loadProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('status, avatar_url')
+            .eq('user_id', store.userId)
+            .single();
+          if (error) throw error;
           if (data) {
             store.status = data.status || '';
             store.avatarUrl = data.avatar_url || '';
             setStatus(data.status || '');
             setAvatarUri(data.avatar_url || null);
           }
-        });
+        } catch (e) {
+          console.error('Profile load error:', e);
+        }
+      };
+      loadProfile();
     }, [])
   );
 
@@ -113,7 +119,7 @@ export default function ProfileScreen({ navigation }) {
     store.userId = '';
     store.avatarUrl = '';
     store.status = '';
-    navigation.navigate('Login');
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   return (

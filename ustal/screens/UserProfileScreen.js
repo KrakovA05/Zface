@@ -18,6 +18,7 @@ const STATUS_FRIENDS = 'friends';
 
 export default function UserProfileScreen({ route, navigation }) {
   const { user } = route.params;
+  const isMe = user.user_id === store.userId;
   const level = LEVEL_DATA[user.level] || LEVEL_DATA.green;
 
   const [friendStatus, setFriendStatus] = useState(null); // null = loading
@@ -26,6 +27,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const [liveAvatarUrl, setLiveAvatarUrl] = useState(user.avatar_url || null);
 
   useEffect(() => {
+    if (isMe) return;
     loadFriendStatus();
     supabase
       .from('users')
@@ -212,9 +214,17 @@ export default function UserProfileScreen({ route, navigation }) {
         </View>
 
         {/* Action */}
-        <View style={styles.actionRow}>
-          {renderAction()}
-        </View>
+        {isMe ? (
+          <View style={styles.actionRow}>
+            <View style={styles.itsYouBadge}>
+              <Text style={styles.itsYouText}>Это ты</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.actionRow}>
+            {renderAction()}
+          </View>
+        )}
 
         {/* Labels */}
         {(user.labels || []).length > 0 && (
@@ -259,6 +269,14 @@ const styles = StyleSheet.create({
   },
 
   actionRow: { marginBottom: 24 },
+  itsYouBadge: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  itsYouText: { color: colors.muted, fontSize: 15 },
   actionCol: { gap: 10 },
   dmBtn: { backgroundColor: colors.accent },
   sentBtn: { backgroundColor: colors.muted, opacity: 0.8 },

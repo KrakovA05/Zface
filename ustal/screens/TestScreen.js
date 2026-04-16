@@ -140,6 +140,7 @@ export default function TestScreen({ navigation }) {
   };
 
   const answer = async (isPessimistic) => {
+    if (finished || saving) return;
     const newCount = pessimisticCount + (isPessimistic ? 1 : 0);
     setPessimisticCount(newCount);
 

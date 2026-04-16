@@ -47,8 +47,11 @@ export default function FishingScreen() {
   const waitTimer = useRef(null);
   const msgTimer = useRef(null);
 
+  const isMounted = useRef(true);
   useEffect(() => {
+    isMounted.current = true;
     return () => {
+      isMounted.current = false;
       clearTimeout(waitTimer.current);
       clearInterval(msgTimer.current);
     };
@@ -87,12 +90,14 @@ export default function FishingScreen() {
 
     let i = 0;
     msgTimer.current = setInterval(() => {
+      if (!isMounted.current) return;
       i = (i + 1) % WAIT_MESSAGES.length;
       setWaitMsg(WAIT_MESSAGES[i]);
     }, 2500);
 
     const delay = Math.random() * 7000 + 4000;
     waitTimer.current = setTimeout(() => {
+      if (!isMounted.current) return;
       clearInterval(msgTimer.current);
       stopBobbing();
       biteAnim.setValue(1);

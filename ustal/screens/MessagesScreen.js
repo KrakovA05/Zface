@@ -128,14 +128,19 @@ export default function MessagesScreen({ navigation }) {
     setDmUnread(dmCounts);
 
     // ── Непрочитанные комнаты + онлайн ────────────────────────────
+    // Непрочитанные считаем только для своей комнаты (в остальные доступа нет)
     const roomCounts = {};
     const onlineCounts = {};
     await Promise.all(ROOMS.map(async (r) => {
-      const lastRead = await getLastRead(`room_${r.id}`);
-      roomCounts[r.id] = await countUnread(
-        'messages', 'level', r.id,
-        'username', store.username || '__nobody__', lastRead
-      );
+      if (r.id === userLevel) {
+        const lastRead = await getLastRead(`room_${r.id}`);
+        roomCounts[r.id] = await countUnread(
+          'messages', 'level', r.id,
+          'username', store.username || '__nobody__', lastRead
+        );
+      } else {
+        roomCounts[r.id] = 0;
+      }
       const { count } = await supabase
         .from('users').select('*', { count: 'exact', head: true }).eq('level', r.id);
       onlineCounts[r.id] = count || 0;
