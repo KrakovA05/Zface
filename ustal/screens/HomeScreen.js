@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -6,6 +6,9 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
+
+// Флаг чтобы алерт показывался только один раз за сессию
+let testReminderShown = false;
 
 function getDynamic(history) {
   if (history.length < 2) return null;
@@ -38,6 +41,23 @@ export default function HomeScreen({ navigation }) {
             setLevel(data[0].level);
             store.level = data[0].level;
             setHistory(data);
+
+            // Напоминание если не проходил тест больше 3 дней
+            if (!testReminderShown) {
+              const lastTest = new Date(data[0].created_at);
+              const daysSince = (Date.now() - lastTest.getTime()) / (1000 * 60 * 60 * 24);
+              if (daysSince > 3) {
+                testReminderShown = true;
+                Alert.alert(
+                  'Как ты сейчас? 🖤',
+                  `Последний раз ты проверял своё состояние ${Math.floor(daysSince)} дн. назад. Может, пройдём тест?`,
+                  [
+                    { text: 'Позже', style: 'cancel' },
+                    { text: 'Пройти тест →', onPress: () => navigation.navigate('Test') },
+                  ]
+                );
+              }
+            }
           }
         }
         setLoading(false);
@@ -99,7 +119,7 @@ export default function HomeScreen({ navigation }) {
           <ModuleButton icon="🍸" label="Бар" onPress={() => navigation.navigate('Bar')} />
         </View>
 
-        {history.length >= 2 && <TestChart history={history} />}
+        {history.length >= 1 && <TestChart history={history} />}
 
         {history.length > 0 && (
           <View style={styles.historyBlock}>
