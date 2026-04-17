@@ -4,7 +4,6 @@ import {
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Swipeable } from 'react-native-gesture-handler';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
@@ -123,12 +122,6 @@ export default function DirectMessageScreen({ route, navigation }) {
     );
   };
 
-  const renderRightActions = (id) => (
-    <TouchableOpacity style={styles.deleteAction} onPress={() => deleteMessage(id)}>
-      <Text style={styles.deleteActionText}>🗑</Text>
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
@@ -168,31 +161,25 @@ export default function DirectMessageScreen({ route, navigation }) {
           contentContainerStyle={styles.messageList}
           renderItem={({ item }) => {
             const isOwn = item.sender_id === store.userId;
-            const bubble = (
-              <View style={[styles.bubbleWrap, isOwn ? styles.bubbleWrapOwn : styles.bubbleWrapOther]}>
-                <Avatar
-                  uri={isOwn ? store.avatarUrl : friend.avatarUrl}
-                  username={isOwn ? store.username : friend.username}
-                  level={isOwn ? store.level : friend.level}
-                  size={30}
-                />
-                <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-                  <Text style={styles.bubbleText}>{item.text}</Text>
+            return (
+              <TouchableOpacity
+                onLongPress={() => isOwn && deleteMessage(item.id)}
+                activeOpacity={0.8}
+                delayLongPress={400}
+              >
+                <View style={[styles.bubbleWrap, isOwn ? styles.bubbleWrapOwn : styles.bubbleWrapOther]}>
+                  <Avatar
+                    uri={isOwn ? store.avatarUrl : friend.avatarUrl}
+                    username={isOwn ? store.username : friend.username}
+                    level={isOwn ? store.level : friend.level}
+                    size={30}
+                  />
+                  <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
+                    <Text style={styles.bubbleText}>{item.text}</Text>
+                  </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
-
-            if (isOwn) {
-              return (
-                <Swipeable
-                  renderLeftActions={() => renderRightActions(item.id)}
-                  overshootLeft={false}
-                >
-                  {bubble}
-                </Swipeable>
-              );
-            }
-            return bubble;
           }}
         />
         <View style={styles.inputRow}>
@@ -288,19 +275,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 15,
     lineHeight: 21,
-  },
-
-  // Swipe delete
-  deleteAction: {
-    backgroundColor: '#c0392b',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 64,
-    marginBottom: 8,
-    borderRadius: 12,
-  },
-  deleteActionText: {
-    fontSize: 22,
   },
 
   // Input

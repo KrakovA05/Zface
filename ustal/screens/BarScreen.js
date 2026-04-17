@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
+  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -80,6 +80,14 @@ export default function BarScreen({ route }) {
         setMessages(prev => [...prev, payload.new]);
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
       })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'messages',
+        filter: `level=eq.bar_${tableId}`,
+      }, (payload) => {
+        setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+      })
       .subscribe();
     channelRef.current = channel;
   };
@@ -97,9 +105,25 @@ export default function BarScreen({ route }) {
       username: store.username || 'Гость',
       text: text.trim(),
       level: `bar_${table}`,
+      sender_id: store.userId,
     });
     setText('');
     setSending(false);
+  };
+
+  const deleteMessage = (item) => {
+    const isOwn = item.sender_id === store.userId || item.username === store.username;
+    if (!isOwn) return;
+    Alert.alert('Удалить сообщение', 'Удалить это сообщение?', [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Удалить', style: 'destructive',
+        onPress: async () => {
+          await supabase.from('messages').delete().eq('id', item.id);
+          setMessages(prev => prev.filter(m => m.id !== item.id));
+        },
+      },
+    ]);
   };
 
   if (!table) {
@@ -171,20 +195,26 @@ export default function BarScreen({ route }) {
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => {
-            const isMe = item.username === store.username;
+            const isMe = item.sender_id === store.userId || item.username === store.username;
             return (
-              <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
-                <Avatar
-                  uri={isMe ? store.avatarUrl : null}
-                  username={item.username}
-                  level={isMe ? store.level : null}
-                  size={30}
-                />
-                <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
-                  {!isMe && <Text style={[styles.msgUsername, { color: colors.accent }]}>{item.username}</Text>}
-                  <Text style={styles.msgText}>{item.text}</Text>
+              <TouchableOpacity
+                onLongPress={() => deleteMessage(item)}
+                activeOpacity={0.8}
+                delayLongPress={400}
+              >
+                <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
+                  <Avatar
+                    uri={isMe ? store.avatarUrl : null}
+                    username={item.username}
+                    level={isMe ? store.level : null}
+                    size={30}
+                  />
+                  <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
+                    {!isMe && <Text style={[styles.msgUsername, { color: colors.accent }]}>{item.username}</Text>}
+                    <Text style={styles.msgText}>{item.text}</Text>
+                  </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           }}
           ListEmptyComponent={

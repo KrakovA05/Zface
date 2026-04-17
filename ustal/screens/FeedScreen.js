@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../supabase';
@@ -18,9 +18,27 @@ export default function FeedScreen({ navigation }) {
   const [text, setText] = useState('');
   const [posting, setPosting] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [avatarMap, setAvatarMap] = useState({});
   const cursorRef = useRef(null);
+  const fetchedAuthors = useRef(new Set());
 
   const level = store.level || 'green';
+
+  const fetchAuthorAvatars = async (newPosts) => {
+    const toFetch = [...new Set(newPosts.map(p => p.author_id))]
+      .filter(id => id && !fetchedAuthors.current.has(id));
+    if (!toFetch.length) return;
+    toFetch.forEach(id => fetchedAuthors.current.add(id));
+    const { data } = await supabase
+      .from('users')
+      .select('user_id, avatar_url')
+      .in('user_id', toFetch);
+    if (data) {
+      const entries = {};
+      data.forEach(u => { entries[u.user_id] = u.avatar_url; });
+      setAvatarMap(prev => ({ ...prev, ...entries }));
+    }
+  };
 
   const loadPosts = useCallback(async (reset = true) => {
     if (reset) {
@@ -53,6 +71,7 @@ export default function FeedScreen({ navigation }) {
     } else {
       setPosts(prev => [...prev, ...newPosts]);
     }
+    fetchAuthorAvatars(newPosts);
     setHasMore(newPosts.length === PAGE_SIZE);
     if (newPosts.length > 0) cursorRef.current = newPosts[newPosts.length - 1].created_at;
 
@@ -80,6 +99,8 @@ export default function FeedScreen({ navigation }) {
       });
       setText('');
       await loadPosts(true);
+      // сбрасываем кэш аватаров чтобы новый пост подхватил аватар
+      fetchedAuthors.current.delete(store.userId);
     }
     setPosting(false);
   };
@@ -112,7 +133,12 @@ export default function FeedScreen({ navigation }) {
           onPress={() => openAuthorProfile(item)}
           disabled={isOwn}
         >
-          <Avatar uri={null} username={item.author_username} level={item.author_level} size={36} />
+          <Avatar
+            uri={item.author_id === store.userId ? store.avatarUrl : (avatarMap[item.author_id] || null)}
+            username={item.author_username}
+            level={item.author_level}
+            size={36}
+          />
           <View style={styles.cardMeta}>
             <Text style={[styles.username, { color: lvlColor }]}>{item.author_username}</Text>
             <Text style={styles.date}>{date}</Text>
