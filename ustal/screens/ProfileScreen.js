@@ -124,6 +124,41 @@ export default function ProfileScreen({ navigation }) {
     });
   };
 
+  const deleteAccount = () => {
+    Alert.alert(
+      'Удалить аккаунт',
+      'Это действие необратимо. Все твои данные, сообщения и история будут удалены навсегда.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить', style: 'destructive',
+          onPress: async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const { error } = await supabase.functions.invoke('delete-account');
+            if (error) {
+              Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуй позже.');
+              return;
+            }
+
+            // Чистим каналы и store
+            const channels = supabase.getChannels();
+            await Promise.all(channels.map(ch => supabase.removeChannel(ch)));
+            store.username = '';
+            store.email = '';
+            store.level = 'green';
+            store.userId = '';
+            store.avatarUrl = '';
+            store.status = '';
+
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          },
+        },
+      ]
+    );
+  };
+
   const logout = async () => {
     // Отписываемся от всех активных realtime-каналов
     const channels = supabase.getChannels();
@@ -233,6 +268,10 @@ export default function ProfileScreen({ navigation }) {
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
           <Text style={styles.logoutText}>Выйти</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteButton} onPress={deleteAccount}>
+          <Text style={styles.deleteText}>Удалить аккаунт</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -307,6 +346,11 @@ const styles = StyleSheet.create({
   logoutButton: {
     borderWidth: 1, borderColor: colors.pink,
     borderRadius: 12, padding: 18, alignItems: 'center',
+    marginBottom: 12,
   },
   logoutText: { color: colors.pink, fontSize: 16 },
+  deleteButton: {
+    borderRadius: 12, padding: 18, alignItems: 'center',
+  },
+  deleteText: { color: colors.muted, fontSize: 14 },
 });
