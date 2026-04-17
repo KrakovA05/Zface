@@ -55,6 +55,19 @@ export default function DirectMessageScreen({ route, navigation }) {
   const sendMessage = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
+
+    // Проверяем что пользователь не заблокирован
+    const { data: block } = await supabase
+      .from('blocks')
+      .select('id')
+      .eq('blocker_id', store.userId)
+      .eq('blocked_id', friend.userId)
+      .maybeSingle();
+    if (block) {
+      Alert.alert('Недоступно', 'Вы заблокировали этого пользователя');
+      return;
+    }
+
     setText('');
     const { error } = await supabase.from('direct_messages').insert({
       conversation_id: conversationId,

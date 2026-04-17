@@ -15,6 +15,7 @@ const STATUS_NONE = 'none';
 const STATUS_SENT = 'sent';       // я отправил заявку
 const STATUS_RECEIVED = 'received'; // мне прислали заявку
 const STATUS_FRIENDS = 'friends';
+const STATUS_BLOCKED = 'blocked'; // я заблокировал этого пользователя
 
 export default function UserProfileScreen({ route, navigation }) {
   const { user } = route.params;
@@ -25,10 +26,13 @@ export default function UserProfileScreen({ route, navigation }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [liveStatus, setLiveStatus] = useState(user.status || '');
   const [liveAvatarUrl, setLiveAvatarUrl] = useState(user.avatar_url || null);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockLoading, setBlockLoading] = useState(false);
 
   useEffect(() => {
     if (isMe) return;
     loadFriendStatus();
+    loadBlockStatus();
     supabase
       .from('users')
       .select('status, avatar_url')
@@ -41,6 +45,56 @@ export default function UserProfileScreen({ route, navigation }) {
         }
       });
   }, []);
+
+  const loadBlockStatus = async () => {
+    const { data } = await supabase
+      .from('blocks')
+      .select('id')
+      .eq('blocker_id', store.userId)
+      .eq('blocked_id', user.user_id)
+      .maybeSingle();
+    setIsBlocked(!!data);
+  };
+
+  const blockUser = () => {
+    Alert.alert(
+      'Заблокировать',
+      `Заблокировать ${user.username}? Вы не сможете писать друг другу и видеть переписку.`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Заблокировать', style: 'destructive',
+          onPress: async () => {
+            setBlockLoading(true);
+            await supabase.from('blocks').insert({
+              blocker_id: store.userId,
+              blocked_id: user.user_id,
+            });
+            // Удаляем дружбу если была
+            await Promise.all([
+              supabase.from('friendships').delete()
+                .eq('requester_id', store.userId).eq('receiver_id', user.user_id),
+              supabase.from('friendships').delete()
+                .eq('requester_id', user.user_id).eq('receiver_id', store.userId),
+            ]);
+            setIsBlocked(true);
+            setFriendStatus(STATUS_NONE);
+            setBlockLoading(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const unblockUser = async () => {
+    setBlockLoading(true);
+    await supabase.from('blocks').delete()
+      .eq('blocker_id', store.userId)
+      .eq('blocked_id', user.user_id);
+    setIsBlocked(false);
+    setBlockLoading(false);
+    loadFriendStatus();
+  };
 
   const loadFriendStatus = async () => {
     const [{ data: sent }, { data: received }] = await Promise.all([
@@ -138,6 +192,32 @@ export default function UserProfileScreen({ route, navigation }) {
   const renderAction = () => {
     if (friendStatus === null || actionLoading) return <ActivityIndicator color={colors.accent} />;
 
+    const blockBtn = blockLoading
+      ? <ActivityIndicator color={colors.muted} />
+      : isBlocked
+        ? (
+          <TouchableOpacity style={[shared.button, styles.unblockBtn]} onPress={unblockUser}>
+            <Text style={shared.buttonText}>Разблокировать</Text>
+          </TouchableOpacity>
+        )
+        : (
+          <TouchableOpacity style={styles.blockBtn} onPress={blockUser}>
+            <Text style={styles.blockBtnText}>🚫 Заблокировать</Text>
+          </TouchableOpacity>
+        );
+
+    // Если заблокирован — только кнопка разблокировки
+    if (isBlocked) {
+      return (
+        <View style={styles.actionCol}>
+          <View style={[shared.button, styles.blockedBadge]}>
+            <Text style={shared.buttonText}>Пользователь заблокирован</Text>
+          </View>
+          {blockBtn}
+        </View>
+      );
+    }
+
     const dmButton = (
       <TouchableOpacity style={[shared.button, styles.dmBtn]} onPress={openDm}>
         <Text style={shared.buttonText}>💬 Написать</Text>
@@ -152,6 +232,7 @@ export default function UserProfileScreen({ route, navigation }) {
             <TouchableOpacity style={[shared.button, styles.removeBtn]} onPress={removeFriend}>
               <Text style={shared.buttonText}>Удалить из друзей</Text>
             </TouchableOpacity>
+            {blockBtn}
           </View>
         );
       case STATUS_SENT:
@@ -161,6 +242,7 @@ export default function UserProfileScreen({ route, navigation }) {
             <View style={[shared.button, styles.sentBtn]}>
               <Text style={shared.buttonText}>Заявка отправлена ✓</Text>
             </View>
+            {blockBtn}
           </View>
         );
       case STATUS_RECEIVED:
@@ -175,6 +257,7 @@ export default function UserProfileScreen({ route, navigation }) {
                 <Text style={styles.rejectBtnText}>Отклонить</Text>
               </TouchableOpacity>
             </View>
+            {blockBtn}
           </View>
         );
       case STATUS_NONE:
@@ -185,6 +268,7 @@ export default function UserProfileScreen({ route, navigation }) {
             <TouchableOpacity style={shared.button} onPress={sendRequest}>
               <Text style={shared.buttonText}>+ Добавить в друзья</Text>
             </TouchableOpacity>
+            {blockBtn}
           </View>
         );
     }
@@ -281,6 +365,10 @@ const styles = StyleSheet.create({
   dmBtn: { backgroundColor: colors.accent },
   sentBtn: { backgroundColor: colors.muted, opacity: 0.8 },
   removeBtn: { backgroundColor: '#c0392b' },
+  blockedBadge: { backgroundColor: colors.muted, opacity: 0.7 },
+  unblockBtn: { backgroundColor: '#555' },
+  blockBtn: { alignItems: 'center', paddingVertical: 10 },
+  blockBtnText: { color: colors.muted, fontSize: 14 },
   requestActions: { flexDirection: 'row', gap: 12 },
   acceptBtn: {
     flex: 1, backgroundColor: '#4CAF50',

@@ -109,9 +109,17 @@ export default function FriendsScreen({ navigation }) {
     setSearching(true);
     setSearched(false);
 
+    // Получаем список заблокированных чтобы исключить из поиска
+    const { data: blockedData } = await supabase
+      .from('blocks')
+      .select('blocked_id')
+      .eq('blocker_id', store.userId);
+    const blockedIds = (blockedData || []).map(b => b.blocked_id);
+
     let query = supabase.from('users')
       .select('user_id, username, level, avatar_url, status, labels')
       .neq('user_id', store.userId);
+    if (blockedIds.length > 0) query = query.not('user_id', 'in', `(${blockedIds.join(',')})`);
     if (nick) query = query.ilike('username', `%${nick}%`);
     if (selectedLabels.length > 0) query = query.overlaps('labels', selectedLabels);
     query = query.limit(50);

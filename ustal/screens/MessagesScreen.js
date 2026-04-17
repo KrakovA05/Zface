@@ -79,8 +79,15 @@ export default function MessagesScreen({ navigation }) {
       .map(cid => cid.split('_').find(id => id !== store.userId))
       .filter(Boolean);
 
-    // Объединяем всех уникальных собеседников
-    const allIds = [...new Set([...friendIds, ...dmPartnerIds])];
+    // Получаем заблокированных
+    const { data: blockedData } = await supabase
+      .from('blocks')
+      .select('blocked_id')
+      .eq('blocker_id', store.userId);
+    const blockedIds = new Set((blockedData || []).map(b => b.blocked_id));
+
+    // Объединяем всех уникальных собеседников, исключая заблокированных
+    const allIds = [...new Set([...friendIds, ...dmPartnerIds])].filter(id => !blockedIds.has(id));
 
     let friendsList = [];
     if (allIds.length) {
