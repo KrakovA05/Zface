@@ -28,6 +28,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const [liveAvatarUrl, setLiveAvatarUrl] = useState(user.avatar_url || null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
 
   useEffect(() => {
     if (isMe) return;
@@ -35,13 +36,14 @@ export default function UserProfileScreen({ route, navigation }) {
     loadBlockStatus();
     supabase
       .from('users')
-      .select('status, avatar_url')
+      .select('status, avatar_url, last_seen')
       .eq('user_id', user.user_id)
       .single()
       .then(({ data }) => {
         if (data) {
           setLiveStatus(data.status || '');
           setLiveAvatarUrl(data.avatar_url || null);
+          setIsOnline(data.last_seen && (Date.now() - new Date(data.last_seen).getTime()) < 3 * 60 * 1000);
         }
       });
   }, []);
@@ -183,6 +185,28 @@ export default function UserProfileScreen({ route, navigation }) {
     );
   };
 
+  const reportUser = () => {
+    Alert.alert(
+      'Пожаловаться',
+      `Пожаловаться на ${user.username}?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        { text: 'Спам', onPress: () => sendReport('spam') },
+        { text: 'Оскорбления', onPress: () => sendReport('abuse') },
+        { text: 'Другое', onPress: () => sendReport('other') },
+      ]
+    );
+  };
+
+  const sendReport = async (reason) => {
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: store.userId,
+      reported_user_id: user.user_id,
+      reason,
+    });
+    if (!error) Alert.alert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время');
+  };
+
   const openDm = () => {
     navigation.navigate('DirectMessage', {
       friend: { username: user.username, userId: user.user_id, level: user.level, avatarUrl: liveAvatarUrl },
@@ -191,6 +215,12 @@ export default function UserProfileScreen({ route, navigation }) {
 
   const renderAction = () => {
     if (friendStatus === null || actionLoading) return <ActivityIndicator color={colors.accent} />;
+
+      const reportBtn = (
+      <TouchableOpacity style={styles.reportBtn} onPress={reportUser}>
+        <Text style={styles.reportBtnText}>⚑ Пожаловаться</Text>
+      </TouchableOpacity>
+    );
 
     const blockBtn = blockLoading
       ? <ActivityIndicator color={colors.muted} />
@@ -214,6 +244,7 @@ export default function UserProfileScreen({ route, navigation }) {
             <Text style={shared.buttonText}>Пользователь заблокирован</Text>
           </View>
           {blockBtn}
+          {reportBtn}
         </View>
       );
     }
@@ -233,6 +264,7 @@ export default function UserProfileScreen({ route, navigation }) {
               <Text style={shared.buttonText}>Удалить из друзей</Text>
             </TouchableOpacity>
             {blockBtn}
+            {reportBtn}
           </View>
         );
       case STATUS_SENT:
@@ -243,6 +275,7 @@ export default function UserProfileScreen({ route, navigation }) {
               <Text style={shared.buttonText}>Заявка отправлена ✓</Text>
             </View>
             {blockBtn}
+            {reportBtn}
           </View>
         );
       case STATUS_RECEIVED:
@@ -258,6 +291,7 @@ export default function UserProfileScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
             {blockBtn}
+            {reportBtn}
           </View>
         );
       case STATUS_NONE:
@@ -269,6 +303,7 @@ export default function UserProfileScreen({ route, navigation }) {
               <Text style={shared.buttonText}>+ Добавить в друзья</Text>
             </TouchableOpacity>
             {blockBtn}
+            {reportBtn}
           </View>
         );
     }
@@ -285,7 +320,7 @@ export default function UserProfileScreen({ route, navigation }) {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Avatar + name */}
         <View style={styles.hero}>
-          <Avatar uri={liveAvatarUrl} username={user.username} level={user.level} size={88} />
+          <Avatar uri={liveAvatarUrl} username={user.username} level={user.level} size={88} isOnline={isOnline} />
           <Text style={[styles.username, { color: LEVEL_COLORS[user.level] || colors.accent }]}>
             {user.username}
           </Text>
@@ -369,6 +404,8 @@ const styles = StyleSheet.create({
   unblockBtn: { backgroundColor: '#555' },
   blockBtn: { alignItems: 'center', paddingVertical: 10 },
   blockBtnText: { color: colors.muted, fontSize: 14 },
+  reportBtn: { alignItems: 'center', paddingVertical: 8 },
+  reportBtnText: { color: colors.muted, fontSize: 13 },
   requestActions: { flexDirection: 'row', gap: 12 },
   acceptBtn: {
     flex: 1, backgroundColor: '#4CAF50',

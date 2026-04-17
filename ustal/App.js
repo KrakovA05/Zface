@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
@@ -41,17 +42,26 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.muted,
       }}
     >
-      <Tab.Screen name="Home"    component={HomeScreen}    options={{ tabBarLabel: '🏠 Главная' }} />
+      <Tab.Screen name="Home"     component={HomeScreen}     options={{ tabBarLabel: '🏠 Главная' }} />
       <Tab.Screen name="Feed"     component={FeedScreen}     options={{ tabBarLabel: '📰 Лента' }} />
       <Tab.Screen name="Messages" component={MessagesScreen} options={{ tabBarLabel: '💬 Сообщения' }} />
-      <Tab.Screen name="Friends" component={FriendsScreen} options={{ tabBarLabel: '🔍 Свои' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: '👤 Я' }} />
+      <Tab.Screen name="Friends"  component={FriendsScreen}  options={{ tabBarLabel: '🔍 Свои' }} />
+      <Tab.Screen name="Profile"  component={ProfileScreen}  options={{ tabBarLabel: '👤 Я' }} />
     </Tab.Navigator>
   );
 }
 
+const updatePresence = async () => {
+  if (!store.userId) return;
+  await supabase
+    .from('users')
+    .update({ last_seen: new Date().toISOString() })
+    .eq('user_id', store.userId);
+};
+
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
+  const presenceInterval = useRef(null);
 
   useEffect(() => {
     const init = async () => {
@@ -74,6 +84,8 @@ export default function App() {
             store.status = userData.status || '';
           }
           setInitialRoute('Main');
+          // Первичное обновление присутствия
+          updatePresence();
         } else {
           setInitialRoute('Login');
         }
@@ -82,6 +94,19 @@ export default function App() {
       }
     };
     init();
+  }, []);
+
+  // Трекинг присутствия: обновляем last_seen при активации и каждые 2 минуты
+  useEffect(() => {
+    const handleAppState = (nextState) => {
+      if (nextState === 'active') updatePresence();
+    };
+    const sub = AppState.addEventListener('change', handleAppState);
+    presenceInterval.current = setInterval(updatePresence, 2 * 60 * 1000);
+    return () => {
+      sub.remove();
+      clearInterval(presenceInterval.current);
+    };
   }, []);
 
   if (!initialRoute) {
@@ -93,27 +118,29 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{ headerShown: false }}
-        >
-          <Stack.Screen name="Login"           component={LoginScreen} />
-          <Stack.Screen name="Register"        component={RegisterScreen} />
-          <Stack.Screen name="Test"            component={TestScreen} />
-          <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
-          <Stack.Screen name="Main"            component={MainTabs} options={{ gestureEnabled: false }} />
-          <Stack.Screen name="DirectMessage"   component={DirectMessageScreen} />
-          <Stack.Screen name="UserProfile"     component={UserProfileScreen} />
-          <Stack.Screen name="Rooms"           component={RoomsScreen} />
-          <Stack.Screen name="Chat"            component={ChatScreen} />
-          <Stack.Screen name="Relax"           component={RelaxScreen} />
-          <Stack.Screen name="Fishing"         component={FishingScreen} />
-          <Stack.Screen name="Bar"             component={BarScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName={initialRoute}
+            screenOptions={{ headerShown: false }}
+          >
+            <Stack.Screen name="Login"           component={LoginScreen} />
+            <Stack.Screen name="Register"        component={RegisterScreen} />
+            <Stack.Screen name="Test"            component={TestScreen} />
+            <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
+            <Stack.Screen name="Main"            component={MainTabs} options={{ gestureEnabled: false }} />
+            <Stack.Screen name="DirectMessage"   component={DirectMessageScreen} />
+            <Stack.Screen name="UserProfile"     component={UserProfileScreen} />
+            <Stack.Screen name="Rooms"           component={RoomsScreen} />
+            <Stack.Screen name="Chat"            component={ChatScreen} />
+            <Stack.Screen name="Relax"           component={RelaxScreen} />
+            <Stack.Screen name="Fishing"         component={FishingScreen} />
+            <Stack.Screen name="Bar"             component={BarScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

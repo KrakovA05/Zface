@@ -93,7 +93,7 @@ export default function MessagesScreen({ navigation }) {
     if (allIds.length) {
       const { data: users } = await supabase
         .from('users')
-        .select('username, level, user_id, avatar_url, status')
+        .select('username, level, user_id, avatar_url, status, last_seen')
         .in('user_id', allIds);
 
       // Получаем дату последнего сообщения для каждого чата
@@ -312,7 +312,13 @@ export default function MessagesScreen({ navigation }) {
                         friend: { username: f.username, userId: f.user_id, level: f.level, avatarUrl: f.avatar_url },
                       })}
                     >
-                      <Avatar uri={f.avatar_url} username={f.username} level={f.level} size={42} />
+                      <Avatar
+                        uri={f.avatar_url}
+                        username={f.username}
+                        level={f.level}
+                        size={42}
+                        isOnline={f.last_seen && (Date.now() - new Date(f.last_seen).getTime()) < 3 * 60 * 1000}
+                      />
                       <View style={styles.rowInfo}>
                         <Text style={[styles.rowLabel, { color: LEVEL_COLORS[f.level] || colors.white }]}>
                           {f.username}

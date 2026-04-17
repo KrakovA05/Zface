@@ -66,7 +66,7 @@ export default function FriendsScreen({ navigation }) {
 
     const { data: users } = await supabase
       .from('users')
-      .select('username, level, user_id, avatar_url, status, labels')
+      .select('username, level, user_id, avatar_url, status, labels, last_seen')
       .in('user_id', allIds);
 
     const userMap = Object.fromEntries((users || []).map(u => [u.user_id, u]));
@@ -149,7 +149,8 @@ export default function FriendsScreen({ navigation }) {
             {requests.map(user => (
               <View key={user.user_id} style={styles.requestCard}>
                 <TouchableOpacity style={styles.requestLeft} onPress={() => openProfile(user)}>
-                  <Avatar uri={user.avatar_url} username={user.username} level={user.level} size={44} />
+                  <Avatar uri={user.avatar_url} username={user.username} level={user.level} size={44}
+                    isOnline={user.last_seen && (Date.now() - new Date(user.last_seen).getTime()) < 3 * 60 * 1000} />
                   <View style={styles.requestInfo}>
                     <Text style={[styles.requestName, { color: LEVEL_COLORS[user.level] || colors.accent }]}>
                       {user.username}
@@ -179,7 +180,8 @@ export default function FriendsScreen({ navigation }) {
                 style={styles.friendCard}
                 onPress={() => openProfile(friend)}
               >
-                <Avatar uri={friend.avatar_url} username={friend.username} level={friend.level} size={44} />
+                <Avatar uri={friend.avatar_url} username={friend.username} level={friend.level} size={44}
+                  isOnline={friend.last_seen && (Date.now() - new Date(friend.last_seen).getTime()) < 3 * 60 * 1000} />
                 <View style={styles.friendInfo}>
                   <Text style={[styles.friendName, { color: LEVEL_COLORS[friend.level] || colors.accent }]}>
                     {friend.username}

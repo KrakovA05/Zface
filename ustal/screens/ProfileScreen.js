@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_DATA, MOTIVATORS } from '../constants';
+import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 
@@ -21,6 +21,7 @@ export default function ProfileScreen({ navigation }) {
   const [motivator] = useState(
     () => MOTIVATORS[Math.floor(Math.random() * MOTIVATORS.length)]
   );
+  const [earnedAchievements, setEarnedAchievements] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -44,10 +45,106 @@ export default function ProfileScreen({ navigation }) {
         }
       };
       loadProfile();
+      checkAndAwardAchievements();
     }, [])
   );
 
   const level = LEVEL_DATA[store.level] || LEVEL_DATA.green;
+
+  const checkAndAwardAchievements = async () => {
+    if (!store.userId) return;
+
+    // Загружаем уже выданные достижения
+    const { data: existing } = await supabase
+      .from('user_achievements')
+      .select('achievement_id')
+      .eq('user_id', store.userId);
+    const earned = new Set((existing || []).map(e => e.achievement_id));
+
+    const toAward = [];
+
+    // first_test: есть хоть один результат теста
+    const { count: testCount } = await supabase
+      .from('test_results').select('*', { count: 'exact', head: true }).eq('user_id', store.userId);
+    if (testCount >= 1 && !earned.has('first_test')) toAward.push('first_test');
+    if (testCount >= 5 && !earned.has('five_tests')) toAward.push('five_tests');
+    if (testCount >= 10 && !earned.has('ten_tests')) toAward.push('ten_tests');
+
+    // comeback: есть переход red→yellow/green
+    if (!earned.has('comeback')) {
+      const { data: tests } = await supabase
+        .from('test_results').select('level').eq('user_id', store.userId)
+        .order('created_at', { ascending: false }).limit(10);
+      const levels = (tests || []).map(t => t.level);
+      for (let i = 0; i < levels.length - 1; i++) {
+        if (levels[i] !== 'red' && levels[i + 1] === 'red') { toAward.push('comeback'); break; }
+      }
+    }
+
+    // stable: три зелёных подряд
+    if (!earned.has('stable')) {
+      const { data: tests } = await supabase
+        .from('test_results').select('level').eq('user_id', store.userId)
+        .order('created_at', { ascending: false }).limit(3);
+      if (tests?.length === 3 && tests.every(t => t.level === 'green')) toAward.push('stable');
+    }
+
+    // first_friend: есть принятая дружба
+    if (!earned.has('first_friend')) {
+      const { count: fc } = await supabase
+        .from('friendships').select('*', { count: 'exact', head: true })
+        .or(`requester_id.eq.${store.userId},receiver_id.eq.${store.userId}`)
+        .eq('status', 'accepted');
+      if (fc >= 1) toAward.push('first_friend');
+    }
+
+    // first_dm: отправил хоть одно личное сообщение
+    if (!earned.has('first_dm')) {
+      const { count: dc } = await supabase
+        .from('direct_messages').select('*', { count: 'exact', head: true }).eq('sender_id', store.userId);
+      if (dc >= 1) toAward.push('first_dm');
+    }
+
+    // profile_done: есть статус и аватар
+    if (!earned.has('profile_done') && store.status && store.avatarUrl) {
+      toAward.push('profile_done');
+    }
+
+    // first_post: написал пост в ленту
+    if (!earned.has('first_post')) {
+      const { count: pc } = await supabase
+        .from('feed_posts').select('*', { count: 'exact', head: true }).eq('author_id', store.userId);
+      if (pc >= 1) toAward.push('first_post');
+    }
+
+    // daily_7: 7 дней подряд отвечал на вопрос
+    if (!earned.has('daily_7')) {
+      const { data: answers } = await supabase
+        .from('daily_answers').select('question_date').eq('user_id', store.userId)
+        .order('question_date', { ascending: false }).limit(7);
+      if (answers?.length === 7) {
+        let consecutive = true;
+        for (let i = 0; i < answers.length - 1; i++) {
+          const d1 = new Date(answers[i].question_date);
+          const d2 = new Date(answers[i + 1].question_date);
+          if ((d1 - d2) / (1000 * 60 * 60 * 24) !== 1) { consecutive = false; break; }
+        }
+        if (consecutive) toAward.push('daily_7');
+      }
+    }
+
+    // Сохраняем новые достижения
+    if (toAward.length > 0) {
+      await supabase.from('user_achievements').insert(
+        toAward.map(id => ({ user_id: store.userId, achievement_id: id }))
+      );
+      toAward.forEach(id => earned.add(id));
+    }
+
+    // Загружаем все выданные для отображения
+    const allEarned = ACHIEVEMENTS.filter(a => earned.has(a.id));
+    setEarnedAchievements(allEarned);
+  };
 
   const saveStatus = async () => {
     setSavingStatus(true);
@@ -261,6 +358,25 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.motivator}>{motivator}</Text>
         </View>
 
+        {/* Достижения */}
+        {earnedAchievements.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Достижения ({earnedAchievements.length}/{ACHIEVEMENTS.length})</Text>
+            <View style={styles.achievementsGrid}>
+              {ACHIEVEMENTS.map(a => {
+                const earned = earnedAchievements.some(e => e.id === a.id);
+                return (
+                  <View key={a.id} style={[styles.achievementItem, !earned && styles.achievementLocked]}>
+                    <Text style={styles.achievementEmoji}>{earned ? a.emoji : '🔒'}</Text>
+                    <Text style={[styles.achievementLabel, !earned && styles.achievementLabelLocked]}>{a.label}</Text>
+                    {earned && <Text style={styles.achievementDesc}>{a.desc}</Text>}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         <TouchableOpacity style={styles.inviteButton} onPress={inviteFriend}>
           <Text style={styles.inviteText}>👋 Пригласи друга</Text>
         </TouchableOpacity>
@@ -337,6 +453,20 @@ const styles = StyleSheet.create({
   levelLabel: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
   levelText: { color: colors.white, fontSize: 15 },
   motivator: { color: colors.white, fontSize: 15, lineHeight: 22 },
+
+  achievementsGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+  },
+  achievementItem: {
+    width: '30%', flexGrow: 1,
+    backgroundColor: colors.background,
+    borderRadius: 12, padding: 10, alignItems: 'center', gap: 4,
+  },
+  achievementLocked: { opacity: 0.35 },
+  achievementEmoji: { fontSize: 24 },
+  achievementLabel: { color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  achievementLabelLocked: { color: colors.muted },
+  achievementDesc: { color: colors.muted, fontSize: 9, textAlign: 'center', lineHeight: 13 },
 
   inviteButton: {
     backgroundColor: colors.pink, borderRadius: 12,

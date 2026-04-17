@@ -1,42 +1,66 @@
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
 import { colors } from '../theme';
+import Avatar from '../components/Avatar';
 
-export default function FeedScreen() {
+const PAGE_SIZE = 20;
+
+export default function FeedScreen({ navigation }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [text, setText] = useState('');
   const [posting, setPosting] = useState(false);
   const [filter, setFilter] = useState('all');
+  const cursorRef = useRef(null);
 
   const level = store.level || 'green';
 
-  const loadPosts = useCallback(async () => {
-    setLoading(true);
+  const loadPosts = useCallback(async (reset = true) => {
+    if (reset) {
+      setLoading(true);
+      cursorRef.current = null;
+    } else {
+      setLoadingMore(true);
+    }
+
     let query = supabase
       .from('feed_posts')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(PAGE_SIZE);
 
     if (filter === 'mine') {
       query = query.contains('target_levels', [level]);
+    }
+    if (!reset && cursorRef.current) {
+      query = query.lt('created_at', cursorRef.current);
     }
 
     const { data, error } = await query;
     if (error) {
       Alert.alert('Ошибка', 'Не удалось загрузить ленту');
     }
-    setPosts(data || []);
-    setLoading(false);
+    const newPosts = data || [];
+    if (reset) {
+      setPosts(newPosts);
+    } else {
+      setPosts(prev => [...prev, ...newPosts]);
+    }
+    setHasMore(newPosts.length === PAGE_SIZE);
+    if (newPosts.length > 0) cursorRef.current = newPosts[newPosts.length - 1].created_at;
+
+    if (reset) setLoading(false);
+    else setLoadingMore(false);
   }, [filter]);
 
-  useFocusEffect(useCallback(() => { loadPosts(); }, [loadPosts]));
+  useFocusEffect(useCallback(() => { loadPosts(true); }, [loadPosts]));
 
   const post = async () => {
     if (!text.trim()) return;
@@ -55,36 +79,62 @@ export default function FeedScreen() {
         target_levels: targetLevels,
       });
       setText('');
-      await loadPosts();
+      await loadPosts(true);
     }
     setPosting(false);
   };
 
+  const openAuthorProfile = (item) => {
+    if (item.author_id === store.userId) return;
+    navigation.navigate('UserProfile', {
+      user: {
+        user_id: item.author_id,
+        username: item.author_username,
+        level: item.author_level,
+        avatar_url: null,
+        status: '',
+        labels: [],
+      },
+    });
+  };
+
   const renderPost = ({ item }) => {
     const lvlColor = LEVEL_COLORS[item.author_level] || colors.accent;
-    const lvlEmoji = LEVEL_DATA[item.author_level]?.emoji || '•';
     const date = new Date(item.created_at).toLocaleDateString('ru-RU', {
       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
     });
+    const isOwn = item.author_id === store.userId;
 
     return (
       <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={[styles.avatar, { backgroundColor: lvlColor }]}>
-            <Text style={styles.avatarText}>{lvlEmoji}</Text>
-          </View>
+        <TouchableOpacity
+          style={styles.cardHeader}
+          onPress={() => openAuthorProfile(item)}
+          disabled={isOwn}
+        >
+          <Avatar uri={null} username={item.author_username} level={item.author_level} size={36} />
           <View style={styles.cardMeta}>
-            <Text style={styles.username}>{item.author_username}</Text>
+            <Text style={[styles.username, { color: lvlColor }]}>{item.author_username}</Text>
             <Text style={styles.date}>{date}</Text>
           </View>
           <View style={[styles.levelBadge, { borderColor: lvlColor }]}>
             <Text style={[styles.levelBadgeText, { color: lvlColor }]}>
-              {item.author_level}
+              {LEVEL_DATA[item.author_level]?.emoji || '•'}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <Text style={styles.postText}>{item.text}</Text>
       </View>
+    );
+  };
+
+  const renderFooter = () => {
+    if (loadingMore) return <ActivityIndicator color={colors.accent} style={{ marginVertical: 16 }} />;
+    if (!hasMore || posts.length === 0) return null;
+    return (
+      <TouchableOpacity style={styles.loadMoreBtn} onPress={() => loadPosts(false)}>
+        <Text style={styles.loadMoreText}>Загрузить ещё</Text>
+      </TouchableOpacity>
     );
   };
 
@@ -126,6 +176,7 @@ export default function FeedScreen() {
             ListEmptyComponent={
               <Text style={styles.empty}>Постов пока нет. Будь первым!</Text>
             }
+            ListFooterComponent={renderFooter}
           />
         )}
 
@@ -162,57 +213,44 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: colors.white, marginBottom: 12 },
   filters: { flexDirection: 'row', gap: 8 },
   filterBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 20, backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.border,
   },
   filterBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterText: { color: colors.muted, fontSize: 14 },
   filterTextActive: { color: '#fff', fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingBottom: 16 },
   card: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 12,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 18 },
   cardMeta: { flex: 1 },
-  username: { color: colors.white, fontWeight: '600', fontSize: 14 },
+  username: { fontWeight: '600', fontSize: 14 },
   date: { color: colors.muted, fontSize: 12, marginTop: 1 },
   levelBadge: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   levelBadgeText: { fontSize: 11, fontWeight: '600' },
   postText: { color: colors.white, fontSize: 15, lineHeight: 22 },
   empty: { color: colors.muted, textAlign: 'center', marginTop: 60, fontSize: 16 },
+  loadMoreBtn: {
+    alignItems: 'center', paddingVertical: 14,
+    borderRadius: 12, borderWidth: 1, borderColor: colors.border,
+    marginHorizontal: 16, marginBottom: 8,
+  },
+  loadMoreText: { color: colors.muted, fontSize: 14 },
   inputRow: {
-    flexDirection: 'row',
-    padding: 12,
-    gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    flexDirection: 'row', padding: 12, gap: 10,
+    borderTopWidth: 1, borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
   input: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: colors.white,
-    fontSize: 15,
-    maxHeight: 100,
+    flex: 1, backgroundColor: colors.card,
+    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10,
+    color: colors.white, fontSize: 15, maxHeight: 100,
   },
   sendBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: colors.accent, borderRadius: 12,
+    width: 44, alignItems: 'center', justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
   sendText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },

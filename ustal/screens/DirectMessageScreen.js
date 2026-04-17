@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Swipeable } from 'react-native-gesture-handler';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
@@ -18,10 +19,12 @@ export default function DirectMessageScreen({ route, navigation }) {
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  const [friendOnline, setFriendOnline] = useState(false);
 
   useEffect(() => {
     markRead(`dm_${conversationId}`);
     fetchMessages();
+    fetchFriendOnline();
 
     const subscription = supabase
       .channel(`dm_${conversationId}`)
@@ -33,10 +36,29 @@ export default function DirectMessageScreen({ route, navigation }) {
       }, payload => {
         setMessages(prev => [payload.new, ...prev]);
       })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'direct_messages',
+        filter: `conversation_id=eq.${conversationId}`,
+      }, payload => {
+        setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+      })
       .subscribe();
 
     return () => { subscription.unsubscribe(); };
   }, []);
+
+  const fetchFriendOnline = async () => {
+    const { data } = await supabase
+      .from('users')
+      .select('last_seen')
+      .eq('user_id', friend.userId)
+      .single();
+    if (data?.last_seen) {
+      setFriendOnline((Date.now() - new Date(data.last_seen).getTime()) < 3 * 60 * 1000);
+    }
+  };
 
   const fetchMessages = async () => {
     const { data, error } = await supabase
@@ -56,7 +78,6 @@ export default function DirectMessageScreen({ route, navigation }) {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    // Проверяем что пользователь не заблокирован
     const { data: block } = await supabase
       .from('blocks')
       .select('id')
@@ -81,6 +102,33 @@ export default function DirectMessageScreen({ route, navigation }) {
     }
   };
 
+  const deleteMessage = (id) => {
+    Alert.alert(
+      'Удалить сообщение',
+      'Удалить это сообщение?',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить', style: 'destructive',
+          onPress: async () => {
+            await supabase
+              .from('direct_messages')
+              .delete()
+              .eq('id', id)
+              .eq('sender_id', store.userId);
+            setMessages(prev => prev.filter(m => m.id !== id));
+          },
+        },
+      ]
+    );
+  };
+
+  const renderRightActions = (id) => (
+    <TouchableOpacity style={styles.deleteAction} onPress={() => deleteMessage(id)}>
+      <Text style={styles.deleteActionText}>🗑</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
@@ -89,10 +137,19 @@ export default function DirectMessageScreen({ route, navigation }) {
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Avatar uri={friend.avatarUrl} username={friend.username} level={friend.level} size={34} />
-          <Text style={[styles.headerName, { color: LEVEL_COLORS[friend.level] || colors.accent }]}>
-            {friend.username}
-          </Text>
+          <Avatar
+            uri={friend.avatarUrl}
+            username={friend.username}
+            level={friend.level}
+            size={34}
+            isOnline={friendOnline}
+          />
+          <View>
+            <Text style={[styles.headerName, { color: LEVEL_COLORS[friend.level] || colors.accent }]}>
+              {friend.username}
+            </Text>
+            {friendOnline && <Text style={styles.onlineLabel}>онлайн</Text>}
+          </View>
         </View>
         <View style={styles.backButton} />
       </View>
@@ -111,7 +168,7 @@ export default function DirectMessageScreen({ route, navigation }) {
           contentContainerStyle={styles.messageList}
           renderItem={({ item }) => {
             const isOwn = item.sender_id === store.userId;
-            return (
+            const bubble = (
               <View style={[styles.bubbleWrap, isOwn ? styles.bubbleWrapOwn : styles.bubbleWrapOther]}>
                 <Avatar
                   uri={isOwn ? store.avatarUrl : friend.avatarUrl}
@@ -124,6 +181,18 @@ export default function DirectMessageScreen({ route, navigation }) {
                 </View>
               </View>
             );
+
+            if (isOwn) {
+              return (
+                <Swipeable
+                  renderLeftActions={() => renderRightActions(item.id)}
+                  overshootLeft={false}
+                >
+                  {bubble}
+                </Swipeable>
+              );
+            }
+            return bubble;
           }}
         />
         <View style={styles.inputRow}>
@@ -175,8 +244,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
+  },
+  onlineLabel: {
+    fontSize: 11,
+    color: '#4CAF50',
+    marginTop: 1,
   },
 
   // Messages
@@ -214,6 +288,19 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 15,
     lineHeight: 21,
+  },
+
+  // Swipe delete
+  deleteAction: {
+    backgroundColor: '#c0392b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 64,
+    marginBottom: 8,
+    borderRadius: 12,
+  },
+  deleteActionText: {
+    fontSize: 22,
   },
 
   // Input
