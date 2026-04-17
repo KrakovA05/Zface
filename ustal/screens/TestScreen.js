@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_DATA, LEVEL_COLORS } from '../constants';
+import { LEVEL_DATA, LEVEL_COLORS, TEST_PACKS } from '../constants';
 import { colors, shared } from '../theme';
 
 function isSameDay(dateStr) {
@@ -24,79 +24,6 @@ function timeUntilMidnight() {
   return `${h} ч ${m} мин`;
 }
 
-const QUESTIONS = [
-  {
-    question: 'Как ты обычно просыпаешься утром?',
-    answers: [
-      { text: 'С трудом, не хочу вставать', pessimistic: true },
-      { text: 'Нормально, встаю когда надо', pessimistic: false },
-    ],
-  },
-  {
-    question: 'Когда что-то идёт не по плану, ты думаешь...',
-    answers: [
-      { text: 'Ну и ладно, бывает', pessimistic: false },
-      { text: 'Всё как всегда, ничего не работает', pessimistic: true },
-    ],
-  },
-  {
-    question: 'Как ты относишься к своей работе или учёбе?',
-    answers: [
-      { text: 'Терплю, но особого смысла не вижу', pessimistic: true },
-      { text: 'Есть моменты которые мне нравятся', pessimistic: false },
-    ],
-  },
-  {
-    question: 'Когда тебе предлагают помощь, ты...',
-    answers: [
-      { text: 'Принимаю, это приятно', pessimistic: false },
-      { text: 'Отказываюсь, всё равно не поможет', pessimistic: true },
-    ],
-  },
-  {
-    question: 'Как часто ты чувствуешь усталость без причины?',
-    answers: [
-      { text: 'Почти каждый день', pessimistic: true },
-      { text: 'Иногда, но это нормально', pessimistic: false },
-    ],
-  },
-  {
-    question: 'Что ты думаешь о будущем?',
-    answers: [
-      { text: 'Там будет лучше чем сейчас', pessimistic: false },
-      { text: 'Вряд ли что-то изменится', pessimistic: true },
-    ],
-  },
-  {
-    question: 'Как ты проводишь свободное время?',
-    answers: [
-      { text: 'Лежу и ничего не хочу делать', pessimistic: true },
-      { text: 'Нахожу что-то интересное', pessimistic: false },
-    ],
-  },
-  {
-    question: 'Когда ты видишь счастливых людей, ты думаешь...',
-    answers: [
-      { text: 'Рад за них', pessimistic: false },
-      { text: 'Интересно, долго ли это продлится', pessimistic: true },
-    ],
-  },
-  {
-    question: 'Как ты относишься к общению с людьми?',
-    answers: [
-      { text: 'Чаще хочется побыть одному', pessimistic: true },
-      { text: 'Люблю общаться когда есть настроение', pessimistic: false },
-    ],
-  },
-  {
-    question: 'Как ты оцениваешь свою жизнь прямо сейчас?',
-    answers: [
-      { text: 'Могло быть лучше, но жить можно', pessimistic: false },
-      { text: 'Честно — всё достало', pessimistic: true },
-    ],
-  },
-];
-
 export default function TestScreen({ navigation }) {
   const [current, setCurrent] = useState(0);
   const [pessimisticCount, setPessimisticCount] = useState(0);
@@ -106,6 +33,8 @@ export default function TestScreen({ navigation }) {
   const [checking, setChecking] = useState(true);
   const [alreadyDone, setAlreadyDone] = useState(false);
   const [lastResult, setLastResult] = useState(null);
+  const [pack, setPack] = useState(null); // { title, questions }
+  const [packId, setPackId] = useState(0);
 
   useEffect(() => {
     const check = async () => {
@@ -113,14 +42,21 @@ export default function TestScreen({ navigation }) {
       if (user) {
         const { data } = await supabase
           .from('test_results')
-          .select('level, created_at')
+          .select('level, created_at, pack_id')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
+
         if (data && isSameDay(data.created_at)) {
           setAlreadyDone(true);
           setLastResult(data);
+        } else {
+          // Следующий пакет: (последний + 1) % кол-во пакетов
+          const lastPackId = data?.pack_id ?? -1;
+          const nextPackId = (lastPackId + 1) % TEST_PACKS.length;
+          setPackId(nextPackId);
+          setPack(TEST_PACKS[nextPackId]);
         }
       }
       setChecking(false);
@@ -134,17 +70,17 @@ export default function TestScreen({ navigation }) {
     if (user) {
       await Promise.all([
         supabase.from('users').update({ level: lvl }).eq('user_id', user.id),
-        supabase.from('test_results').insert({ user_id: user.id, level: lvl, score }),
+        supabase.from('test_results').insert({ user_id: user.id, level: lvl, score, pack_id: packId }),
       ]);
     }
   };
 
   const answer = async (isPessimistic) => {
-    if (finished || saving) return;
+    if (finished || saving || !pack) return;
     const newCount = pessimisticCount + (isPessimistic ? 1 : 0);
     setPessimisticCount(newCount);
 
-    if (current + 1 >= QUESTIONS.length) {
+    if (current + 1 >= pack.questions.length) {
       let lvl;
       if (newCount <= 3) lvl = 'green';
       else if (newCount <= 7) lvl = 'yellow';
@@ -224,13 +160,16 @@ export default function TestScreen({ navigation }) {
     );
   }
 
-  const q = QUESTIONS[current];
+  if (!pack) return null;
+
+  const q = pack.questions[current];
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.progress}>{current + 1} / {QUESTIONS.length}</Text>
+      <Text style={styles.packTitle}>{pack.title}</Text>
+      <Text style={styles.progress}>{current + 1} / {pack.questions.length}</Text>
       <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${((current + 1) / QUESTIONS.length) * 100}%` }]} />
+        <View style={[styles.progressFill, { width: `${((current + 1) / pack.questions.length) * 100}%` }]} />
       </View>
 
       <Text style={styles.question}>{q.question}</Text>
@@ -254,6 +193,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: 24,
     justifyContent: 'center',
+  },
+  packTitle: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   progress: {
     color: colors.muted,
@@ -356,5 +304,6 @@ const styles = StyleSheet.create({
   backBtnText: {
     color: colors.muted,
     fontSize: 15,
+    textAlign: 'center',
   },
 });

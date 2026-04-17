@@ -366,11 +366,16 @@ export default function ProfileScreen({ navigation }) {
               {ACHIEVEMENTS.map(a => {
                 const earned = earnedAchievements.some(e => e.id === a.id);
                 return (
-                  <View key={a.id} style={[styles.achievementItem, !earned && styles.achievementLocked]}>
+                  <TouchableOpacity
+                    key={a.id}
+                    style={[styles.achievementItem, !earned && styles.achievementLocked]}
+                    onPress={() => !earned && Alert.alert(a.label, `Как получить:\n${a.desc}`)}
+                    activeOpacity={earned ? 1 : 0.7}
+                  >
                     <Text style={styles.achievementEmoji}>{earned ? a.emoji : '🔒'}</Text>
                     <Text style={[styles.achievementLabel, !earned && styles.achievementLabelLocked]}>{a.label}</Text>
-                    {earned && <Text style={styles.achievementDesc}>{a.desc}</Text>}
-                  </View>
+                    <Text style={styles.achievementDesc}>{earned ? a.desc : '?'}</Text>
+                  </TouchableOpacity>
                 );
               })}
             </View>
