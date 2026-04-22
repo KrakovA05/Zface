@@ -91,9 +91,13 @@ function CustomTabBar({ state, descriptors, navigation }) {
 
 const tabStyles = StyleSheet.create({
   wrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 20,
     paddingTop: 8,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   pill: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,6 +21,7 @@ export default function FeedScreen({ navigation }) {
   const [avatarMap, setAvatarMap] = useState({});
   const cursorRef = useRef(null);
   const fetchedAuthors = useRef(new Set());
+  const inputRef = useRef(null);
 
   const level = store.level || 'green';
 
@@ -79,7 +80,11 @@ export default function FeedScreen({ navigation }) {
     else setLoadingMore(false);
   }, [filter]);
 
-  useFocusEffect(useCallback(() => { loadPosts(true); }, [loadPosts]));
+  useFocusEffect(useCallback(() => {
+    loadPosts(true);
+    inputRef.current?.blur();
+    return () => { Keyboard.dismiss(); };
+  }, [loadPosts]));
 
   const post = async () => {
     if (!text.trim()) return;
@@ -169,27 +174,29 @@ export default function FeedScreen({ navigation }) {
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={0}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>📰 Лента</Text>
-          <View style={styles.filters}>
-            <TouchableOpacity
-              style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
-              onPress={() => setFilter('all')}
-            >
-              <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Все</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterBtn, filter === 'mine' && styles.filterBtnActive]}
-              onPress={() => setFilter('mine')}
-            >
-              <Text style={[styles.filterText, filter === 'mine' && styles.filterTextActive]}>
-                Мой уровень
-              </Text>
-            </TouchableOpacity>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.header}>
+            <Text style={styles.title}>📰 Лента</Text>
+            <View style={styles.filters}>
+              <TouchableOpacity
+                style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
+                onPress={() => setFilter('all')}
+              >
+                <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Все</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterBtn, filter === 'mine' && styles.filterBtnActive]}
+                onPress={() => setFilter('mine')}
+              >
+                <Text style={[styles.filterText, filter === 'mine' && styles.filterTextActive]}>
+                  Мой уровень
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
 
         {loading ? (
           <ActivityIndicator color={colors.accent} style={{ flex: 1 }} />
@@ -199,6 +206,8 @@ export default function FeedScreen({ navigation }) {
             keyExtractor={item => item.id.toString()}
             renderItem={renderPost}
             contentContainerStyle={styles.list}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
               <Text style={styles.empty}>Постов пока нет. Будь первым!</Text>
             }
@@ -208,6 +217,7 @@ export default function FeedScreen({ navigation }) {
 
         <View style={styles.inputRow}>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             placeholder="Поделись мыслью..."
             placeholderTextColor={colors.muted}
@@ -268,6 +278,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', padding: 12, gap: 10,
     borderTopWidth: 1, borderTopColor: colors.border,
     backgroundColor: colors.background,
+    paddingBottom: 76,
   },
   input: {
     flex: 1, backgroundColor: colors.card,
