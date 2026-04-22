@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
@@ -29,24 +30,132 @@ import BarScreen from './screens/BarScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const TAB_ICONS = {
+  Home:     { focused: 'home',           blur: 'home-outline' },
+  Feed:     { focused: 'newspaper',      blur: 'newspaper-outline' },
+  Messages: { focused: 'chatbubbles',    blur: 'chatbubbles-outline' },
+  Friends:  { focused: 'people',         blur: 'people-outline' },
+  Profile:  { focused: 'person',         blur: 'person-outline' },
+};
+
+function CustomTabBar({ state, descriptors, navigation }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[tabStyles.wrapper, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={tabStyles.pill}>
+        {state.routes.map((route, index) => {
+          const focused = state.index === index;
+          const badge = descriptors[route.key].options.tabBarBadge;
+          const icons = TAB_ICONS[route.name];
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!focused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              style={[tabStyles.tab, focused && tabStyles.tabActive]}
+              activeOpacity={0.7}
+            >
+              <View style={tabStyles.iconWrap}>
+                <Ionicons
+                  name={focused ? icons.focused : icons.blur}
+                  size={24}
+                  color={focused ? '#ffffff' : 'rgba(255,255,255,0.38)'}
+                />
+                {!!badge && (
+                  <View style={tabStyles.badge}>
+                    <Text style={tabStyles.badgeText}>
+                      {typeof badge === 'number' && badge > 99 ? '99+' : String(badge)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const tabStyles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    backgroundColor: 'transparent',
+  },
+  pill: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(13, 13, 20, 0.93)',
+    borderRadius: 34,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    elevation: 18,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 26,
+  },
+  tabActive: {
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  iconWrap: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -8,
+    backgroundColor: '#e74c3c',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(13,13,20,0.93)',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+});
+
 function MainTabs() {
   return (
     <Tab.Navigator
+      tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-        },
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.muted,
       }}
     >
-      <Tab.Screen name="Home"     component={HomeScreen}     options={{ tabBarLabel: '🏠 Главная' }} />
-      <Tab.Screen name="Feed"     component={FeedScreen}     options={{ tabBarLabel: '📰 Лента' }} />
-      <Tab.Screen name="Messages" component={MessagesScreen} options={{ tabBarLabel: '💬 Сообщения' }} />
-      <Tab.Screen name="Friends"  component={FriendsScreen}  options={{ tabBarLabel: '🔍 Свои' }} />
-      <Tab.Screen name="Profile"  component={ProfileScreen}  options={{ tabBarLabel: '👤 Я' }} />
+      <Tab.Screen name="Home"     component={HomeScreen} />
+      <Tab.Screen name="Feed"     component={FeedScreen} />
+      <Tab.Screen name="Messages" component={MessagesScreen} />
+      <Tab.Screen name="Friends"  component={FriendsScreen} />
+      <Tab.Screen name="Profile"  component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -84,7 +193,6 @@ export default function App() {
             store.status = userData.status || '';
           }
           setInitialRoute('Main');
-          // Первичное обновление присутствия
           updatePresence();
         } else {
           setInitialRoute('Login');
@@ -96,7 +204,6 @@ export default function App() {
     init();
   }, []);
 
-  // Трекинг присутствия: обновляем last_seen при активации и каждые 2 минуты
   useEffect(() => {
     const handleAppState = (nextState) => {
       if (nextState === 'active') updatePresence();
