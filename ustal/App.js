@@ -93,7 +93,7 @@ const tabStyles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.background,
   },
   pill: {
     flexDirection: 'row',
