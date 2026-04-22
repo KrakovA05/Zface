@@ -149,6 +149,7 @@ function MainTabs() {
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        sceneContainerStyle: { backgroundColor: colors.background },
       }}
     >
       <Tab.Screen name="Home"     component={HomeScreen} />
