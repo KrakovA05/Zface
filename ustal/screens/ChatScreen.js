@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  FlatList, KeyboardAvoidingView, Platform, Alert,
+  FlatList, Alert, Keyboard,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,8 +14,15 @@ function GlobalChat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [avatarMap, setAvatarMap] = useState({});
+  const [kbHeight, setKbHeight] = useState(0);
   const fetchedUsers = useRef(new Set());
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', e => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     fetchMessages();
@@ -93,11 +100,7 @@ function GlobalChat() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
+    <View style={[styles.flex, { marginBottom: kbHeight }]}>
       <FlatList
         style={styles.flex}
         data={messages}
@@ -128,7 +131,7 @@ function GlobalChat() {
           );
         }}
       />
-      <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
         <TextInput
           style={styles.input}
           placeholder="Напиши что-нибудь..."
@@ -141,7 +144,7 @@ function GlobalChat() {
           <Text style={styles.sendText}>→</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

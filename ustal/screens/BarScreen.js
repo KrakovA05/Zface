@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  TextInput, ActivityIndicator, ScrollView, Alert, Keyboard,
 } from 'react-native';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +26,7 @@ export default function BarScreen({ route }) {
   const [table, setTable] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  const [kbHeight, setKbHeight] = useState(0);
   const [sending, setSending] = useState(false);
   const [visitors, setVisitors] = useState({});
   const [myDrink] = useState(DRINKS[Math.floor(Math.random() * DRINKS.length)]);
@@ -97,6 +98,12 @@ export default function BarScreen({ route }) {
     return () => {
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', e => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
   }, []);
 
   const send = async () => {
@@ -173,11 +180,7 @@ export default function BarScreen({ route }) {
 
   return (
     <View style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
-      >
+      <View style={[styles.flex, { marginBottom: kbHeight }]}>
         <View style={styles.tableHeader}>
           <TouchableOpacity onPress={() => setTable(null)} style={styles.backBtn}>
             <Text style={styles.backText}>←</Text>
@@ -226,7 +229,7 @@ export default function BarScreen({ route }) {
           }
         />
 
-        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
           <Text style={styles.drinkIcon}>{myDrink}</Text>
           <TextInput
             style={styles.input}
@@ -249,7 +252,7 @@ export default function BarScreen({ route }) {
             }
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

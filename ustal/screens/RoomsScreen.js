@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  TextInput, ActivityIndicator, ScrollView, Alert, Keyboard,
 } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +25,7 @@ export default function RoomsScreen({ route, navigation }) {
   const [room, setRoom] = useState(openRoom === userLevel ? openRoom : null);
   const [messages, setMessages] = useState([]);
   const [text2, setText2] = useState('');
+  const [kbHeight, setKbHeight] = useState(0);
   const [onlineCount, setOnlineCount] = useState({});
   const [sending, setSending] = useState(false);
   const [participants, setParticipants] = useState([]);
@@ -142,6 +143,12 @@ export default function RoomsScreen({ route, navigation }) {
     };
   }, []);
 
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', e => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
   const sendMessage = async () => {
     if (!text2.trim() || !room) return;
     setSending(true);
@@ -227,11 +234,7 @@ export default function RoomsScreen({ route, navigation }) {
 
   return (
     <View style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
-      >
+      <View style={[styles.flex, { marginBottom: kbHeight }]}>
         <View style={[styles.roomHeader, { borderBottomColor: roomData.color }]}>
           <TouchableOpacity onPress={() => setRoom(null)} style={styles.backBtn}>
             <Text style={styles.backText}>←</Text>
@@ -303,7 +306,7 @@ export default function RoomsScreen({ route, navigation }) {
           }
         />
 
-        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
           <TextInput
             style={styles.input}
             placeholder="Написать..."
@@ -325,7 +328,7 @@ export default function RoomsScreen({ route, navigation }) {
             }
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

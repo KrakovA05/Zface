@@ -5,11 +5,49 @@ import {
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
+
+const LEVEL_ICONS = {
+  green: 'leaf-outline',
+  yellow: 'partly-sunny-outline',
+  red: 'flame-outline',
+};
+
+function Section({ title, children }) {
+  return (
+    <View style={styles.section}>
+      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+      <View style={styles.sectionBody}>{children}</View>
+    </View>
+  );
+}
+
+function Row({ icon, label, value, valueColor, onPress, danger, last }) {
+  return (
+    <TouchableOpacity
+      style={[styles.row, last && styles.rowLast]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.65 : 1}
+      disabled={!onPress}
+    >
+      <View style={[styles.rowIconWrap, { backgroundColor: (danger ? colors.pink : colors.accent) + '22' }]}>
+        <Ionicons name={icon} size={18} color={danger ? colors.pink : colors.accent} />
+      </View>
+      <Text style={[styles.rowLabel, danger && { color: colors.pink }]}>{label}</Text>
+      {value ? (
+        <Text style={[styles.rowValue, valueColor && { color: valueColor }]} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
+      {onPress ? <Ionicons name="chevron-forward" size={15} color={colors.muted} style={{ marginLeft: 4 }} /> : null}
+    </TouchableOpacity>
+  );
+}
 
 export default function ProfileScreen({ navigation }) {
   const [status, setStatus] = useState(store.status || '');
@@ -40,7 +78,7 @@ export default function ProfileScreen({ navigation }) {
             setAvatarUri(data.avatar_url || null);
           }
         } catch {
-          // тихий fallback — не раскрываем детали ошибки
+          // тихий fallback
         }
       };
       loadProfile();
@@ -53,7 +91,6 @@ export default function ProfileScreen({ navigation }) {
   const checkAndAwardAchievements = async () => {
     if (!store.userId) return;
 
-    // Загружаем уже выданные достижения
     const { data: existing } = await supabase
       .from('user_achievements')
       .select('achievement_id')
@@ -62,14 +99,12 @@ export default function ProfileScreen({ navigation }) {
 
     const toAward = [];
 
-    // first_test: есть хоть один результат теста
     const { count: testCount } = await supabase
       .from('test_results').select('*', { count: 'exact', head: true }).eq('user_id', store.userId);
     if (testCount >= 1 && !earned.has('first_test')) toAward.push('first_test');
     if (testCount >= 5 && !earned.has('five_tests')) toAward.push('five_tests');
     if (testCount >= 10 && !earned.has('ten_tests')) toAward.push('ten_tests');
 
-    // comeback: есть переход red→yellow/green
     if (!earned.has('comeback')) {
       const { data: tests } = await supabase
         .from('test_results').select('level').eq('user_id', store.userId)
@@ -80,7 +115,6 @@ export default function ProfileScreen({ navigation }) {
       }
     }
 
-    // stable: три зелёных подряд
     if (!earned.has('stable')) {
       const { data: tests } = await supabase
         .from('test_results').select('level').eq('user_id', store.userId)
@@ -88,7 +122,6 @@ export default function ProfileScreen({ navigation }) {
       if (tests?.length === 3 && tests.every(t => t.level === 'green')) toAward.push('stable');
     }
 
-    // first_friend: есть принятая дружба
     if (!earned.has('first_friend')) {
       const { count: fc } = await supabase
         .from('friendships').select('*', { count: 'exact', head: true })
@@ -97,26 +130,22 @@ export default function ProfileScreen({ navigation }) {
       if (fc >= 1) toAward.push('first_friend');
     }
 
-    // first_dm: отправил хоть одно личное сообщение
     if (!earned.has('first_dm')) {
       const { count: dc } = await supabase
         .from('direct_messages').select('*', { count: 'exact', head: true }).eq('sender_id', store.userId);
       if (dc >= 1) toAward.push('first_dm');
     }
 
-    // profile_done: есть статус и аватар
     if (!earned.has('profile_done') && store.status && store.avatarUrl) {
       toAward.push('profile_done');
     }
 
-    // first_post: написал пост в ленту
     if (!earned.has('first_post')) {
       const { count: pc } = await supabase
         .from('feed_posts').select('*', { count: 'exact', head: true }).eq('author_id', store.userId);
       if (pc >= 1) toAward.push('first_post');
     }
 
-    // daily_7: 7 дней подряд отвечал на вопрос
     if (!earned.has('daily_7')) {
       const { data: answers } = await supabase
         .from('daily_answers').select('question_date').eq('user_id', store.userId)
@@ -132,7 +161,6 @@ export default function ProfileScreen({ navigation }) {
       }
     }
 
-    // Сохраняем новые достижения
     if (toAward.length > 0) {
       await supabase.from('user_achievements').insert(
         toAward.map(id => ({ user_id: store.userId, achievement_id: id }))
@@ -140,7 +168,6 @@ export default function ProfileScreen({ navigation }) {
       toAward.forEach(id => earned.add(id));
     }
 
-    // Загружаем все выданные для отображения
     const allEarned = ACHIEVEMENTS.filter(a => earned.has(a.id));
     setEarnedAchievements(allEarned);
   };
@@ -178,25 +205,18 @@ export default function ProfileScreen({ navigation }) {
     if (result.canceled) return;
 
     const asset = result.assets[0];
-
-    // Проверяем тип файла
     const mimeType = asset.mimeType || '';
     if (!mimeType.startsWith('image/')) {
       Alert.alert('Ошибка', 'Можно загружать только изображения');
       return;
     }
-
-    // Проверяем размер (base64 ~= 4/3 * размер файла)
     const base64Size = (asset.base64?.length || 0) * 0.75;
-    const maxSize = 2 * 1024 * 1024; // 2 MB
-    if (base64Size > maxSize) {
+    if (base64Size > 2 * 1024 * 1024) {
       Alert.alert('Файл слишком большой', 'Максимальный размер аватара — 2 МБ. Выбери другое фото.');
       return;
     }
 
-    const base64 = asset.base64;
-    const dataUri = `data:image/jpeg;base64,${base64}`;
-
+    const dataUri = `data:image/jpeg;base64,${asset.base64}`;
     setUploadingAvatar(true);
     const { data, error } = await supabase
       .from('users')
@@ -231,23 +251,15 @@ export default function ProfileScreen({ navigation }) {
           onPress: async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
-
             const { error } = await supabase.functions.invoke('delete-account');
             if (error) {
               Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуй позже.');
               return;
             }
-
-            // Чистим каналы и store
             const channels = supabase.getChannels();
             await Promise.all(channels.map(ch => supabase.removeChannel(ch)));
-            store.username = '';
-            store.email = '';
-            store.level = 'green';
-            store.userId = '';
-            store.avatarUrl = '';
-            store.status = '';
-
+            store.username = ''; store.email = ''; store.level = 'green';
+            store.userId = ''; store.avatarUrl = ''; store.status = '';
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           },
         },
@@ -256,57 +268,47 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const logout = async () => {
-    // Отписываемся от всех активных realtime-каналов
     const channels = supabase.getChannels();
     await Promise.all(channels.map(ch => supabase.removeChannel(ch)));
-
     const { error } = await supabase.auth.signOut();
     if (error) {
       Alert.alert('Ошибка', 'Не удалось выйти. Попробуй ещё раз.');
       return;
     }
-
-    // Чистим store
-    store.username = '';
-    store.email = '';
-    store.level = 'green';
-    store.userId = '';
-    store.avatarUrl = '';
-    store.status = '';
-
+    store.username = ''; store.email = ''; store.level = 'green';
+    store.userId = ''; store.avatarUrl = ''; store.status = '';
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   return (
     <View style={styles.safeArea}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>👤 Мой профиль</Text>
-
-        {/* Avatar */}
-        <View style={styles.avatarSection}>
-          {uploadingAvatar
-            ? <ActivityIndicator size="large" color={colors.accent} />
-            : <Avatar uri={avatarUri} username={store.username} level={store.level} size={90} />
-          }
-          <TouchableOpacity style={styles.avatarButton} onPress={pickAvatar}>
-            <Text style={styles.avatarButtonText}>Изменить фото</Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        contentInset={{ bottom: 80 }}
+      >
+        {/* Hero */}
+        <View style={styles.hero}>
+          <TouchableOpacity style={styles.avatarWrap} onPress={pickAvatar} activeOpacity={0.8}>
+            {uploadingAvatar
+              ? <View style={styles.avatarLoader}><ActivityIndicator color={colors.accent} /></View>
+              : <Avatar uri={avatarUri} username={store.username} level={store.level} size={88} />
+            }
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={14} color="#fff" />
+            </View>
           </TouchableOpacity>
-        </View>
 
-        {/* Info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Личная информация</Text>
-          <Text style={styles.infoLabel}>Ник</Text>
-          <Text style={[styles.infoValue, { color: level.color }]}>{store.username}</Text>
-          <Text style={styles.infoLabel}>Email</Text>
-          <Text style={styles.infoValue}>{store.email}</Text>
-        </View>
+          <Text style={[styles.heroName, { color: level.color }]}>{store.username}</Text>
 
-        {/* Status */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Статус</Text>
+          <View style={[styles.levelBadge, { borderColor: level.color + '55' }]}>
+            <Ionicons name={LEVEL_ICONS[store.level] || 'ellipse-outline'} size={12} color={level.color} />
+            <Text style={[styles.levelBadgeText, { color: level.color }]}>{level.label}</Text>
+          </View>
+
+          {/* Статус */}
           {editingStatus ? (
-            <View>
+            <View style={styles.statusEditWrap}>
               <TextInput
                 style={styles.statusInput}
                 value={status}
@@ -317,11 +319,7 @@ export default function ProfileScreen({ navigation }) {
                 autoFocus
               />
               <View style={styles.statusActions}>
-                <TouchableOpacity
-                  style={styles.statusSaveBtn}
-                  onPress={saveStatus}
-                  disabled={savingStatus}
-                >
+                <TouchableOpacity style={styles.statusSaveBtn} onPress={saveStatus} disabled={savingStatus}>
                   {savingStatus
                     ? <ActivityIndicator color={colors.white} size="small" />
                     : <Text style={styles.statusSaveBtnText}>Сохранить</Text>
@@ -336,31 +334,41 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </View>
           ) : (
-            <TouchableOpacity onPress={() => setEditingStatus(true)}>
-              <Text style={status ? styles.statusText : styles.statusPlaceholder}>
+            <TouchableOpacity onPress={() => setEditingStatus(true)} style={styles.statusRow}>
+              <Text style={status ? styles.statusText : styles.statusPlaceholder} numberOfLines={2}>
                 {status || 'Добавить статус...'}
               </Text>
+              <Ionicons name="pencil-outline" size={13} color={colors.muted} style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Level */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Уровень погружённости</Text>
-          <Text style={[styles.levelLabel, { color: level.color }]}>{level.label}</Text>
-          <Text style={styles.levelText}>{level.text}</Text>
-        </View>
+        {/* Аккаунт */}
+        <Section title="Аккаунт">
+          <Row icon="person-outline" label="Ник" value={store.username} valueColor={level.color} last={false} />
+          <Row icon="mail-outline" label="Email" value={store.email} last={false} />
+          <Row
+            icon={LEVEL_ICONS[store.level] || 'ellipse-outline'}
+            label="Уровень"
+            value={level.label}
+            valueColor={level.color}
+            last
+          />
+        </Section>
 
-        {/* Motivator */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>💬 Мотиватор дня</Text>
-          <Text style={styles.motivator}>{motivator}</Text>
-        </View>
+        {/* Мотиватор */}
+        <Section title="На сегодня">
+          <View style={[styles.row, styles.rowLast, { alignItems: 'flex-start' }]}>
+            <View style={[styles.rowIconWrap, { backgroundColor: colors.accent + '22', marginTop: 2 }]}>
+              <Ionicons name="chatbox-outline" size={18} color={colors.accent} />
+            </View>
+            <Text style={styles.motivatorText}>{motivator}</Text>
+          </View>
+        </Section>
 
         {/* Достижения */}
         {earnedAchievements.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Достижения ({earnedAchievements.length}/{ACHIEVEMENTS.length})</Text>
+          <Section title={`Достижения ${earnedAchievements.length}/${ACHIEVEMENTS.length}`}>
             <View style={styles.achievementsGrid}>
               {ACHIEVEMENTS.map(a => {
                 const earned = earnedAchievements.some(e => e.id === a.id);
@@ -372,25 +380,23 @@ export default function ProfileScreen({ navigation }) {
                     activeOpacity={earned ? 1 : 0.7}
                   >
                     <Text style={styles.achievementEmoji}>{earned ? a.emoji : '🔒'}</Text>
-                    <Text style={[styles.achievementLabel, !earned && styles.achievementLabelLocked]}>{a.label}</Text>
+                    <Text style={[styles.achievementLabel, !earned && { color: colors.muted }]}>{a.label}</Text>
                     <Text style={styles.achievementDesc}>{earned ? a.desc : '?'}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-          </View>
+          </Section>
         )}
 
-        <TouchableOpacity style={styles.inviteButton} onPress={inviteFriend}>
-          <Text style={styles.inviteText}>👋 Пригласи друга</Text>
-        </TouchableOpacity>
+        {/* Действия */}
+        <Section title="Действия">
+          <Row icon="share-outline" label="Пригласить друга" onPress={inviteFriend} last={false} />
+          <Row icon="log-out-outline" label="Выйти" onPress={logout} danger last />
+        </Section>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>Выйти</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.deleteButton} onPress={deleteAccount}>
-          <Text style={styles.deleteText}>Удалить аккаунт</Text>
+        <TouchableOpacity style={styles.deleteBtn} onPress={deleteAccount}>
+          <Text style={styles.deleteBtnText}>Удалить аккаунт</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -400,47 +406,47 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
-  content: { padding: 24, paddingBottom: 40 },
-  title: {
-    fontSize: 28, fontWeight: 'bold', color: colors.white, marginBottom: 24,
-  },
+  content: { paddingBottom: 32 },
 
-  avatarSection: {
+  // Hero
+  hero: {
     alignItems: 'center',
-    marginBottom: 24,
+    paddingTop: 28,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
   },
-  avatarButton: {
-    marginTop: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
-  avatarButtonText: {
-    color: colors.accent,
-    fontSize: 14,
-  },
-
-  card: {
+  avatarWrap: { position: 'relative', marginBottom: 14 },
+  avatarLoader: {
+    width: 88, height: 88, borderRadius: 44,
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    alignItems: 'center', justifyContent: 'center',
   },
-  cardTitle: { color: colors.muted, fontSize: 14, marginBottom: 12 },
-  infoLabel: { color: colors.muted, fontSize: 12, marginBottom: 4 },
-  infoValue: { color: colors.white, fontSize: 16, fontWeight: '600', marginBottom: 12 },
-
-  statusText: { color: colors.white, fontSize: 15, lineHeight: 22 },
-  statusPlaceholder: { color: colors.muted, fontSize: 15, fontStyle: 'italic' },
+  cameraBadge: {
+    position: 'absolute', bottom: 2, right: 2,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.background,
+  },
+  heroName: { fontSize: 22, fontWeight: 'bold', marginBottom: 6 },
+  levelBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+    marginBottom: 14,
+  },
+  levelBadgeText: { fontSize: 12, fontWeight: '600' },
+  statusRow: {
+    flexDirection: 'row', alignItems: 'center',
+    maxWidth: '80%',
+  },
+  statusText: { color: colors.white, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  statusPlaceholder: { color: colors.muted, fontSize: 14, fontStyle: 'italic' },
+  statusEditWrap: { width: '100%', marginTop: 4 },
   statusInput: {
-    backgroundColor: colors.background,
-    borderRadius: 10,
-    padding: 12,
-    color: colors.white,
-    fontSize: 15,
-    marginBottom: 10,
+    backgroundColor: colors.card, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 10,
+    color: colors.white, fontSize: 15, marginBottom: 10,
   },
   statusActions: { flexDirection: 'row', gap: 10 },
   statusSaveBtn: {
@@ -454,12 +460,44 @@ const styles = StyleSheet.create({
   },
   statusCancelBtnText: { color: colors.muted },
 
-  levelLabel: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
-  levelText: { color: colors.white, fontSize: 15 },
-  motivator: { color: colors.white, fontSize: 15, lineHeight: 22 },
+  // Sections
+  section: { marginBottom: 8, paddingHorizontal: 16 },
+  sectionTitle: {
+    fontSize: 12, fontWeight: '600', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.6,
+    marginBottom: 6, paddingLeft: 4,
+  },
+  sectionBody: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
 
+  // Rows
+  row: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    gap: 12,
+  },
+  rowLast: { borderBottomWidth: 0 },
+  rowIconWrap: {
+    width: 32, height: 32, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  rowLabel: { flex: 1, fontSize: 15, color: colors.white },
+  rowValue: { fontSize: 15, color: colors.muted, maxWidth: '45%' },
+
+  // Motivator
+  motivatorText: {
+    flex: 1, fontSize: 15, color: colors.white, lineHeight: 22,
+  },
+
+  // Achievements
   achievementsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    flexDirection: 'row', flexWrap: 'wrap',
+    padding: 10, gap: 8,
   },
   achievementItem: {
     width: '30%', flexGrow: 1,
@@ -469,22 +507,9 @@ const styles = StyleSheet.create({
   achievementLocked: { opacity: 0.35 },
   achievementEmoji: { fontSize: 24 },
   achievementLabel: { color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  achievementLabelLocked: { color: colors.muted },
   achievementDesc: { color: colors.muted, fontSize: 9, textAlign: 'center', lineHeight: 13 },
 
-  inviteButton: {
-    backgroundColor: colors.pink, borderRadius: 12,
-    padding: 18, alignItems: 'center', marginBottom: 12,
-  },
-  inviteText: { color: colors.white, fontSize: 16, fontWeight: '600' },
-  logoutButton: {
-    borderWidth: 1, borderColor: colors.pink,
-    borderRadius: 12, padding: 18, alignItems: 'center',
-    marginBottom: 12,
-  },
-  logoutText: { color: colors.pink, fontSize: 16 },
-  deleteButton: {
-    borderRadius: 12, padding: 18, alignItems: 'center',
-  },
-  deleteText: { color: colors.muted, fontSize: 14 },
+  // Delete
+  deleteBtn: { alignItems: 'center', paddingVertical: 16 },
+  deleteBtnText: { color: colors.muted, fontSize: 13 },
 });
