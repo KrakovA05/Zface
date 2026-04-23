@@ -3,7 +3,7 @@ import {
   TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -21,6 +21,7 @@ const ROOMS = [
 export default function RoomsScreen({ route, navigation }) {
   const userLevel = store.level || 'green';
   const openRoom = route?.params?.openRoom;
+  const insets = useSafeAreaInsets();
   const [room, setRoom] = useState(openRoom === userLevel ? openRoom : null);
   const [messages, setMessages] = useState([]);
   const [text2, setText2] = useState('');
@@ -171,7 +172,7 @@ export default function RoomsScreen({ route, navigation }) {
 
   if (!room) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         <View style={styles.lobbyContent}>
           <Text style={styles.title}>🚪 Комнаты</Text>
           <Text style={styles.subtitle}>Зайди к людям с похожим состоянием</Text>
@@ -218,14 +219,14 @@ export default function RoomsScreen({ route, navigation }) {
             );
           })}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const roomData = ROOMS.find(r => r.id === room);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -302,7 +303,7 @@ export default function RoomsScreen({ route, navigation }) {
           }
         />
 
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <TextInput
             style={styles.input}
             placeholder="Написать..."
@@ -325,7 +326,7 @@ export default function RoomsScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

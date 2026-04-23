@@ -3,7 +3,6 @@ import {
   ScrollView, Alert, TextInput, ActivityIndicator,
 } from 'react-native';
 import { useState, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../supabase';
@@ -279,7 +278,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.title}>👤 Мой профиль</Text>
 
@@ -394,7 +393,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.deleteText}>Удалить аккаунт</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

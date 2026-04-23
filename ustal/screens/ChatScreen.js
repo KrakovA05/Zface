@@ -3,7 +3,7 @@ import {
   FlatList, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
@@ -15,6 +15,7 @@ function GlobalChat() {
   const [text, setText] = useState('');
   const [avatarMap, setAvatarMap] = useState({});
   const fetchedUsers = useRef(new Set());
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     fetchMessages();
@@ -127,7 +128,7 @@ function GlobalChat() {
           );
         }}
       />
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TextInput
           style={styles.input}
           placeholder="Напиши что-нибудь..."
@@ -146,12 +147,12 @@ function GlobalChat() {
 
 export default function ChatScreen() {
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.title}>💬 Общий чат</Text>
       </View>
       <GlobalChat />
-    </SafeAreaView>
+    </View>
   );
 }
 

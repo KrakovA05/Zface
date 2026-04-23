@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, Animated, ScrollView } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 
 const FISH = [
@@ -131,7 +130,7 @@ export default function FishingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>🎣 Рыбалка</Text>
         <Text style={styles.mood}>{mood}</Text>
@@ -235,7 +234,7 @@ export default function FishingScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

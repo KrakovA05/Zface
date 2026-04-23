@@ -3,7 +3,7 @@ import {
   TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -22,6 +22,7 @@ const TABLES = [
 const DRINKS = ['🍸', '🍺', '🥂', '🍵', '☕', '🥤', '🍹', '🧃'];
 
 export default function BarScreen({ route }) {
+  const insets = useSafeAreaInsets();
   const [table, setTable] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -128,7 +129,7 @@ export default function BarScreen({ route }) {
 
   if (!table) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.lobbyContent}>
           <Text style={styles.title}>🍸 Онлайн-бар</Text>
           <Text style={styles.subtitle}>Виртуальное место где можно просто побыть</Text>
@@ -164,14 +165,14 @@ export default function BarScreen({ route }) {
             </Text>
           </View>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const tableData = TABLES.find(t => t.id === table);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -225,7 +226,7 @@ export default function BarScreen({ route }) {
           }
         />
 
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <Text style={styles.drinkIcon}>{myDrink}</Text>
           <TextInput
             style={styles.input}
@@ -249,7 +250,7 @@ export default function BarScreen({ route }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS, TEST_PACKS } from '../constants';
@@ -98,9 +97,9 @@ export default function TestScreen({ navigation }) {
 
   if (checking) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.accent} />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -108,7 +107,7 @@ export default function TestScreen({ navigation }) {
     const lvlData = LEVEL_DATA[lastResult.level];
     const lvlColor = LEVEL_COLORS[lastResult.level];
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <Text style={styles.blockedEmoji}>🕐</Text>
         <Text style={styles.blockedTitle}>Тест уже пройден сегодня</Text>
         <View style={[styles.blockedCard, { borderColor: lvlColor }]}>
@@ -135,14 +134,14 @@ export default function TestScreen({ navigation }) {
         >
           <Text style={styles.backBtnText}>На главную</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (finished && level) {
     const lvlData = LEVEL_DATA[level];
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <Text style={styles.resultEmoji}>{lvlData.emoji}</Text>
         <Text style={[styles.resultLevel, { color: lvlData.color }]}>{lvlData.label}</Text>
         <Text style={styles.resultText}>{lvlData.text}</Text>
@@ -156,7 +155,7 @@ export default function TestScreen({ navigation }) {
             <Text style={shared.buttonText}>Смотреть рекомендации →</Text>
           </TouchableOpacity>
         )}
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -165,7 +164,7 @@ export default function TestScreen({ navigation }) {
   const q = pack.questions[current];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.packTitle}>{pack.title}</Text>
       <Text style={styles.progress}>{current + 1} / {pack.questions.length}</Text>
       <View style={styles.progressBar}>
@@ -183,7 +182,7 @@ export default function TestScreen({ navigation }) {
           <Text style={styles.answerText}>{a.text}</Text>
         </TouchableOpacity>
       ))}
-    </SafeAreaView>
+    </View>
   );
 }
 

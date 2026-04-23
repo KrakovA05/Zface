@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { useState, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
@@ -125,8 +124,13 @@ export default function HomeScreen({ navigation }) {
   const chartData  = showAllChart ? allHistory : history;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+    <View style={styles.safeArea}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        contentInset={{ bottom: 80 }}
+        scrollIndicatorInsets={{ bottom: 80 }}
+      >
 
         <Text style={styles.greeting}>Привет, {store.username || 'друг'}</Text>
 
@@ -257,7 +261,7 @@ export default function HomeScreen({ navigation }) {
         )}
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -351,7 +355,7 @@ function TestChart({ history }) {
 const styles = StyleSheet.create({
   safeArea:  { flex: 1, backgroundColor: colors.background },
   scroll:    { flex: 1 },
-  content:   { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 },
+  content:   { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
 
   greeting:  { fontSize: 22, fontWeight: '700', color: colors.white, marginBottom: 20 },
 

@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
 import { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LABELS } from '../constants';
@@ -94,7 +93,7 @@ export default function RegisterScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Расскажи о себе</Text>
         <Text style={shared.subtitle}>Это поможет найти своих 🖤</Text>
@@ -161,7 +160,7 @@ export default function RegisterScreen({ navigation }) {
           <Text style={styles.loginLinkText}>Уже есть аккаунт? Войти</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
@@ -23,7 +23,15 @@ export default function FeedScreen({ navigation }) {
   const fetchedAuthors = useRef(new Set());
   const inputRef = useRef(null);
 
+  const insets = useSafeAreaInsets();
   const level = store.level || 'green';
+  const [kbHeight, setKbHeight] = useState(0);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', e => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const fetchAuthorAvatars = async (newPosts) => {
     const toFetch = [...new Set(newPosts.map(p => p.author_id))]
@@ -169,76 +177,75 @@ export default function FeedScreen({ navigation }) {
     );
   };
 
+  // pill: 60px + paddingTop бара: 8px + 6px зазор над пиллом
+  const barTop = Math.max(insets.bottom, 12) + 60 + 8 + 6;
+  const inputBottom = kbHeight > 0 ? kbHeight : barTop;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={styles.header}>
-            <Text style={styles.title}>📰 Лента</Text>
-            <View style={styles.filters}>
-              <TouchableOpacity
-                style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
-                onPress={() => setFilter('all')}
-              >
-                <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Все</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.filterBtn, filter === 'mine' && styles.filterBtnActive]}
-                onPress={() => setFilter('mine')}
-              >
-                <Text style={[styles.filterText, filter === 'mine' && styles.filterTextActive]}>
-                  Мой уровень
-                </Text>
-              </TouchableOpacity>
-            </View>
+    <View style={styles.safeArea}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Лента</Text>
+          <View style={styles.filters}>
+            <TouchableOpacity
+              style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
+              onPress={() => setFilter('all')}
+            >
+              <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Все</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterBtn, filter === 'mine' && styles.filterBtnActive]}
+              onPress={() => setFilter('mine')}
+            >
+              <Text style={[styles.filterText, filter === 'mine' && styles.filterTextActive]}>
+                Мой уровень
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
-
-        {loading ? (
-          <ActivityIndicator color={colors.accent} style={{ flex: 1 }} />
-        ) : (
-          <FlatList
-            data={posts}
-            keyExtractor={item => item.id.toString()}
-            renderItem={renderPost}
-            contentContainerStyle={styles.list}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={
-              <Text style={styles.empty}>Постов пока нет. Будь первым!</Text>
-            }
-            ListFooterComponent={renderFooter}
-          />
-        )}
-
-        <View style={styles.inputRow}>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            placeholder="Поделись мыслью..."
-            placeholderTextColor={colors.muted}
-            value={text}
-            onChangeText={setText}
-            multiline
-            maxLength={280}
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
-            onPress={post}
-            disabled={!text.trim() || posting}
-          >
-            {posting
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.sendText}>→</Text>
-            }
-          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </TouchableWithoutFeedback>
+
+      {loading ? (
+        <ActivityIndicator color={colors.accent} style={{ flex: 1 }} />
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={item => item.id.toString()}
+          renderItem={renderPost}
+          contentContainerStyle={[styles.list, { paddingBottom: inputBottom + 16 }]}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <Text style={styles.empty}>Постов пока нет. Будь первым!</Text>
+          }
+          ListFooterComponent={renderFooter}
+        />
+      )}
+
+      <View style={[styles.inputBackground, { height: inputBottom }]} />
+      <View style={[styles.inputRow, { bottom: inputBottom }]}>
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          placeholder="Поделись мыслью..."
+          placeholderTextColor={colors.muted}
+          value={text}
+          onChangeText={setText}
+          multiline
+          maxLength={280}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+          onPress={post}
+          disabled={!text.trim() || posting}
+        >
+          {posting
+            ? <ActivityIndicator color="#fff" size="small" />
+            : <Text style={styles.sendText}>→</Text>
+          }
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -274,11 +281,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginBottom: 8,
   },
   loadMoreText: { color: colors.muted, fontSize: 14 },
+  inputBackground: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    backgroundColor: colors.background,
+  },
   inputRow: {
+    position: 'absolute', left: 0, right: 0,
     flexDirection: 'row', padding: 12, gap: 10,
     borderTopWidth: 1, borderTopColor: colors.border,
     backgroundColor: colors.background,
-    paddingBottom: 76,
   },
   input: {
     flex: 1, backgroundColor: colors.card,

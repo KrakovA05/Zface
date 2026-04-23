@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState }
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
@@ -42,7 +42,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[tabStyles.wrapper, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+    <View style={[tabStyles.wrapper, { paddingBottom: insets.bottom || 12 }]}>
       <View style={tabStyles.pill}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
@@ -232,6 +232,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
         <NavigationContainer>
           <Stack.Navigator
             initialRouteName={initialRoute}
@@ -251,6 +252,7 @@ export default function App() {
             <Stack.Screen name="Bar"             component={BarScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        </SafeAreaView>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

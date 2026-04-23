@@ -1,6 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors, shared } from '../theme';
@@ -42,7 +41,7 @@ export default function LoginScreen({ navigation }) {
   const isValid = isValidEmail(email) && password.length >= 6;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>Всё достало?</Text>
       <Text style={shared.subtitle}>Здесь вас поймут 🖤</Text>
 
@@ -79,7 +78,7 @@ export default function LoginScreen({ navigation }) {
       >
         <Text style={styles.secondaryText}>Впервые здесь? Зарегистрироваться</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 

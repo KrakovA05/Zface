@@ -3,7 +3,7 @@ import {
   FlatList, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useState, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
@@ -15,6 +15,7 @@ import Avatar from '../components/Avatar';
 export default function DirectMessageScreen({ route, navigation }) {
   const { friend } = route.params;
   const conversationId = getConversationId(store.userId, friend.userId);
+  const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -123,7 +124,7 @@ export default function DirectMessageScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -182,7 +183,7 @@ export default function DirectMessageScreen({ route, navigation }) {
             );
           }}
         />
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <TextInput
             style={styles.input}
             placeholder="Написать..."
@@ -196,7 +197,7 @@ export default function DirectMessageScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

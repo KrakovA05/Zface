@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useState, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -189,7 +188,7 @@ export default function MessagesScreen({ navigation }) {
     + Object.values(barUnread).reduce((s, n) => s + n, 0);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {/* Свитч */}
       <View style={styles.switchRow}>
         <TouchableOpacity
@@ -335,7 +334,7 @@ export default function MessagesScreen({ navigation }) {
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

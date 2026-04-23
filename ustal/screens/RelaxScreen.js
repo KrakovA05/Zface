@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Audio } from 'expo-av';
 import { colors } from '../theme';
 
@@ -71,7 +70,7 @@ export default function RelaxScreen() {
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>🎧 Релакс</Text>
       <Text style={styles.subtitle}>Выбери звук и выдохни</Text>
 
@@ -92,7 +91,7 @@ export default function RelaxScreen() {
           <Text style={styles.timerLabel}>до тишины</Text>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

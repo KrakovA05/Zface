@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS } from '../constants';
@@ -105,14 +104,14 @@ export default function RecommendationsScreen({ navigation, route }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.accent} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={[styles.header, { borderLeftColor: lvlColor }]}>
           <Text style={styles.headerEmoji}>{lvlData.emoji}</Text>
@@ -150,7 +149,7 @@ export default function RecommendationsScreen({ navigation, route }) {
           <Text style={styles.homeButtonText}>Войти в приложение →</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

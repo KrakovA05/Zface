@@ -3,7 +3,6 @@ import {
   ScrollView, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
 import { useState, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -279,7 +278,7 @@ export default function FriendsScreen({ navigation }) {
   const requestsBadge = requests.length > 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -308,7 +307,7 @@ export default function FriendsScreen({ navigation }) {
 
         {tab === 'friends' ? renderFriends() : renderSearch()}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
