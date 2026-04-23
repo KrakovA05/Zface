@@ -3,6 +3,7 @@ import {
   FlatList, Alert, Keyboard,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -10,7 +11,7 @@ import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 
-function GlobalChat() {
+function GlobalChat({ navigation }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [avatarMap, setAvatarMap] = useState({});
@@ -117,7 +118,9 @@ function GlobalChat() {
               delayLongPress={400}
             >
               <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
-                <Avatar uri={avatarUri} username={item.username} level={item.level} size={32} />
+                <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: avatarUri || null, status: '' } })}>
+                  <Avatar uri={avatarUri} username={item.username} level={item.level} size={32} />
+                </TouchableOpacity>
                 <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
                   {!isMe && (
                     <Text style={[styles.msgUsername, { color: LEVEL_COLORS[item.level] || colors.accent }]}>
@@ -141,20 +144,20 @@ function GlobalChat() {
           maxLength={500}
         />
         <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Text style={styles.sendText}>→</Text>
+          <Ionicons name="arrow-up" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-export default function ChatScreen() {
+export default function ChatScreen({ navigation }) {
   return (
     <View style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.title}>💬 Общий чат</Text>
+        <Text style={styles.title}>Общий чат</Text>
       </View>
-      <GlobalChat />
+      <GlobalChat navigation={navigation} />
     </View>
   );
 }
@@ -176,15 +179,15 @@ const styles = StyleSheet.create({
 
   inputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingBottom: 12, paddingTop: 4,
+    paddingHorizontal: 12, paddingBottom: 12, paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)',
   },
   input: {
-    flex: 1, backgroundColor: colors.card, borderRadius: 12,
-    padding: 14, color: colors.white, fontSize: 15,
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 22,
+    paddingHorizontal: 16, paddingVertical: 10, color: colors.white, fontSize: 15,
   },
   sendButton: {
-    backgroundColor: colors.accent, borderRadius: 12,
-    padding: 14, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.accent, borderRadius: 22,
+    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
   },
-  sendText: { color: colors.white, fontSize: 20 },
 });

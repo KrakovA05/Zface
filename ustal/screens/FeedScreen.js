@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
@@ -241,7 +242,7 @@ export default function FeedScreen({ navigation }) {
         >
           {posting
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.sendText}>→</Text>
+            : <Ionicons name="arrow-up" size={20} color="#fff" />
           }
         </TouchableOpacity>
       </View>
@@ -302,5 +303,4 @@ const styles = StyleSheet.create({
     width: 44, alignItems: 'center', justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
-  sendText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
 });

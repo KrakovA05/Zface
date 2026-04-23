@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
@@ -10,16 +11,16 @@ import { getLastRead } from '../utils/unread';
 import Avatar from '../components/Avatar';
 
 const ROOMS = [
-  { id: 'green',  label: '🌿 Зелёная комната', desc: 'Для тех кто держится', color: '#4CAF50' },
-  { id: 'yellow', label: '🌤 Жёлтая комната',  desc: 'Для тех на грани',     color: '#FFC107' },
-  { id: 'red',    label: '🌪 Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336' },
+  { id: 'green',  label: 'Зелёная комната', desc: 'Для тех кто держится', color: '#4CAF50', icon: 'leaf-outline' },
+  { id: 'yellow', label: 'Жёлтая комната',  desc: 'Для тех на грани',     color: '#FFC107', icon: 'partly-sunny-outline' },
+  { id: 'red',    label: 'Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336', icon: 'flame-outline' },
 ];
 
 const BAR_TABLES = [
-  { id: 'main',   label: '🍸 Общий бар' },
-  { id: 'quiet',  label: '🕯 Тихий уголок' },
-  { id: 'music',  label: '🎵 Музыкальный стол' },
-  { id: 'random', label: '🎲 Случайные темы' },
+  { id: 'main',   label: 'Общий бар' },
+  { id: 'quiet',  label: 'Тихий уголок' },
+  { id: 'music',  label: 'Музыкальный стол' },
+  { id: 'random', label: 'Случайные темы' },
 ];
 
 function Badge({ count }) {
@@ -27,6 +28,15 @@ function Badge({ count }) {
   return (
     <View style={styles.badge}>
       <Text style={styles.badgeText}>{count > 99 ? '99+' : String(count)}</Text>
+    </View>
+  );
+}
+
+function SectionHeader({ icon, label }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Ionicons name={icon} size={13} color={colors.muted} />
+      <Text style={styles.sectionHeaderText}>{label}</Text>
     </View>
   );
 }
@@ -56,7 +66,6 @@ export default function MessagesScreen({ navigation }) {
     if (!store.userId) return;
     setLoading(true);
 
-    // ── Друзья ──────────────────────────────────────────────────────
     const { data: rows } = await supabase
       .from('friendships')
       .select('*')
@@ -67,7 +76,6 @@ export default function MessagesScreen({ navigation }) {
       r.requester_id === store.userId ? r.receiver_id : r.requester_id
     );
 
-    // ── Собеседники из direct_messages (отправленные и полученные) ──
     const { data: allDms } = await supabase
       .from('direct_messages')
       .select('conversation_id, sender_id')
@@ -78,14 +86,12 @@ export default function MessagesScreen({ navigation }) {
       .map(cid => cid.split('_').find(id => id !== store.userId))
       .filter(Boolean);
 
-    // Получаем заблокированных
     const { data: blockedData } = await supabase
       .from('blocks')
       .select('blocked_id')
       .eq('blocker_id', store.userId);
     const blockedIds = new Set((blockedData || []).map(b => b.blocked_id));
 
-    // Объединяем всех уникальных собеседников, исключая заблокированных
     const allIds = [...new Set([...friendIds, ...dmPartnerIds])].filter(id => !blockedIds.has(id));
 
     let friendsList = [];
@@ -95,7 +101,6 @@ export default function MessagesScreen({ navigation }) {
         .select('username, level, user_id, avatar_url, status, last_seen')
         .in('user_id', allIds);
 
-      // Получаем дату последнего сообщения для каждого чата
       const convIds = (users || []).map(u => getConversationId(store.userId, u.user_id));
       const { data: lastMsgs } = await supabase
         .from('direct_messages')
@@ -103,13 +108,11 @@ export default function MessagesScreen({ navigation }) {
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false });
 
-      // Берём самое свежее сообщение на каждый чат
       const lastMsgMap = {};
       (lastMsgs || []).forEach(m => {
         if (!lastMsgMap[m.conversation_id]) lastMsgMap[m.conversation_id] = m.created_at;
       });
 
-      // Сортируем: сначала с сообщениями (по дате), потом без
       friendsList = (users || []).sort((a, b) => {
         const aDate = lastMsgMap[getConversationId(store.userId, a.user_id)];
         const bDate = lastMsgMap[getConversationId(store.userId, b.user_id)];
@@ -121,7 +124,6 @@ export default function MessagesScreen({ navigation }) {
     }
     setFriends(friendsList);
 
-    // ── Непрочитанные ЛС ──────────────────────────────────────────
     const dmCounts = {};
     await Promise.all(friendsList.map(async (f) => {
       const convId = getConversationId(store.userId, f.user_id);
@@ -133,8 +135,6 @@ export default function MessagesScreen({ navigation }) {
     }));
     setDmUnread(dmCounts);
 
-    // ── Непрочитанные комнаты + онлайн ────────────────────────────
-    // Непрочитанные считаем только для своей комнаты (в остальные доступа нет)
     const roomCounts = {};
     const onlineCounts = {};
     await Promise.all(ROOMS.map(async (r) => {
@@ -154,7 +154,6 @@ export default function MessagesScreen({ navigation }) {
     setRoomUnread(roomCounts);
     setRoomOnline(onlineCounts);
 
-    // ── Непрочитанные бар ─────────────────────────────────────────
     const barCounts = {};
     await Promise.all(BAR_TABLES.map(async (t) => {
       const lastRead = await getLastRead(`bar_${t.id}`);
@@ -172,7 +171,6 @@ export default function MessagesScreen({ navigation }) {
     loadAll();
   }, [loadAll]));
 
-  // Бейдж на таб
   useFocusEffect(useCallback(() => {
     const dmTotal = Object.values(dmUnread).reduce((s, n) => s + n, 0);
     const roomTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0);
@@ -189,24 +187,20 @@ export default function MessagesScreen({ navigation }) {
 
   return (
     <View style={styles.safeArea}>
-      {/* Свитч */}
+      {/* Таб-свитч */}
       <View style={styles.switchRow}>
         <TouchableOpacity
           style={[styles.switchBtn, tab === 'chats' && styles.switchBtnActive]}
           onPress={() => setTab('chats')}
         >
-          <Text style={[styles.switchLabel, tab === 'chats' && styles.switchLabelActive]}>
-            Чаты
-          </Text>
+          <Text style={[styles.switchLabel, tab === 'chats' && styles.switchLabelActive]}>Чаты</Text>
           {chatsTotal > 0 && <Badge count={chatsTotal} />}
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.switchBtn, tab === 'dms' && styles.switchBtnActive]}
           onPress={() => setTab('dms')}
         >
-          <Text style={[styles.switchLabel, tab === 'dms' && styles.switchLabelActive]}>
-            Личные
-          </Text>
+          <Text style={[styles.switchLabel, tab === 'dms' && styles.switchLabelActive]}>Личные</Text>
           {dmTotal > 0 && <Badge count={dmTotal} />}
         </TouchableOpacity>
       </View>
@@ -217,21 +211,21 @@ export default function MessagesScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.content}>
           {tab === 'chats' ? (
             <>
-              {/* ── Общий чат ── */}
-              <Text style={styles.sectionTitle}>🌐 Общий чат</Text>
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => navigation.navigate('Chat')}
-              >
+              {/* Общий чат */}
+              <SectionHeader icon="chatbubbles-outline" label="Общий чат" />
+              <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('Chat')}>
+                <View style={[styles.rowIconWrap, { backgroundColor: colors.accent + '22' }]}>
+                  <Ionicons name="earth-outline" size={20} color={colors.accent} />
+                </View>
                 <View style={styles.rowInfo}>
                   <Text style={styles.rowLabel}>Общий чат</Text>
                   <Text style={styles.rowSub}>Для всех пользователей</Text>
                 </View>
-                <Text style={styles.arrow}>›</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
               </TouchableOpacity>
 
-              {/* ── Комнаты ── */}
-              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🚪 Комнаты по статусу</Text>
+              {/* Комнаты */}
+              <SectionHeader icon="grid-outline" label="Комнаты по статусу" />
               {ROOMS.map(r => {
                 const isMyRoom = r.id === userLevel;
                 const unread = roomUnread[r.id] || 0;
@@ -248,8 +242,11 @@ export default function MessagesScreen({ navigation }) {
                     onPress={() => isMyRoom ? navigation.navigate('Rooms', { openRoom: r.id }) : null}
                     activeOpacity={isMyRoom ? 0.7 : 1}
                   >
+                    <View style={[styles.roomIcon, { backgroundColor: r.color + '22' }]}>
+                      <Ionicons name={r.icon} size={18} color={r.color} />
+                    </View>
                     <View style={styles.rowInfo}>
-                      <Text style={[styles.roomLabel, !isMyRoom && styles.roomLabelLocked]}>{r.label}</Text>
+                      <Text style={[styles.rowLabel, !isMyRoom && { color: colors.muted }]}>{r.label}</Text>
                       <Text style={styles.rowSub}>{r.desc}</Text>
                     </View>
                     {isMyRoom ? (
@@ -264,14 +261,14 @@ export default function MessagesScreen({ navigation }) {
                         </View>
                       </View>
                     ) : (
-                      <Text style={styles.lockIcon}>🔒</Text>
+                      <Ionicons name="lock-closed" size={16} color={colors.muted} />
                     )}
                   </TouchableOpacity>
                 );
               })}
 
-              {/* ── Бар ── */}
-              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🍸 Онлайн-бар</Text>
+              {/* Бар */}
+              <SectionHeader icon="wine-outline" label="Онлайн-бар" />
               {BAR_TABLES.map(t => {
                 const unread = barUnread[t.id] || 0;
                 return (
@@ -280,22 +277,26 @@ export default function MessagesScreen({ navigation }) {
                     style={styles.row}
                     onPress={() => navigation.navigate('Bar', { openTable: t.id })}
                   >
+                    <View style={[styles.rowIconWrap, { backgroundColor: colors.accent + '22' }]}>
+                      <Ionicons name="beer-outline" size={20} color={colors.accent} />
+                    </View>
                     <View style={styles.rowInfo}>
                       <Text style={styles.rowLabel}>{t.label}</Text>
                     </View>
-                    <Badge count={unread} />
-                    <Text style={styles.arrow}>›</Text>
+                    {unread > 0 && <Badge count={unread} />}
+                    <Ionicons name="chevron-forward" size={18} color={colors.muted} />
                   </TouchableOpacity>
                 );
               })}
             </>
           ) : (
             <>
-              {/* ── Личные сообщения ── */}
               {friends.length === 0 ? (
                 <View style={styles.emptyBlock}>
-                  <Text style={styles.emptyEmoji}>💬</Text>
-                  <Text style={styles.emptyText}>Нет друзей для переписки</Text>
+                  <View style={styles.emptyIconWrap}>
+                    <Ionicons name="chatbubble-outline" size={32} color={colors.muted} />
+                  </View>
+                  <Text style={styles.emptyText}>Нет собеседников</Text>
                   <TouchableOpacity onPress={() => navigation.navigate('Friends')}>
                     <Text style={styles.emptyLink}>Найти своих →</Text>
                   </TouchableOpacity>
@@ -303,6 +304,7 @@ export default function MessagesScreen({ navigation }) {
               ) : (
                 friends.map(f => {
                   const unread = dmUnread[f.user_id] || 0;
+                  const isOnline = f.last_seen && (Date.now() - new Date(f.last_seen).getTime()) < 3 * 60 * 1000;
                   return (
                     <TouchableOpacity
                       key={f.user_id}
@@ -311,21 +313,15 @@ export default function MessagesScreen({ navigation }) {
                         friend: { username: f.username, userId: f.user_id, level: f.level, avatarUrl: f.avatar_url },
                       })}
                     >
-                      <Avatar
-                        uri={f.avatar_url}
-                        username={f.username}
-                        level={f.level}
-                        size={42}
-                        isOnline={f.last_seen && (Date.now() - new Date(f.last_seen).getTime()) < 3 * 60 * 1000}
-                      />
+                      <Avatar uri={f.avatar_url} username={f.username} level={f.level} size={42} isOnline={isOnline} />
                       <View style={styles.rowInfo}>
                         <Text style={[styles.rowLabel, { color: LEVEL_COLORS[f.level] || colors.white }]}>
                           {f.username}
                         </Text>
                         {f.status ? <Text style={styles.rowSub}>{f.status}</Text> : null}
                       </View>
-                      <Badge count={unread} />
-                      <Text style={styles.arrow}>›</Text>
+                      {unread > 0 && <Badge count={unread} />}
+                      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
                     </TouchableOpacity>
                   );
                 })
@@ -340,6 +336,7 @@ export default function MessagesScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
+
   switchRow: {
     flexDirection: 'row',
     margin: 16,
@@ -348,65 +345,72 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   switchBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 11,
-    gap: 6,
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', paddingVertical: 10,
+    borderRadius: 11, gap: 6,
   },
   switchBtnActive: { backgroundColor: colors.accent },
   switchLabel: { fontSize: 15, fontWeight: '600', color: colors.muted },
   switchLabelActive: { color: colors.white },
+
   content: { paddingHorizontal: 16, paddingBottom: 40 },
-  sectionTitle: {
-    fontSize: 13, fontWeight: '700', color: colors.muted,
-    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10,
+
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginBottom: 8, marginTop: 4, paddingLeft: 2,
   },
+  sectionHeaderText: {
+    fontSize: 12, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.6,
+  },
+
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 8,
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.card, borderRadius: 14,
+    padding: 14, marginBottom: 8, gap: 12,
+  },
+  rowIconWrap: {
+    width: 38, height: 38, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
   },
   rowInfo: { flex: 1 },
   rowLabel: { fontSize: 15, fontWeight: '600', color: colors.white },
   rowSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  arrow: { color: colors.muted, fontSize: 22 },
+
   badge: {
-    backgroundColor: '#e74c3c',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#e74c3c', borderRadius: 10,
+    minWidth: 20, height: 20, paddingHorizontal: 5,
+    alignItems: 'center', justifyContent: 'center',
   },
   badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  emptyBlock: { alignItems: 'center', paddingVertical: 60, gap: 10 },
-  emptyEmoji: { fontSize: 48 },
-  emptyText: { color: colors.muted, fontSize: 15 },
-  emptyLink: { color: colors.accent, fontSize: 15, fontWeight: '600' },
 
-  // Комнаты
+  // Rooms
   roomCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.card, borderRadius: 14,
-    padding: 14, marginBottom: 8, gap: 12, borderLeftWidth: 4,
+    padding: 14, marginBottom: 8, gap: 12, borderLeftWidth: 3,
   },
   roomCardMine: { backgroundColor: '#1e1e2e' },
-  roomCardLocked: { opacity: 0.45 },
-  roomLabel: { fontSize: 15, fontWeight: '600', color: colors.white, marginBottom: 2 },
-  roomLabelLocked: { color: colors.muted },
+  roomCardLocked: { opacity: 0.4 },
+  roomIcon: {
+    width: 38, height: 38, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+  },
   roomRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   roomOnline: { alignItems: 'center' },
-  roomOnlineCount: { fontSize: 16, fontWeight: 'bold', color: colors.white },
+  roomOnlineCount: { fontSize: 15, fontWeight: 'bold', color: colors.white },
   roomOnlineLabel: { fontSize: 10, color: colors.muted },
   myBadge: { borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   myBadgeText: { fontSize: 10, color: '#fff', fontWeight: 'bold' },
-  lockIcon: { fontSize: 18 },
+
+  // Empty DMs
+  emptyBlock: { alignItems: 'center', paddingVertical: 60, gap: 12 },
+  emptyIconWrap: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: colors.card,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyText: { color: colors.muted, fontSize: 15 },
+  emptyLink: { color: colors.accent, fontSize: 15, fontWeight: '600' },
 });

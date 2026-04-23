@@ -19,7 +19,7 @@ const MODULE_ITEMS = [
   { icon: 'newspaper-outline',  label: 'Лента',   route: 'Feed'    },
   { icon: 'chatbubble-outline', label: 'Чат',     route: 'Chat'    },
   { icon: 'people-outline',     label: 'Комнаты', route: 'Rooms'   },
-  { icon: 'headset-outline',    label: 'Релакс',  route: 'Relax'   },
+  { icon: 'sync-outline',        label: 'Дыхание', route: 'Breathing' },
   { icon: 'fish-outline',       label: 'Рыбалка', route: 'Fishing' },
   { icon: 'beer-outline',       label: 'Бар',     route: 'Bar'     },
 ];

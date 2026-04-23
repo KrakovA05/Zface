@@ -17,7 +17,7 @@ import RecommendationsScreen from './screens/RecommendationsScreen';
 import HomeScreen from './screens/HomeScreen';
 import MessagesScreen from './screens/MessagesScreen';
 import ChatScreen from './screens/ChatScreen';
-import RelaxScreen from './screens/RelaxScreen';
+import BreathingScreen from './screens/BreathingScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import FriendsScreen from './screens/FriendsScreen';
 import DirectMessageScreen from './screens/DirectMessageScreen';
@@ -247,7 +247,7 @@ export default function App() {
             <Stack.Screen name="UserProfile"     component={UserProfileScreen} />
             <Stack.Screen name="Rooms"           component={RoomsScreen} />
             <Stack.Screen name="Chat"            component={ChatScreen} />
-            <Stack.Screen name="Relax"           component={RelaxScreen} />
+            <Stack.Screen name="Breathing"        component={BreathingScreen} />
             <Stack.Screen name="Fishing"         component={FishingScreen} />
             <Stack.Screen name="Bar"             component={BarScreen} />
           </Stack.Navigator>

@@ -3,6 +3,7 @@ import {
   FlatList, Alert, Keyboard,
 } from 'react-native';
 import { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -135,7 +136,7 @@ export default function DirectMessageScreen({ route, navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
+          <Ionicons name="chevron-back" size={26} color={colors.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Avatar
@@ -172,12 +173,17 @@ export default function DirectMessageScreen({ route, navigation }) {
                 delayLongPress={400}
               >
                 <View style={[styles.bubbleWrap, isOwn ? styles.bubbleWrapOwn : styles.bubbleWrapOther]}>
-                  <Avatar
-                    uri={isOwn ? store.avatarUrl : friend.avatarUrl}
-                    username={isOwn ? store.username : friend.username}
-                    level={isOwn ? store.level : friend.level}
-                    size={30}
-                  />
+                  <TouchableOpacity
+                    onPress={!isOwn ? () => navigation.navigate('UserProfile', { user: { user_id: friend.userId, username: friend.username, level: friend.level, avatar_url: friend.avatarUrl || null, status: '' } }) : undefined}
+                    activeOpacity={isOwn ? 1 : 0.7}
+                  >
+                    <Avatar
+                      uri={isOwn ? store.avatarUrl : friend.avatarUrl}
+                      username={isOwn ? store.username : friend.username}
+                      level={isOwn ? store.level : friend.level}
+                      size={30}
+                    />
+                  </TouchableOpacity>
                   <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
                     <Text style={styles.bubbleText}>{item.text}</Text>
                   </View>
@@ -196,7 +202,7 @@ export default function DirectMessageScreen({ route, navigation }) {
             maxLength={500}
           />
           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Text style={styles.sendText}>→</Text>
+            <Ionicons name="arrow-up" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -287,26 +293,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
   input: {
     flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     color: colors.white,
     fontSize: 15,
   },
   sendButton: {
     backgroundColor: colors.accent,
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 22,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendText: {
-    color: colors.white,
-    fontSize: 20,
   },
 });
