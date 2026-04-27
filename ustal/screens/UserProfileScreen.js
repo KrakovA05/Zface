@@ -8,6 +8,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
+import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 
 const STATUS_NONE     = 'none';
@@ -123,6 +124,10 @@ export default function UserProfileScreen({ route, navigation }) {
     setActionLoading(false);
     if (error) { Alert.alert('Ошибка', 'Не удалось отправить заявку'); return; }
     setFriendStatus(STATUS_SENT);
+    const { data } = await supabase.from('users').select('push_token').eq('user_id', user.user_id).maybeSingle();
+    if (data?.push_token) {
+      sendPushNotification(data.push_token, 'Новая заявка в друзья', `${store.username} хочет добавить тебя в друзья`);
+    }
   };
 
   const acceptRequest = async () => {

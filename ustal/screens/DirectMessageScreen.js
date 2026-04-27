@@ -11,6 +11,7 @@ import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { getConversationId } from '../utils';
 import { markRead } from '../utils/unread';
+import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 
 function formatTime(dateStr) {
@@ -114,6 +115,12 @@ export default function DirectMessageScreen({ route, navigation }) {
     if (error) {
       setText(trimmed);
       Alert.alert('Ошибка', 'Не удалось отправить сообщение');
+      return;
+    }
+    const { data: friendData } = await supabase
+      .from('users').select('push_token').eq('user_id', friend.userId).maybeSingle();
+    if (friendData?.push_token) {
+      sendPushNotification(friendData.push_token, store.username, trimmed);
     }
   };
 

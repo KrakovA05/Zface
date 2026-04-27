@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
+import { registerForPushNotifications } from './utils/notifications';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -199,6 +200,9 @@ export default function App() {
           }
           setInitialRoute('Main');
           updatePresence();
+          registerForPushNotifications().then(token => {
+            if (token) supabase.from('users').update({ push_token: token }).eq('user_id', session.user.id);
+          });
         } else {
           setInitialRoute('Login');
         }
