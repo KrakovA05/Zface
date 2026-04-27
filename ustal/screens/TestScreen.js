@@ -5,19 +5,12 @@ import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS, TEST_PACKS } from '../constants';
 import { colors, shared } from '../theme';
 
-function isSameDay(dateStr) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
+function isWithin24Hours(dateStr) {
+  return (Date.now() - new Date(dateStr).getTime()) < 24 * 60 * 60 * 1000;
 }
 
-function timeUntilMidnight() {
-  const now = new Date();
-  const midnight = new Date();
-  midnight.setHours(24, 0, 0, 0);
-  const diff = midnight - now;
+function timeUntilNextTest(dateStr) {
+  const diff = new Date(dateStr).getTime() + 24 * 60 * 60 * 1000 - Date.now();
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   return `${h} ч ${m} мин`;
@@ -47,7 +40,7 @@ export default function TestScreen({ navigation }) {
           .limit(1)
           .maybeSingle();
 
-        if (data && isSameDay(data.created_at)) {
+        if (data && isWithin24Hours(data.created_at)) {
           setAlreadyDone(true);
           setLastResult(data);
         } else {
@@ -119,7 +112,7 @@ export default function TestScreen({ navigation }) {
         <Text style={styles.blockedHint}>
           Следующий тест через{'\n'}
           <Text style={{ color: colors.accent, fontWeight: 'bold' }}>
-            {timeUntilMidnight()}
+            {timeUntilNextTest(lastResult.created_at)}
           </Text>
         </Text>
         <TouchableOpacity
