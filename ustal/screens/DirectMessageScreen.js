@@ -13,6 +13,11 @@ import { getConversationId } from '../utils';
 import { markRead } from '../utils/unread';
 import Avatar from '../components/Avatar';
 
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function DirectMessageScreen({ route, navigation }) {
   const { friend } = route.params;
   const conversationId = getConversationId(store.userId, friend.userId);
@@ -188,6 +193,7 @@ export default function DirectMessageScreen({ route, navigation }) {
                   </TouchableOpacity>
                   <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
                     <Text style={styles.bubbleText}>{item.text}</Text>
+                    <Text style={styles.msgTime}>{formatTime(item.created_at)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -288,6 +294,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
+  msgTime: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: 3 },
 
   // Input
   inputRow: {

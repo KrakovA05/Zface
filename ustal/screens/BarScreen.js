@@ -19,6 +19,11 @@ const TABLES = [
   { id: 'random', label: 'Случайные темы',    desc: 'Говорим обо всём',        icon: 'shuffle-outline',       seats: 10 },
 ];
 
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function BarScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const [table, setTable] = useState(null);
@@ -209,6 +214,7 @@ export default function BarScreen({ route, navigation }) {
                   <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
                     {!isMe && <Text style={[styles.msgUsername, { color: colors.accent }]}>{item.username}</Text>}
                     <Text style={styles.msgText}>{item.text}</Text>
+                    <Text style={styles.msgTime}>{formatTime(item.created_at)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -298,6 +304,7 @@ const styles = StyleSheet.create({
   msgBubbleMe: { backgroundColor: '#2a2a4a', borderBottomRightRadius: 4 },
   msgUsername: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   msgText: { color: colors.white, fontSize: 15, lineHeight: 21 },
+  msgTime: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: 3 },
   emptyBar: { alignItems: 'center', marginTop: 60 },
   emptyBarText: { color: colors.muted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
 

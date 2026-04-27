@@ -11,6 +11,11 @@ import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
 function GlobalChat({ navigation }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -130,6 +135,7 @@ function GlobalChat({ navigation }) {
                     </Text>
                   )}
                   <Text style={styles.msgText}>{item.text}</Text>
+                  <Text style={styles.msgTime}>{formatTime(item.created_at)}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -178,6 +184,7 @@ const styles = StyleSheet.create({
   msgBubbleMe: { backgroundColor: colors.accent, borderBottomRightRadius: 4 },
   msgUsername: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   msgText: { color: colors.white, fontSize: 15, lineHeight: 21 },
+  msgTime: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: 3 },
 
   inputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

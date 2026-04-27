@@ -21,6 +21,11 @@ const ROOMS = [
 
 const LEVEL_ICONS = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'flame-outline' };
 
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function RoomsScreen({ route, navigation }) {
   const userLevel = store.level || 'green';
   const openRoom = route?.params?.openRoom;
@@ -279,6 +284,7 @@ export default function RoomsScreen({ route, navigation }) {
                   <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
                     {!isMe && <Text style={[styles.msgUsername, { color: lvlColor }]}>{item.username}</Text>}
                     <Text style={styles.msgText}>{item.text}</Text>
+                    <Text style={styles.msgTime}>{formatTime(item.created_at)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -376,6 +382,7 @@ const styles = StyleSheet.create({
   msgBubbleMe: { backgroundColor: '#2a2a4a', borderBottomRightRadius: 4 },
   msgUsername: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   msgText: { color: colors.white, fontSize: 15, lineHeight: 21 },
+  msgTime: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: 3 },
   emptyChat: { alignItems: 'center', marginTop: 60 },
   emptyChatText: { color: colors.muted, fontSize: 15 },
 
