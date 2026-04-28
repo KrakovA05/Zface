@@ -28,7 +28,7 @@ export default function FeedScreen({ navigation }) {
   const [hasMore, setHasMore] = useState(true);
   const [text, setText] = useState('');
   const [posting, setPosting] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const filter = 'all';
   const [avatarMap, setAvatarMap] = useState({});
   const [commentCounts, setCommentCounts] = useState({});
   const [likedPosts, setLikedPosts] = useState({});
@@ -310,20 +310,6 @@ export default function FeedScreen({ navigation }) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.header}>
           <Text style={styles.title}>Лента</Text>
-          <View style={styles.filters}>
-            <TouchableOpacity
-              style={[styles.filterBtn, filter === 'all' && styles.filterBtnActive]}
-              onPress={() => setFilter('all')}
-            >
-              <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Все</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterBtn, filter === 'mine' && styles.filterBtnActive]}
-              onPress={() => setFilter('mine')}
-            >
-              <Text style={[styles.filterText, filter === 'mine' && styles.filterTextActive]}>Мой уровень</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </TouchableWithoutFeedback>
 
