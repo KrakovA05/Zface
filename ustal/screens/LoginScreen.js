@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   buttonDisabled: { opacity: 0.35 },
-  buttonText: { color: colors.white, fontSize: 16, fontWeight: '600' },
+  buttonText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
 
   registerRow: { flexDirection: 'row', alignItems: 'center' },
   registerHint: { color: colors.muted, fontSize: 15 },

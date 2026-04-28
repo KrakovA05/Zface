@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
   switchBtnActive: { backgroundColor: colors.accent },
   switchLabel: { fontSize: 15, fontWeight: '600', color: colors.muted },
-  switchLabelActive: { color: colors.white },
+  switchLabelActive: { color: colors.onAccent },
 
   content: { paddingHorizontal: 16, paddingBottom: 40 },
 
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card, borderRadius: 14,
     padding: 14, marginBottom: 8, gap: 12, borderLeftWidth: 3,
   },
-  roomCardMine: { backgroundColor: '#1e1e2e' },
+  roomCardMine: { backgroundColor: colors.accent + '12' },
   roomCardLocked: { opacity: 0.4 },
   roomIcon: {
     width: 38, height: 38, borderRadius: 11,

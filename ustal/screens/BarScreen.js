@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row', alignItems: 'center',
     padding: 14, borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.08)', gap: 10,
+    borderBottomColor: 'rgba(0,0,0,0.06)', gap: 10,
     backgroundColor: colors.background,
   },
   backBtn: { padding: 2 },
@@ -301,20 +301,20 @@ const styles = StyleSheet.create({
   msgRowMe: { flexDirection: 'row-reverse' },
   msgBubble: { maxWidth: '75%', borderRadius: 16, padding: 12 },
   msgBubbleOther: { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
-  msgBubbleMe: { backgroundColor: '#2a2a4a', borderBottomRightRadius: 4 },
+  msgBubbleMe: { backgroundColor: '#EDE8FF', borderBottomRightRadius: 4 },
   msgUsername: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   msgText: { color: colors.white, fontSize: 15, lineHeight: 21 },
-  msgTime: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: 3 },
+  msgTime: { fontSize: 10, color: 'rgba(0,0,0,0.35)', textAlign: 'right', marginTop: 3 },
   emptyBar: { alignItems: 'center', marginTop: 60 },
   emptyBarText: { color: colors.muted, fontSize: 15, textAlign: 'center', lineHeight: 22 },
 
   inputRow: {
     flexDirection: 'row', padding: 12, gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)',
     alignItems: 'center',
   },
   input: {
-    flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 22,
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 22,
     paddingHorizontal: 16, paddingVertical: 10,
     color: colors.white, fontSize: 15,
   },

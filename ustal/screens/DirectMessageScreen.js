@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   bubbleOwn: {
-    backgroundColor: colors.accent,
+    backgroundColor: '#EDE8FF',
     borderBottomRightRadius: 4,
   },
   bubbleOther: {
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 21,
   },
-  msgTime: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: 3 },
+  msgTime: { fontSize: 10, color: 'rgba(0,0,0,0.35)', textAlign: 'right', marginTop: 3 },
 
   // Input
   inputRow: {
@@ -310,11 +310,11 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopColor: 'rgba(0,0,0,0.06)',
   },
   input: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(0,0,0,0.04)',
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,

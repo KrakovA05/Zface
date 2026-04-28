@@ -321,7 +321,7 @@ export default function ProfileScreen({ navigation }) {
               <View style={styles.statusActions}>
                 <TouchableOpacity style={styles.statusSaveBtn} onPress={saveStatus} disabled={savingStatus}>
                   {savingStatus
-                    ? <ActivityIndicator color={colors.white} size="small" />
+                    ? <ActivityIndicator color={colors.onAccent} size="small" />
                     : <Text style={styles.statusSaveBtnText}>Сохранить</Text>
                   }
                 </TouchableOpacity>
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: colors.accent,
     borderRadius: 10, padding: 10, alignItems: 'center',
   },
-  statusSaveBtnText: { color: colors.white, fontWeight: '600' },
+  statusSaveBtnText: { color: colors.onAccent, fontWeight: '600' },
   statusCancelBtn: {
     flex: 1, borderWidth: 1, borderColor: colors.border,
     borderRadius: 10, padding: 10, alignItems: 'center',

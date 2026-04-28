@@ -1,13 +1,14 @@
 import { StyleSheet } from 'react-native';
 
 export const colors = {
-  background: '#1E1E1E',
-  card: '#2A2A2A',
-  border: '#3A3A3A',
-  accent: '#7D8AFF',
-  pink: '#FF9B9B',
-  white: '#FFFFFF',
-  muted: '#888888',
+  background: '#FAF7F2',
+  card:       '#FFFFFF',
+  border:     '#E8DFD0',
+  accent:     '#7c3aed',
+  white:      '#2C2420',
+  muted:      '#9B8E82',
+  onAccent:   '#FFFFFF',
+  pink:       '#c0392b',
 };
 
 export const shared = StyleSheet.create({
@@ -34,6 +35,8 @@ export const shared = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   button: {
     backgroundColor: colors.accent,
@@ -46,7 +49,7 @@ export const shared = StyleSheet.create({
     opacity: 0.4,
   },
   buttonText: {
-    color: colors.white,
+    color: colors.onAccent,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -66,6 +69,6 @@ export const shared = StyleSheet.create({
     fontSize: 14,
   },
   labelTextSelected: {
-    color: colors.white,
+    color: colors.onAccent,
   },
 });

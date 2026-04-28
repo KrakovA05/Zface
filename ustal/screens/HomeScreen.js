@@ -199,8 +199,8 @@ export default function HomeScreen({ navigation }) {
                   disabled={!dailyAnswer.trim() || dailySubmitting}
                 >
                   {dailySubmitting
-                    ? <ActivityIndicator color={colors.white} size="small" />
-                    : <Ionicons name="arrow-forward" size={18} color={colors.white} />
+                    ? <ActivityIndicator color={colors.onAccent} size="small" />
+                    : <Ionicons name="arrow-forward" size={18} color={colors.onAccent} />
                   }
                 </TouchableOpacity>
               </View>

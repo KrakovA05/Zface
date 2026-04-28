@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   tabBtn: { flex: 1, paddingVertical: 10, borderRadius: 11, alignItems: 'center' },
   tabBtnActive: { backgroundColor: colors.accent },
   tabLabel: { color: colors.muted, fontWeight: '600', fontSize: 15 },
-  tabLabelActive: { color: colors.white },
+  tabLabelActive: { color: colors.onAccent },
 
   section: { marginBottom: 8 },
   sectionTitle: {
@@ -382,12 +382,12 @@ const styles = StyleSheet.create({
   },
   labelChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   labelText: { color: colors.muted, fontSize: 14 },
-  labelTextActive: { color: colors.white },
+  labelTextActive: { color: colors.onAccent },
   searchBtn: {
     backgroundColor: colors.accent, borderRadius: 14,
     paddingVertical: 14, alignItems: 'center', marginBottom: 8,
   },
   searchBtnDisabled: { opacity: 0.35 },
-  searchBtnText: { color: colors.white, fontSize: 16, fontWeight: '600' },
+  searchBtnText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
   noResults: { color: colors.muted, textAlign: 'center', marginTop: 24, fontSize: 15 },
 });

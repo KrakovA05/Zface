@@ -181,18 +181,18 @@ const styles = StyleSheet.create({
   msgRowMe: { flexDirection: 'row-reverse' },
   msgBubble: { maxWidth: '75%', borderRadius: 16, padding: 12 },
   msgBubbleOther: { backgroundColor: colors.card, borderBottomLeftRadius: 4 },
-  msgBubbleMe: { backgroundColor: colors.accent, borderBottomRightRadius: 4 },
+  msgBubbleMe: { backgroundColor: '#EDE8FF', borderBottomRightRadius: 4 },
   msgUsername: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   msgText: { color: colors.white, fontSize: 15, lineHeight: 21 },
-  msgTime: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: 3 },
+  msgTime: { fontSize: 10, color: 'rgba(0,0,0,0.35)', textAlign: 'right', marginTop: 3 },
 
   inputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 12, paddingBottom: 12, paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)',
   },
   input: {
-    flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 22,
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 22,
     paddingHorizontal: 16, paddingVertical: 10, color: colors.white, fontSize: 15,
   },
   sendButton: {

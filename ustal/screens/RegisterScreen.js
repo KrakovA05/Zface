@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
   labelChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   labelText: { color: colors.muted, fontSize: 14 },
-  labelTextActive: { color: colors.white },
+  labelTextActive: { color: colors.onAccent },
 
   button: {
     backgroundColor: colors.accent,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   buttonDisabled: { opacity: 0.35 },
-  buttonText: { color: colors.white, fontSize: 16, fontWeight: '600' },
+  buttonText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
 
   loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   loginHint: { color: colors.muted, fontSize: 15 },
