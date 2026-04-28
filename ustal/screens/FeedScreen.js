@@ -126,13 +126,23 @@ export default function FeedScreen({ navigation }) {
   }, [loadPosts]));
 
   const uploadMedia = async (uri, type) => {
-    const ext = type === 'video' ? 'mp4' : 'jpg';
+    const uriExt = uri.split('?')[0].split('.').pop()?.toLowerCase() || '';
+    let ext, contentType;
+    if (type === 'video') {
+      ext = 'mp4'; contentType = 'video/mp4';
+    } else if (uriExt === 'png') {
+      ext = 'png'; contentType = 'image/png';
+    } else {
+      ext = 'jpg'; contentType = 'image/jpeg';
+    }
+
     const path = `${store.userId}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
-    const blob = await response.blob();
+    const arrayBuffer = await response.arrayBuffer();
+
     const { error } = await supabase.storage
       .from('post-media')
-      .upload(path, blob, { contentType: type === 'video' ? 'video/mp4' : 'image/jpeg' });
+      .upload(path, arrayBuffer, { contentType });
     if (error) { Alert.alert('Ошибка загрузки', error.message); return null; }
     return `${SUPABASE_URL}/storage/v1/object/public/post-media/${path}`;
   };
