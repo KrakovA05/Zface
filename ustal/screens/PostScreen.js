@@ -1,9 +1,10 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  TextInput, ActivityIndicator, Alert, Platform, Keyboard, Image,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
@@ -20,15 +21,32 @@ function formatTime(str) {
   return new Date(str).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
+function isVideo(url) {
+  return url && (url.includes('.mp4') || url.includes('.mov') || url.includes('video'));
+}
+
 export default function PostScreen({ route, navigation }) {
   const { post } = route.params;
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
   const listRef = useRef(null);
 
   const lvlColor = LEVEL_COLORS[post.author_level] || colors.accent;
+
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      e => setKbHeight(e.endCoordinates.height)
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKbHeight(0)
+    );
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const loadComments = async () => {
     const { data } = await supabase
@@ -113,6 +131,18 @@ export default function PostScreen({ route, navigation }) {
         </View>
       </View>
       <Text style={styles.postText}>{post.text}</Text>
+      {post.media_url ? (
+        isVideo(post.media_url) ? (
+          <Video
+            source={{ uri: post.media_url }}
+            style={styles.postMedia}
+            useNativeControls
+            resizeMode={ResizeMode.CONTAIN}
+          />
+        ) : (
+          <Image source={{ uri: post.media_url }} style={styles.postMedia} resizeMode="cover" />
+        )
+      ) : null}
       <View style={styles.divider} />
       <Text style={styles.commentsLabel}>
         {comments.length > 0 ? `${comments.length} комментариев` : 'Будь первым'}
@@ -121,11 +151,7 @@ export default function PostScreen({ route, navigation }) {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
-    >
+    <View style={styles.root}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.white} />
@@ -142,12 +168,12 @@ export default function PostScreen({ route, navigation }) {
           keyExtractor={item => item.id}
           renderItem={renderComment}
           ListHeaderComponent={ListHeader}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={null}
+          contentContainerStyle={[styles.list, { paddingBottom: kbHeight > 0 ? kbHeight + 72 : 16 }]}
+          keyboardShouldPersistTaps="handled"
         />
       )}
 
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { bottom: kbHeight }]}>
         <TextInput
           style={styles.input}
           placeholder="Напиши комментарий..."
@@ -168,7 +194,7 @@ export default function PostScreen({ route, navigation }) {
           }
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -195,13 +221,14 @@ const styles = StyleSheet.create({
   postDate: { color: colors.muted, fontSize: 12, marginTop: 1 },
   levelBadge: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   levelBadgeText: { fontSize: 11, fontWeight: '600' },
-  postText: { color: colors.white, fontSize: 15, lineHeight: 22, marginBottom: 16 },
+  postText: { color: colors.white, fontSize: 15, lineHeight: 22, marginBottom: 12 },
+  postMedia: { width: '100%', height: 220, borderRadius: 10, marginBottom: 12 },
   divider: { height: 1, backgroundColor: colors.border, marginBottom: 12 },
   commentsLabel: { fontSize: 12, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.6 },
 
   comment: {
     flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    paddingHorizontal: 16, paddingVertical: 10,
+    paddingHorizontal: 16, paddingVertical: 8,
   },
   commentBody: { flex: 1, backgroundColor: colors.card, borderRadius: 12, padding: 10 },
   commentHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
@@ -210,8 +237,9 @@ const styles = StyleSheet.create({
   commentText: { color: colors.white, fontSize: 14, lineHeight: 20 },
 
   inputRow: {
+    position: 'absolute', left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 12, paddingBottom: 16, paddingTop: 8,
+    paddingHorizontal: 12, paddingVertical: 10,
     borderTopWidth: 1, borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
