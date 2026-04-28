@@ -20,6 +20,7 @@ export default function FeedScreen({ navigation }) {
   const [posting, setPosting] = useState(false);
   const [filter, setFilter] = useState('all');
   const [avatarMap, setAvatarMap] = useState({});
+  const [commentCounts, setCommentCounts] = useState({});
   const cursorRef = useRef(null);
   const fetchedAuthors = useRef(new Set());
   const inputRef = useRef(null);
@@ -33,6 +34,20 @@ export default function FeedScreen({ navigation }) {
     const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
+
+  const fetchCommentCounts = async (newPosts) => {
+    if (!newPosts.length) return;
+    const ids = newPosts.map(p => p.id);
+    const { data } = await supabase
+      .from('post_comments')
+      .select('post_id')
+      .in('post_id', ids);
+    if (data) {
+      const counts = {};
+      data.forEach(row => { counts[row.post_id] = (counts[row.post_id] || 0) + 1; });
+      setCommentCounts(prev => ({ ...prev, ...counts }));
+    }
+  };
 
   const fetchAuthorAvatars = async (newPosts) => {
     const toFetch = [...new Set(newPosts.map(p => p.author_id))]
@@ -82,6 +97,7 @@ export default function FeedScreen({ navigation }) {
       setPosts(prev => [...prev, ...newPosts]);
     }
     fetchAuthorAvatars(newPosts);
+    fetchCommentCounts(newPosts);
     setHasMore(newPosts.length === PAGE_SIZE);
     if (newPosts.length > 0) cursorRef.current = newPosts[newPosts.length - 1].created_at;
 
@@ -164,6 +180,16 @@ export default function FeedScreen({ navigation }) {
           </View>
         </TouchableOpacity>
         <Text style={styles.postText}>{item.text}</Text>
+        <TouchableOpacity
+          style={styles.commentBtn}
+          onPress={() => navigation.navigate('Post', { post: item })}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chatbubble-outline" size={14} color={colors.muted} />
+          <Text style={styles.commentBtnText}>
+            {commentCounts[item.id] ? `${commentCounts[item.id]} комментариев` : 'Комментировать'}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -274,7 +300,9 @@ const styles = StyleSheet.create({
   date: { color: colors.muted, fontSize: 12, marginTop: 1 },
   levelBadge: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   levelBadgeText: { fontSize: 11, fontWeight: '600' },
-  postText: { color: colors.white, fontSize: 15, lineHeight: 22 },
+  postText: { color: colors.white, fontSize: 15, lineHeight: 22, marginBottom: 10 },
+  commentBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  commentBtnText: { color: colors.muted, fontSize: 13 },
   empty: { color: colors.muted, textAlign: 'center', marginTop: 60, fontSize: 16 },
   loadMoreBtn: {
     alignItems: 'center', paddingVertical: 14,

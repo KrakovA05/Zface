@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TouchableOpacity, Share,
-  ScrollView, Alert, TextInput, ActivityIndicator,
+  ScrollView, Alert, TextInput, ActivityIndicator, Linking,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -389,6 +389,20 @@ export default function ProfileScreen({ navigation }) {
           </Section>
         )}
 
+        {/* Если совсем плохо */}
+        <TouchableOpacity
+          style={styles.crisisBtn}
+          onPress={() => Linking.openURL('tel:88002000122')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="heart-outline" size={18} color={colors.accent} />
+          <View style={styles.crisisInfo}>
+            <Text style={styles.crisisBtnText}>Если совсем плохо</Text>
+            <Text style={styles.crisisBtnSub}>Телефон доверия · 8-800-200-01-22 · бесплатно</Text>
+          </View>
+          <Ionicons name="call-outline" size={18} color={colors.muted} />
+        </TouchableOpacity>
+
         {/* Действия */}
         <Section title="Действия">
           <Row icon="share-outline" label="Пригласить друга" onPress={inviteFriend} last={false} />
@@ -510,6 +524,17 @@ const styles = StyleSheet.create({
   achievementDesc: { color: colors.muted, fontSize: 9, textAlign: 'center', lineHeight: 13 },
 
   // Delete
+  crisisBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: colors.accent + '10',
+    borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: colors.accent + '30',
+  },
+  crisisInfo: { flex: 1 },
+  crisisBtnText: { fontSize: 15, fontWeight: '600', color: colors.accent, marginBottom: 2 },
+  crisisBtnSub: { fontSize: 12, color: colors.muted },
+
   deleteBtn: { alignItems: 'center', paddingVertical: 16 },
   deleteBtnText: { color: colors.muted, fontSize: 13 },
 });
