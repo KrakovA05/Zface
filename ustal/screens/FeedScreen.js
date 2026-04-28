@@ -1,6 +1,7 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, Keyboard, TouchableWithoutFeedback, Image, Platform,
+  ActivityIndicator, Alert, Keyboard, TouchableWithoutFeedback, Image,
+  Platform, Modal,
 } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,11 +31,17 @@ export default function FeedScreen({ navigation }) {
   const [filter, setFilter] = useState('all');
   const [avatarMap, setAvatarMap] = useState({});
   const [commentCounts, setCommentCounts] = useState({});
+  const [likedPosts, setLikedPosts] = useState({});
+
   const [mediaUri, setMediaUri] = useState(null);
   const [mediaType, setMediaType] = useState(null);
   const [mediaUrl, setMediaUrl] = useState(null);
   const [mediaUploading, setMediaUploading] = useState(false);
   const uploadGenRef = useRef(0);
+
+  const [editPost, setEditPost] = useState(null);
+  const [editText, setEditText] = useState('');
+
   const cursorRef = useRef(null);
   const fetchedAuthors = useRef(new Set());
   const inputRef = useRef(null);
@@ -58,10 +65,7 @@ export default function FeedScreen({ navigation }) {
   const fetchCommentCounts = async (newPosts) => {
     if (!newPosts.length) return;
     const ids = newPosts.map(p => p.id);
-    const { data } = await supabase
-      .from('post_comments')
-      .select('post_id')
-      .in('post_id', ids);
+    const { data } = await supabase.from('post_comments').select('post_id').in('post_id', ids);
     if (data) {
       const counts = {};
       data.forEach(row => { counts[row.post_id] = (counts[row.post_id] || 0) + 1; });
@@ -74,10 +78,7 @@ export default function FeedScreen({ navigation }) {
       .filter(id => id && !fetchedAuthors.current.has(id));
     if (!toFetch.length) return;
     toFetch.forEach(id => fetchedAuthors.current.add(id));
-    const { data } = await supabase
-      .from('users')
-      .select('user_id, avatar_url')
-      .in('user_id', toFetch);
+    const { data } = await supabase.from('users').select('user_id, avatar_url').in('user_id', toFetch);
     if (data) {
       const entries = {};
       data.forEach(u => { entries[u.user_id] = u.avatar_url; });
@@ -85,26 +86,28 @@ export default function FeedScreen({ navigation }) {
     }
   };
 
+  const fetchLikedPosts = async (postIds) => {
+    if (!postIds.length || !store.userId) return;
+    const { data } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('user_id', store.userId)
+      .in('post_id', postIds);
+    if (data) {
+      const liked = {};
+      data.forEach(r => { liked[r.post_id] = true; });
+      setLikedPosts(prev => ({ ...prev, ...liked }));
+    }
+  };
+
   const loadPosts = useCallback(async (reset = true) => {
-    if (reset) {
-      setLoading(true);
-      cursorRef.current = null;
-    } else {
-      setLoadingMore(true);
-    }
+    if (reset) { setLoading(true); cursorRef.current = null; }
+    else setLoadingMore(true);
 
-    let query = supabase
-      .from('feed_posts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE);
-
-    if (filter === 'mine') {
-      query = query.contains('target_levels', [level]);
-    }
-    if (!reset && cursorRef.current) {
-      query = query.lt('created_at', cursorRef.current);
-    }
+    let query = supabase.from('feed_posts').select('*')
+      .order('created_at', { ascending: false }).limit(PAGE_SIZE);
+    if (filter === 'mine') query = query.contains('target_levels', [level]);
+    if (!reset && cursorRef.current) query = query.lt('created_at', cursorRef.current);
 
     const { data, error } = await query;
     if (error) Alert.alert('Ошибка', 'Не удалось загрузить ленту');
@@ -113,6 +116,7 @@ export default function FeedScreen({ navigation }) {
     else setPosts(prev => [...prev, ...newPosts]);
     fetchAuthorAvatars(newPosts);
     fetchCommentCounts(newPosts);
+    fetchLikedPosts(newPosts.map(p => p.id));
     setHasMore(newPosts.length === PAGE_SIZE);
     if (newPosts.length > 0) cursorRef.current = newPosts[newPosts.length - 1].created_at;
     if (reset) setLoading(false);
@@ -128,131 +132,132 @@ export default function FeedScreen({ navigation }) {
   const uploadMedia = async (uri, type) => {
     const uriExt = uri.split('?')[0].split('.').pop()?.toLowerCase() || '';
     let ext, contentType;
-    if (type === 'video') {
-      ext = 'mp4'; contentType = 'video/mp4';
-    } else if (uriExt === 'png') {
-      ext = 'png'; contentType = 'image/png';
-    } else {
-      ext = 'jpg'; contentType = 'image/jpeg';
-    }
-
+    if (type === 'video') { ext = 'mp4'; contentType = 'video/mp4'; }
+    else if (uriExt === 'png') { ext = 'png'; contentType = 'image/png'; }
+    else { ext = 'jpg'; contentType = 'image/jpeg'; }
     const path = `${store.userId}/${Date.now()}.${ext}`;
     const response = await fetch(uri);
     const arrayBuffer = await response.arrayBuffer();
-
-    const { error } = await supabase.storage
-      .from('post-media')
-      .upload(path, arrayBuffer, { contentType });
+    const { error } = await supabase.storage.from('post-media').upload(path, arrayBuffer, { contentType });
     if (error) { Alert.alert('Ошибка загрузки', error.message); return null; }
     return `${SUPABASE_URL}/storage/v1/object/public/post-media/${path}`;
   };
 
   const pickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Нужен доступ к галерее');
-      return;
-    }
+    if (status !== 'granted') { Alert.alert('Нужен доступ к галерее'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 0.7,
-      allowsEditing: false,
+      mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.7, allowsEditing: false,
     });
     if (!result.canceled && result.assets?.[0]) {
       const asset = result.assets[0];
       const type = asset.type === 'video' ? 'video' : 'image';
-      setMediaUri(asset.uri);
-      setMediaType(type);
-      setMediaUrl(null);
-      setMediaUploading(true);
-
+      setMediaUri(asset.uri); setMediaType(type); setMediaUrl(null); setMediaUploading(true);
       const gen = ++uploadGenRef.current;
       const url = await uploadMedia(asset.uri, type);
       if (gen !== uploadGenRef.current) return;
-      setMediaUrl(url);
-      setMediaUploading(false);
+      setMediaUrl(url); setMediaUploading(false);
     }
   };
 
   const removeMedia = () => {
     uploadGenRef.current++;
-    setMediaUri(null);
-    setMediaType(null);
-    setMediaUrl(null);
-    setMediaUploading(false);
+    setMediaUri(null); setMediaType(null); setMediaUrl(null); setMediaUploading(false);
   };
 
   const post = async () => {
     if (!text.trim() && !mediaUri) return;
-    if (mediaUploading) {
-      Alert.alert('Подожди', 'Медиафайл ещё загружается...');
-      return;
-    }
+    if (mediaUploading) { Alert.alert('Подожди', 'Медиафайл ещё загружается...'); return; }
     setPosting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const targetLevels = filter === 'mine' ? [level] : ['green', 'yellow', 'red'];
       await supabase.from('feed_posts').insert({
-        author_id: user.id,
-        author_username: store.username || 'Аноним',
-        author_level: level,
-        text: text.trim(),
-        target_levels: targetLevels,
-        media_url: mediaUrl,
+        author_id: user.id, author_username: store.username || 'Аноним',
+        author_level: level, text: text.trim(), target_levels: targetLevels, media_url: mediaUrl,
       });
-      setText('');
-      setMediaUri(null);
-      setMediaType(null);
-      setMediaUrl(null);
-      setMediaUploading(false);
+      setText(''); setMediaUri(null); setMediaType(null); setMediaUrl(null); setMediaUploading(false);
       fetchedAuthors.current.delete(store.userId);
       await loadPosts(true);
     }
     setPosting(false);
   };
 
+  const toggleLike = async (postId) => {
+    const isLiked = !!likedPosts[postId];
+    setLikedPosts(prev => ({ ...prev, [postId]: !isLiked }));
+    setPosts(prev => prev.map(p => p.id === postId
+      ? { ...p, likes: Math.max(0, (p.likes || 0) + (isLiked ? -1 : 1)) }
+      : p
+    ));
+    if (isLiked) {
+      await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', store.userId);
+      await supabase.from('feed_posts').update({ likes: supabase.rpc('decrement', {}) });
+    } else {
+      await supabase.from('post_likes').insert({ post_id: postId, user_id: store.userId });
+    }
+  };
+
+  const onLongPressPost = (item) => {
+    if (item.author_id !== store.userId) return;
+    Alert.alert('Действия с постом', '', [
+      { text: 'Редактировать', onPress: () => { setEditPost(item); setEditText(item.text || ''); } },
+      {
+        text: 'Удалить', style: 'destructive', onPress: () => {
+          Alert.alert('Удалить пост?', 'Это действие необратимо', [
+            { text: 'Отмена', style: 'cancel' },
+            {
+              text: 'Удалить', style: 'destructive', onPress: async () => {
+                await supabase.from('feed_posts').delete().eq('id', item.id).eq('author_id', store.userId);
+                setPosts(prev => prev.filter(p => p.id !== item.id));
+              },
+            },
+          ]);
+        },
+      },
+      { text: 'Отмена', style: 'cancel' },
+    ]);
+  };
+
+  const saveEdit = async () => {
+    if (!editPost || !editText.trim()) return;
+    await supabase.from('feed_posts').update({ text: editText.trim() })
+      .eq('id', editPost.id).eq('author_id', store.userId);
+    setPosts(prev => prev.map(p => p.id === editPost.id ? { ...p, text: editText.trim() } : p));
+    setEditPost(null);
+  };
+
   const openAuthorProfile = (item) => {
     if (item.author_id === store.userId) return;
     navigation.navigate('UserProfile', {
-      user: {
-        user_id: item.author_id,
-        username: item.author_username,
-        level: item.author_level,
-        avatar_url: null,
-        status: '',
-        labels: [],
-      },
+      user: { user_id: item.author_id, username: item.author_username, level: item.author_level, avatar_url: null, status: '', labels: [] },
     });
   };
 
   const renderPost = ({ item }) => {
     const lvlColor = LEVEL_COLORS[item.author_level] || colors.accent;
-    const date = new Date(item.created_at).toLocaleDateString('ru-RU', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-    });
+    const date = new Date(item.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const isOwn = item.author_id === store.userId;
+    const isLiked = !!likedPosts[item.id];
 
     return (
-      <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.cardHeader}
-          onPress={() => openAuthorProfile(item)}
-          disabled={isOwn}
-        >
+      <TouchableOpacity
+        style={styles.card}
+        onLongPress={() => onLongPressPost(item)}
+        delayLongPress={400}
+        activeOpacity={isOwn ? 0.9 : 1}
+      >
+        <TouchableOpacity style={styles.cardHeader} onPress={() => openAuthorProfile(item)} disabled={isOwn}>
           <Avatar
             uri={item.author_id === store.userId ? store.avatarUrl : (avatarMap[item.author_id] || null)}
-            username={item.author_username}
-            level={item.author_level}
-            size={36}
+            username={item.author_username} level={item.author_level} size={36}
           />
           <View style={styles.cardMeta}>
             <Text style={[styles.username, { color: lvlColor }]}>{item.author_username}</Text>
             <Text style={styles.date}>{date}</Text>
           </View>
           <View style={[styles.levelBadge, { borderColor: lvlColor }]}>
-            <Text style={[styles.levelBadgeText, { color: lvlColor }]}>
-              {LEVEL_DATA[item.author_level]?.emoji || '•'}
-            </Text>
+            <Text style={[styles.levelBadgeText, { color: lvlColor }]}>{LEVEL_DATA[item.author_level]?.emoji || '•'}</Text>
           </View>
         </TouchableOpacity>
 
@@ -270,17 +275,19 @@ export default function FeedScreen({ navigation }) {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity
-          style={styles.commentBtn}
-          onPress={() => navigation.navigate('Post', { post: item })}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chatbubble-outline" size={14} color={colors.muted} />
-          <Text style={styles.commentBtnText}>
-            {commentCounts[item.id] ? `${commentCounts[item.id]} комментариев` : 'Комментировать'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(item.id)} activeOpacity={0.7}>
+            <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={16} color={isLiked ? '#e74c3c' : colors.muted} />
+            {(item.likes || 0) > 0 && <Text style={[styles.actionBtnText, isLiked && { color: '#e74c3c' }]}>{item.likes}</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Post', { post: item })} activeOpacity={0.7}>
+            <Ionicons name="chatbubble-outline" size={14} color={colors.muted} />
+            <Text style={styles.actionBtnText}>
+              {commentCounts[item.id] ? `${commentCounts[item.id]}` : 'Комментировать'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -348,9 +355,7 @@ export default function FeedScreen({ navigation }) {
                   </View>
               }
               {mediaUploading ? (
-                <View style={styles.mediaOverlay}>
-                  <ActivityIndicator color="#fff" size="small" />
-                </View>
+                <View style={styles.mediaOverlay}><ActivityIndicator color="#fff" size="small" /></View>
               ) : mediaUrl ? (
                 <View style={[styles.mediaOverlay, styles.mediaOverlayDone]}>
                   <Ionicons name="checkmark" size={16} color="#fff" />
@@ -388,6 +393,37 @@ export default function FeedScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Edit post modal */}
+      <Modal visible={!!editPost} transparent animationType="slide" onRequestClose={() => setEditPost(null)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setEditPost(null)}>
+          <TouchableOpacity activeOpacity={1} style={styles.editModal}>
+            <Text style={styles.editTitle}>Редактировать пост</Text>
+            <TextInput
+              style={styles.editInput}
+              value={editText}
+              onChangeText={setEditText}
+              multiline
+              maxLength={280}
+              autoFocus
+              placeholder="Текст поста..."
+              placeholderTextColor={colors.muted}
+            />
+            <View style={styles.editBtns}>
+              <TouchableOpacity style={styles.editCancelBtn} onPress={() => setEditPost(null)}>
+                <Text style={styles.editCancelText}>Отмена</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.editSaveBtn, !editText.trim() && { opacity: 0.4 }]}
+                onPress={saveEdit}
+                disabled={!editText.trim()}
+              >
+                <Text style={styles.editSaveText}>Сохранить</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -397,11 +433,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { fontSize: 24, fontWeight: 'bold', color: colors.white, marginBottom: 12 },
   filters: { flexDirection: 'row', gap: 8 },
-  filterBtn: {
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: colors.card,
-    borderWidth: 1, borderColor: colors.border,
-  },
+  filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   filterBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   filterText: { color: colors.muted, fontSize: 14 },
   filterTextActive: { color: '#fff', fontWeight: '600' },
@@ -416,59 +448,40 @@ const styles = StyleSheet.create({
   levelBadgeText: { fontSize: 11, fontWeight: '600' },
   postText: { color: colors.white, fontSize: 15, lineHeight: 22, marginBottom: 10 },
   postImage: { width: '100%', height: 200, borderRadius: 10, marginBottom: 10 },
-  videoThumb: {
-    backgroundColor: colors.border, borderRadius: 10, height: 120,
-    alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10,
-  },
+  videoThumb: { backgroundColor: colors.border, borderRadius: 10, height: 120, alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 },
   videoLabel: { color: colors.muted, fontSize: 13 },
-  commentBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
-  commentBtnText: { color: colors.muted, fontSize: 13 },
+
+  actionsRow: { flexDirection: 'row', gap: 16, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  actionBtnText: { color: colors.muted, fontSize: 13 },
 
   empty: { color: colors.muted, textAlign: 'center', marginTop: 60, fontSize: 16 },
-  loadMoreBtn: {
-    alignItems: 'center', paddingVertical: 14,
-    borderRadius: 12, borderWidth: 1, borderColor: colors.border,
-    marginHorizontal: 16, marginBottom: 8,
-  },
+  loadMoreBtn: { alignItems: 'center', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginHorizontal: 16, marginBottom: 8 },
   loadMoreText: { color: colors.muted, fontSize: 14 },
 
   inputBackground: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.background },
-  inputWrap: {
-    position: 'absolute', left: 0, right: 0,
-    borderTopWidth: 1, borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
+  inputWrap: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
   mediaPreviewWrap: { paddingHorizontal: 12, paddingTop: 8, flexDirection: 'row', alignItems: 'flex-start' },
   mediaThumbWrap: { position: 'relative' },
   mediaPreview: { width: 80, height: 80, borderRadius: 10 },
-  videoPreview: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.card, borderRadius: 10, padding: 10, alignSelf: 'flex-start',
-    width: 80, height: 80, justifyContent: 'center',
-  },
+  videoPreview: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.card, borderRadius: 10, padding: 10, width: 80, height: 80, justifyContent: 'center' },
   videoPreviewText: { color: colors.white, fontSize: 11 },
-  mediaOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  mediaOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   mediaOverlayDone: { backgroundColor: 'rgba(76,175,80,0.7)' },
   removeMedia: { marginLeft: 4, marginTop: 2 },
-  inputRow: {
-    flexDirection: 'row', padding: 12, gap: 10, alignItems: 'center',
-  },
+  inputRow: { flexDirection: 'row', padding: 12, gap: 10, alignItems: 'center' },
   mediaBtn: { padding: 4 },
-  input: {
-    flex: 1, backgroundColor: colors.card,
-    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10,
-    color: colors.white, fontSize: 15, maxHeight: 100,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  sendBtn: {
-    backgroundColor: colors.accent, borderRadius: 12,
-    width: 44, alignItems: 'center', justifyContent: 'center', minHeight: 44,
-  },
+  input: { flex: 1, backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, color: colors.white, fontSize: 15, maxHeight: 100, borderWidth: 1, borderColor: colors.border },
+  sendBtn: { backgroundColor: colors.accent, borderRadius: 12, width: 44, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   sendBtnDisabled: { opacity: 0.4 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  editModal: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 16 },
+  editTitle: { fontSize: 17, fontWeight: '700', color: colors.white },
+  editInput: { backgroundColor: colors.background, borderRadius: 12, padding: 14, color: colors.white, fontSize: 15, minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: colors.border },
+  editBtns: { flexDirection: 'row', gap: 12, justifyContent: 'flex-end' },
+  editCancelBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
+  editCancelText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
+  editSaveBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, backgroundColor: colors.accent },
+  editSaveText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

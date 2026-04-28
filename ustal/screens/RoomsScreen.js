@@ -12,6 +12,29 @@ import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { markRead } from '../utils/unread';
 import Avatar from '../components/Avatar';
+import ChatActionMenu from '../components/ChatActionMenu';
+
+function groupReactions(list) {
+  const g = {};
+  (list || []).forEach(r => {
+    if (!g[r.emoji]) g[r.emoji] = { count: 0, hasMe: false };
+    g[r.emoji].count++;
+    if (r.user_id === store.userId) g[r.emoji].hasMe = true;
+  });
+  return Object.entries(g).map(([emoji, d]) => ({ emoji, ...d }));
+}
+
+function ReplyQuote({ username, text }) {
+  return (
+    <View style={styles.replyQuote}>
+      <View style={styles.replyAccent} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.replyAuthor}>{username}</Text>
+        <Text style={styles.replyPreview} numberOfLines={1}>{text}</Text>
+      </View>
+    </View>
+  );
+}
 
 const ROOMS = [
   { id: 'green',  label: 'Зелёная комната', desc: 'Для тех кто держится', color: '#4CAF50', icon: 'leaf-outline' },
@@ -38,6 +61,10 @@ export default function RoomsScreen({ route, navigation }) {
   const [sending, setSending] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [menuMsg, setMenuMsg] = useState(null);
+  const [replyTo, setReplyTo] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [reactions, setReactions] = useState({});
   const flatRef = useRef(null);
   const channelRef = useRef(null);
   const participantsChannelRef = useRef(null);
@@ -92,7 +119,9 @@ export default function RoomsScreen({ route, navigation }) {
       .eq('level', roomId)
       .order('created_at', { ascending: false })
       .limit(50);
-    setMessages((data || []).reverse());
+    const msgs = (data || []).reverse();
+    setMessages(msgs);
+    loadReactions(msgs);
 
     await loadParticipants(roomId);
 
@@ -104,6 +133,12 @@ export default function RoomsScreen({ route, navigation }) {
       }, (payload) => {
         setMessages(prev => [...prev, payload.new]);
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'messages',
+        filter: `level=eq.${roomId}`,
+      }, (payload) => {
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m));
       })
       .on('postgres_changes', {
         event: 'DELETE', schema: 'public', table: 'messages',
@@ -137,33 +172,66 @@ export default function RoomsScreen({ route, navigation }) {
     return () => { show.remove(); hide.remove(); };
   }, []);
 
+  const loadReactions = async (msgs) => {
+    if (!msgs.length) return;
+    const { data } = await supabase.from('message_reactions')
+      .select('message_id, emoji, user_id')
+      .in('message_id', msgs.map(m => m.id))
+      .eq('message_table', 'messages');
+    if (data) {
+      const map = {};
+      data.forEach(r => { if (!map[r.message_id]) map[r.message_id] = []; map[r.message_id].push(r); });
+      setReactions(prev => ({ ...prev, ...map }));
+    }
+  };
+
   const sendMessage = async () => {
+    if (editing) { await saveEdit(); return; }
     if (!text2.trim() || !room) return;
     setSending(true);
-    await supabase.from('messages').insert({
-      username: store.username || 'Аноним',
-      text: text2.trim(),
-      level: room,
-      sender_id: store.userId,
-    });
+    const payload = { username: store.username || 'Аноним', text: text2.trim(), level: room, sender_id: store.userId };
+    if (replyTo) {
+      payload.reply_to_id = replyTo.id;
+      payload.reply_to_text = replyTo.text;
+      payload.reply_to_username = replyTo.username;
+      setReplyTo(null);
+    }
+    await supabase.from('messages').insert(payload);
     setText2('');
     setSending(false);
   };
 
-  const deleteMessage = (item) => {
-    const isOwn = item.sender_id === store.userId || item.username === store.username;
-    if (!isOwn) return;
-    Alert.alert('Удалить сообщение', 'Удалить это сообщение?', [
-      { text: 'Отмена', style: 'cancel' },
-      {
-        text: 'Удалить', style: 'destructive',
-        onPress: async () => {
-          await supabase.from('messages').delete().eq('id', item.id);
-          setMessages(prev => prev.filter(m => m.id !== item.id));
-        },
-      },
-    ]);
+  const saveEdit = async () => {
+    const trimmed = text2.trim();
+    if (!trimmed || !editing) return;
+    await supabase.from('messages').update({ text: trimmed, edited_at: new Date().toISOString() })
+      .eq('id', editing.id).eq('sender_id', store.userId);
+    setMessages(prev => prev.map(m => m.id === editing.id ? { ...m, text: trimmed, edited_at: new Date().toISOString() } : m));
+    setText2(''); setEditing(null); setSending(false);
   };
+
+  const deleteMessage = async (item) => {
+    await supabase.from('messages').delete().eq('id', item.id);
+    setMessages(prev => prev.filter(m => m.id !== item.id));
+  };
+
+  const toggleReaction = async (messageId, emoji) => {
+    const list = reactions[messageId] || [];
+    const has = list.find(r => r.emoji === emoji && r.user_id === store.userId);
+    if (has) {
+      setReactions(prev => ({ ...prev, [messageId]: (prev[messageId] || []).filter(r => !(r.emoji === emoji && r.user_id === store.userId)) }));
+      await supabase.from('message_reactions').delete()
+        .eq('message_id', messageId).eq('message_table', 'messages').eq('user_id', store.userId).eq('emoji', emoji);
+    } else {
+      const r = { message_id: messageId, message_table: 'messages', user_id: store.userId, emoji };
+      setReactions(prev => ({ ...prev, [messageId]: [...(prev[messageId] || []), r] }));
+      await supabase.from('message_reactions').insert(r);
+    }
+  };
+
+  const startEdit = (item) => { setEditing(item); setText2(item.text); setReplyTo(null); };
+  const startReply = (item) => { setReplyTo(item); setEditing(null); };
+  const cancelContext = () => { setEditing(null); setReplyTo(null); setText2(''); };
 
   if (!room) {
     const myRoom = ROOMS.find(r => r.id === userLevel);
@@ -275,19 +343,36 @@ export default function RoomsScreen({ route, navigation }) {
           renderItem={({ item }) => {
             const isMe = item.sender_id === store.userId || item.username === store.username;
             const lvlColor = LEVEL_COLORS[item.level] || colors.accent;
+            const rxs = groupReactions(reactions[item.id]);
             return (
-              <TouchableOpacity onLongPress={() => deleteMessage(item)} activeOpacity={0.8} delayLongPress={400}>
-                <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
-                  <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}>
-                    <Avatar uri={isMe ? store.avatarUrl : null} username={item.username} level={item.level} size={30} />
-                  </TouchableOpacity>
-                  <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
-                    {!isMe && <Text style={[styles.msgUsername, { color: lvlColor }]}>{item.username}</Text>}
-                    <Text style={styles.msgText}>{item.text}</Text>
-                    <Text style={styles.msgTime}>{formatTime(item.created_at)}</Text>
+              <View>
+                <TouchableOpacity onLongPress={() => setMenuMsg(item)} activeOpacity={0.8} delayLongPress={350}>
+                  <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
+                    <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}>
+                      <Avatar uri={isMe ? store.avatarUrl : null} username={item.username} level={item.level} size={30} />
+                    </TouchableOpacity>
+                    <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
+                      {!isMe && <Text style={[styles.msgUsername, { color: lvlColor }]}>{item.username}</Text>}
+                      {item.reply_to_text && <ReplyQuote username={item.reply_to_username} text={item.reply_to_text} />}
+                      <Text style={styles.msgText}>{item.text}</Text>
+                      <View style={styles.bubbleFoot}>
+                        {item.edited_at && <Text style={styles.editedLabel}>ред.</Text>}
+                        <Text style={styles.msgTime}>{formatTime(item.created_at)}</Text>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+                {rxs.length > 0 && (
+                  <View style={[styles.reactRow, isMe ? styles.reactRowMe : styles.reactRowOther]}>
+                    {rxs.map(({ emoji, count, hasMe }) => (
+                      <TouchableOpacity key={emoji} style={[styles.reactPill, hasMe && styles.reactPillMe]} onPress={() => toggleReaction(item.id, emoji)}>
+                        <Text style={styles.reactEmoji}>{emoji}</Text>
+                        <Text style={styles.reactCount}>{count}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
             );
           }}
           ListEmptyComponent={
@@ -298,10 +383,28 @@ export default function RoomsScreen({ route, navigation }) {
           }
         />
 
+        {(replyTo || editing) && (
+          <View style={styles.contextBar}>
+            <Ionicons name={editing ? 'pencil-outline' : 'return-down-forward-outline'} size={14} color={colors.accent} />
+            <View style={{ flex: 1 }}>
+              {editing
+                ? <Text style={styles.contextLabel}>Редактирование</Text>
+                : <>
+                    <Text style={styles.contextLabel}>{replyTo.username}</Text>
+                    <Text style={styles.contextSub} numberOfLines={1}>{replyTo.text}</Text>
+                  </>
+              }
+            </View>
+            <TouchableOpacity onPress={cancelContext}>
+              <Ionicons name="close" size={18} color={colors.muted} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
           <TextInput
             style={styles.input}
-            placeholder="Написать..."
+            placeholder={editing ? 'Редактировать...' : 'Написать...'}
             placeholderTextColor={colors.muted}
             value={text2}
             onChangeText={setText2}
@@ -316,11 +419,21 @@ export default function RoomsScreen({ route, navigation }) {
           >
             {sending
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Ionicons name="arrow-up" size={20} color="#fff" />
+              : <Ionicons name={editing ? 'checkmark' : 'arrow-up'} size={20} color="#fff" />
             }
           </TouchableOpacity>
         </View>
       </View>
+
+      <ChatActionMenu
+        message={menuMsg}
+        isOwn={menuMsg ? (menuMsg.sender_id === store.userId || menuMsg.username === store.username) : false}
+        onClose={() => setMenuMsg(null)}
+        onReply={() => startReply(menuMsg)}
+        onEdit={() => startEdit(menuMsg)}
+        onDelete={() => { deleteMessage(menuMsg); setMenuMsg(null); }}
+        onReact={(emoji) => toggleReaction(menuMsg.id, emoji)}
+      />
     </View>
   );
 }
@@ -382,7 +495,27 @@ const styles = StyleSheet.create({
   msgBubbleMe: { backgroundColor: '#EDE8FF', borderBottomRightRadius: 4 },
   msgUsername: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   msgText: { color: colors.white, fontSize: 15, lineHeight: 21 },
-  msgTime: { fontSize: 10, color: 'rgba(0,0,0,0.35)', textAlign: 'right', marginTop: 3 },
+  bubbleFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 3 },
+  editedLabel: { fontSize: 10, color: 'rgba(0,0,0,0.3)', fontStyle: 'italic' },
+  msgTime: { fontSize: 10, color: 'rgba(0,0,0,0.35)' },
+
+  replyQuote: { flexDirection: 'row', gap: 6, marginBottom: 6, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 8, padding: 6 },
+  replyAccent: { width: 2, borderRadius: 2, backgroundColor: colors.accent },
+  replyAuthor: { fontSize: 11, fontWeight: '700', color: colors.accent, marginBottom: 1 },
+  replyPreview: { fontSize: 12, color: colors.muted },
+
+  reactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8, paddingHorizontal: 42 },
+  reactRowMe: { justifyContent: 'flex-end' },
+  reactRowOther: { justifyContent: 'flex-start' },
+  reactPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: colors.border },
+  reactPillMe: { borderColor: colors.accent, backgroundColor: colors.accent + '18' },
+  reactEmoji: { fontSize: 14 },
+  reactCount: { fontSize: 12, color: colors.white, fontWeight: '600' },
+
+  contextBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
+  contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },
+  contextSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
+
   emptyChat: { alignItems: 'center', marginTop: 60 },
   emptyChatText: { color: colors.muted, fontSize: 15 },
 
