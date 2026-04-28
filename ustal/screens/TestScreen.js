@@ -4,6 +4,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS, TEST_PACKS } from '../constants';
 import { colors, shared } from '../theme';
+import { scheduleQuestNotifications } from '../utils/notifications';
 
 function isWithin24Hours(dateStr) {
   return (Date.now() - new Date(dateStr).getTime()) < 24 * 60 * 60 * 1000;
@@ -27,6 +28,7 @@ export default function TestScreen({ navigation }) {
   const [lastResult, setLastResult] = useState(null);
   const [pack, setPack] = useState(null); // { title, questions }
   const [packId, setPackId] = useState(0);
+  const [isFirstTest, setIsFirstTest] = useState(false);
 
   useEffect(() => {
     const check = async () => {
@@ -49,6 +51,7 @@ export default function TestScreen({ navigation }) {
           const nextPackId = (lastPackId + 1) % TEST_PACKS.length;
           setPackId(nextPackId);
           setPack(TEST_PACKS[nextPackId]);
+          if (!data) setIsFirstTest(true);
         }
       }
       setChecking(false);
@@ -65,6 +68,7 @@ export default function TestScreen({ navigation }) {
         supabase.from('test_results').insert({ user_id: user.id, level: lvl, score, pack_id: packId }),
       ]);
     }
+    scheduleQuestNotifications(lvl);
   };
 
   const answer = async (isPessimistic) => {
@@ -143,7 +147,7 @@ export default function TestScreen({ navigation }) {
         ) : (
           <TouchableOpacity
             style={[shared.button, { backgroundColor: lvlData.color }]}
-            onPress={() => navigation.replace('Recommendations', { level })}
+            onPress={() => navigation.replace(isFirstTest ? 'OnboardingMoment' : 'Recommendations', { level })}
           >
             <Text style={shared.buttonText}>Смотреть рекомендации →</Text>
           </TouchableOpacity>

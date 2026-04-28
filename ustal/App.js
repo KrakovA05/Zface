@@ -9,13 +9,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
-import { registerForPushNotifications } from './utils/notifications';
+import { registerForPushNotifications, scheduleQuestNotifications } from './utils/notifications';
 import { getLastRead } from './utils/unread';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import EmailConfirmScreen from './screens/EmailConfirmScreen';
 import TestScreen from './screens/TestScreen';
 import RecommendationsScreen from './screens/RecommendationsScreen';
+import OnboardingMomentScreen from './screens/OnboardingMomentScreen';
+import ThoughtsScreen from './screens/ThoughtsScreen';
 import HomeScreen from './screens/HomeScreen';
 import MessagesScreen from './screens/MessagesScreen';
 import ChatScreen from './screens/ChatScreen';
@@ -27,7 +30,6 @@ import UserProfileScreen from './screens/UserProfileScreen';
 import FeedScreen from './screens/FeedScreen';
 import RoomsScreen from './screens/RoomsScreen';
 import FishingScreen from './screens/FishingScreen';
-import BarScreen from './screens/BarScreen';
 import PostScreen from './screens/PostScreen';
 
 const Stack = createNativeStackNavigator();
@@ -177,16 +179,39 @@ function MainTabs() {
         .map(m => m.conversation_id)
     )];
 
-    let dmUnread = 0;
+    let unreadChats = 0;
+
     for (const cid of convIds) {
       const lastRead = await getLastRead(`dm_${cid}`);
       const hasUnread = (dms || []).some(m =>
         m.conversation_id === cid &&
         (!lastRead || new Date(m.created_at) > new Date(lastRead))
       );
-      if (hasUnread) dmUnread++;
+      if (hasUnread) unreadChats++;
     }
-    setMsgBadge(dmUnread || null);
+
+    const checkGroupChat = async (level, key, excludeField, excludeValue) => {
+      const lastRead = await getLastRead(key);
+      let query = supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('level', level)
+        .neq(excludeField, excludeValue);
+      if (lastRead) query = query.gt('created_at', lastRead);
+      const { count } = await query;
+      return (count || 0) > 0;
+    };
+
+    const globalUnread = await checkGroupChat('global', 'global', 'sender_id', store.userId);
+    if (globalUnread) unreadChats++;
+
+    const userLevel = store.level;
+    if (userLevel) {
+      const roomUnread = await checkGroupChat(userLevel, `room_${userLevel}`, 'sender_id', store.userId);
+      if (roomUnread) unreadChats++;
+    }
+
+    setMsgBadge(unreadChats || null);
   }, []);
 
   useEffect(() => {
@@ -250,6 +275,7 @@ export default function App() {
           registerForPushNotifications().then(token => {
             if (token) supabase.from('users').update({ push_token: token }).eq('user_id', session.user.id);
           });
+          scheduleQuestNotifications(userData?.level || 'green');
         } else {
           setInitialRoute('Login');
         }
@@ -291,8 +317,10 @@ export default function App() {
           >
             <Stack.Screen name="Login"           component={LoginScreen} />
             <Stack.Screen name="Register"        component={RegisterScreen} />
+            <Stack.Screen name="EmailConfirm"    component={EmailConfirmScreen} />
             <Stack.Screen name="Test"            component={TestScreen} />
-            <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
+            <Stack.Screen name="Recommendations"     component={RecommendationsScreen} />
+            <Stack.Screen name="OnboardingMoment"    component={OnboardingMomentScreen} />
             <Stack.Screen name="Main"            component={MainTabs} options={{ gestureEnabled: false }} />
             <Stack.Screen name="DirectMessage"   component={DirectMessageScreen} />
             <Stack.Screen name="UserProfile"     component={UserProfileScreen} />
@@ -300,8 +328,8 @@ export default function App() {
             <Stack.Screen name="Chat"            component={ChatScreen} />
             <Stack.Screen name="Breathing"        component={BreathingScreen} />
             <Stack.Screen name="Fishing"         component={FishingScreen} />
-            <Stack.Screen name="Bar"             component={BarScreen} />
             <Stack.Screen name="Post"            component={PostScreen} />
+            <Stack.Screen name="Thoughts"        component={ThoughtsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         </SafeAreaView>

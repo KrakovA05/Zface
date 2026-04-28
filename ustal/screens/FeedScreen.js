@@ -30,6 +30,7 @@ export default function FeedScreen({ navigation }) {
   const [posting, setPosting] = useState(false);
   const filter = 'all';
   const [avatarMap, setAvatarMap] = useState({});
+  const [levelMap, setLevelMap] = useState({});
   const [commentCounts, setCommentCounts] = useState({});
   const [likedPosts, setLikedPosts] = useState({});
 
@@ -78,11 +79,13 @@ export default function FeedScreen({ navigation }) {
       .filter(id => id && !fetchedAuthors.current.has(id));
     if (!toFetch.length) return;
     toFetch.forEach(id => fetchedAuthors.current.add(id));
-    const { data } = await supabase.from('users').select('user_id, avatar_url').in('user_id', toFetch);
+    const { data } = await supabase.from('users').select('user_id, avatar_url, level').in('user_id', toFetch);
     if (data) {
-      const entries = {};
-      data.forEach(u => { entries[u.user_id] = u.avatar_url; });
-      setAvatarMap(prev => ({ ...prev, ...entries }));
+      const avatars = {};
+      const levels = {};
+      data.forEach(u => { avatars[u.user_id] = u.avatar_url; levels[u.user_id] = u.level; });
+      setAvatarMap(prev => ({ ...prev, ...avatars }));
+      setLevelMap(prev => ({ ...prev, ...levels }));
     }
   };
 
@@ -230,12 +233,13 @@ export default function FeedScreen({ navigation }) {
   const openAuthorProfile = (item) => {
     if (item.author_id === store.userId) return;
     navigation.navigate('UserProfile', {
-      user: { user_id: item.author_id, username: item.author_username, level: item.author_level, avatar_url: null, status: '', labels: [] },
+      user: { user_id: item.author_id, username: item.author_username, level: levelMap[item.author_id] || item.author_level, avatar_url: null, status: '', labels: [] },
     });
   };
 
   const renderPost = ({ item }) => {
-    const lvlColor = LEVEL_COLORS[item.author_level] || colors.accent;
+    const currentLevel = item.author_id === store.userId ? store.level : (levelMap[item.author_id] || item.author_level);
+    const lvlColor = LEVEL_COLORS[currentLevel] || colors.accent;
     const date = new Date(item.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const isOwn = item.author_id === store.userId;
     const isLiked = !!likedPosts[item.id];
@@ -250,14 +254,14 @@ export default function FeedScreen({ navigation }) {
         <TouchableOpacity style={styles.cardHeader} onPress={() => openAuthorProfile(item)} disabled={isOwn}>
           <Avatar
             uri={item.author_id === store.userId ? store.avatarUrl : (avatarMap[item.author_id] || null)}
-            username={item.author_username} level={item.author_level} size={36}
+            username={item.author_username} level={currentLevel} size={36}
           />
           <View style={styles.cardMeta}>
             <Text style={[styles.username, { color: lvlColor }]}>{item.author_username}</Text>
             <Text style={styles.date}>{date}</Text>
           </View>
           <View style={[styles.levelBadge, { borderColor: lvlColor }]}>
-            <Text style={[styles.levelBadgeText, { color: lvlColor }]}>{LEVEL_DATA[item.author_level]?.emoji || '•'}</Text>
+            <Text style={[styles.levelBadgeText, { color: lvlColor }]}>{LEVEL_DATA[currentLevel]?.emoji || '•'}</Text>
           </View>
         </TouchableOpacity>
 

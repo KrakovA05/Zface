@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_COLORS, DAILY_QUESTIONS } from '../constants';
+import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_WORDS } from '../constants';
 import { colors } from '../theme';
 
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
@@ -21,7 +21,7 @@ const MODULE_ITEMS = [
   { icon: 'people-outline',     label: 'Комнаты', route: 'Rooms'   },
   { icon: 'sync-outline',        label: 'Дыхание', route: 'Breathing' },
   { icon: 'fish-outline',       label: 'Рыбалка', route: 'Fishing' },
-  { icon: 'beer-outline',       label: 'Бар',     route: 'Bar'     },
+  { icon: 'pencil-outline',     label: 'Мысли',   route: 'Thoughts' },
 ];
 
 let testReminderShown = false;
@@ -44,7 +44,23 @@ function getTodayQuestion() {
 }
 
 function getTodayDate() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+}
+
+function getTodayWord() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const day = Math.floor((now - start) / 86400000);
+  return DAILY_WORDS[day % DAILY_WORDS.length];
+}
+
+function pluralPeople(n) {
+  if (n < 0) return 'человек';
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'человек';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'человека';
+  return 'человек';
 }
 
 export default function HomeScreen({ navigation }) {
@@ -57,7 +73,12 @@ export default function HomeScreen({ navigation }) {
   const [dailyAnswer,    setDailyAnswer]    = useState('');
   const [dailyAnswered,  setDailyAnswered]  = useState(null);
   const [dailySubmitting,setDailySubmitting]= useState(false);
+  const [otherAnswers,   setOtherAnswers]   = useState([]);
+  const [wordTapped,     setWordTapped]     = useState(false);
+  const [wordCount,      setWordCount]      = useState(0);
+  const [communityCount, setCommunityCount] = useState(0);
   const dailyQuestion = getTodayQuestion();
+  const todayWord = getTodayWord();
 
   useFocusEffect(useCallback(() => {
     const load = async () => {
@@ -69,9 +90,20 @@ export default function HomeScreen({ navigation }) {
           .eq('user_id', user.id).order('created_at', { ascending: false }).limit(5);
 
         if (recent?.length) {
-          setLevel(recent[0].level);
-          store.level = recent[0].level;
+          const currentLevel = recent[0].level;
+          setLevel(currentLevel);
+          store.level = currentLevel;
           setHistory(recent);
+
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          const { count: cc } = await supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('level', currentLevel)
+            .gte('last_seen', todayStart.toISOString())
+            .neq('user_id', user.id);
+          setCommunityCount(cc || 0);
 
           if (!testReminderShown) {
             const days = (Date.now() - new Date(recent[0].created_at).getTime()) / 86400000;
@@ -99,11 +131,43 @@ export default function HomeScreen({ navigation }) {
           .from('daily_answers').select('answer')
           .eq('user_id', user.id).eq('question_date', today).maybeSingle();
         setDailyAnswered(ans ? ans.answer : false);
+        if (ans) fetchOtherAnswers(user.id);
+
+        const word = getTodayWord();
+        const { data: myTap } = await supabase
+          .from('daily_word_taps').select('reaction')
+          .eq('user_id', user.id).eq('word_date', today).maybeSingle();
+        setWordTapped(myTap ? myTap.reaction : false);
+        const { count } = await supabase
+          .from('daily_word_taps').select('*', { count: 'exact', head: true })
+          .eq('word_date', today).eq('word', word).eq('reaction', 'yes');
+        setWordCount(count || 0);
       }
       setLoading(false);
     };
     load();
   }, []));
+
+  const tapWord = async (reaction) => {
+    if (wordTapped) return;
+    setWordTapped(reaction);
+    if (reaction === 'yes') setWordCount(c => c + 1);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('daily_word_taps').insert({
+        user_id: user.id, word: todayWord, word_date: getTodayDate(), reaction,
+      });
+    }
+  };
+
+  const fetchOtherAnswers = async (userId) => {
+    const { data } = await supabase
+      .from('daily_answers').select('answer')
+      .eq('question_date', getTodayDate())
+      .neq('user_id', userId)
+      .limit(20);
+    setOtherAnswers((data || []).map(a => a.answer));
+  };
 
   const submitDailyAnswer = async () => {
     if (!dailyAnswer.trim()) return;
@@ -114,7 +178,11 @@ export default function HomeScreen({ navigation }) {
         user_id: user.id, question_date: getTodayDate(),
         question_text: dailyQuestion, answer: dailyAnswer.trim(),
       });
-      if (!error) { setDailyAnswered(dailyAnswer.trim()); setDailyAnswer(''); }
+      if (!error) {
+        setDailyAnswered(dailyAnswer.trim());
+        setDailyAnswer('');
+        fetchOtherAnswers(user.id);
+      }
     }
     setDailySubmitting(false);
   };
@@ -159,6 +227,15 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+        {!loading && communityCount > 0 && (
+          <View style={styles.communityStrip}>
+            <Ionicons name="people-outline" size={14} color={colors.muted} />
+            <Text style={styles.communityText}>
+              сегодня {communityCount} {pluralPeople(communityCount)} с твоим уровнем заходили
+            </Text>
+          </View>
+        )}
+
         <View style={styles.ctaRow}>
           <TouchableOpacity
             style={[styles.ctaPrimary, { backgroundColor: lvlColor }]}
@@ -177,6 +254,27 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.ctaSecondaryText}>Рекомендации</Text>
           </TouchableOpacity>
         </View>
+
+        {!loading && wordTapped !== 'no' && (
+          <View style={styles.wordCard}>
+            <Text style={styles.wordLabel}>Слово дня</Text>
+            <Text style={[styles.wordText, { color: lvlColor }]}>{todayWord}</Text>
+            {wordTapped === 'yes' ? (
+              <Text style={styles.wordCount}>
+                ты и ещё {wordCount > 1 ? wordCount - 1 : 0} {pluralPeople(wordCount - 1)} чувствуют то же
+              </Text>
+            ) : (
+              <View style={styles.wordBtns}>
+                <TouchableOpacity style={[styles.wordBtn, { borderColor: lvlColor }]} onPress={() => tapWord('yes')}>
+                  <Text style={[styles.wordBtnText, { color: lvlColor }]}>да, это про меня</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.wordBtnNo} onPress={() => tapWord('no')}>
+                  <Text style={styles.wordBtnNoText}>мимо</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
 
         {!loading && (
           <View style={styles.dailyCard}>
@@ -205,7 +303,17 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             ) : dailyAnswered ? (
-              <Text style={styles.dailyAnswerText}>«{dailyAnswered}»</Text>
+              <View>
+                <Text style={styles.dailyAnswerText}>«{dailyAnswered}»</Text>
+                <View style={styles.dailyOthersBlock}>
+                  <Text style={styles.dailyOthersLabel}>
+                    {otherAnswers.length > 0 ? 'Другие сегодня' : 'Ты пока единственный кто ответил'}
+                  </Text>
+                  {otherAnswers.map((a, i) => (
+                    <Text key={i} style={styles.dailyOtherAnswer}>«{a}»</Text>
+                  ))}
+                </View>
+              </View>
             ) : null}
           </View>
         )}
@@ -376,6 +484,12 @@ const styles = StyleSheet.create({
   dynamicLabel: { fontSize: 12, fontWeight: '600' },
   noTestHint:   { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
 
+  communityStrip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginBottom: 14, paddingHorizontal: 4,
+  },
+  communityText: { fontSize: 13, color: colors.muted },
+
   // CTA row
   ctaRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   ctaPrimary: {
@@ -389,6 +503,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
   },
   ctaSecondaryText: { color: colors.white, fontWeight: '600', fontSize: 14 },
+
+  // Word of the day
+  wordCard: {
+    backgroundColor: colors.card, borderRadius: 16,
+    padding: 18, marginBottom: 16, alignItems: 'flex-start',
+  },
+  wordLabel: { fontSize: 11, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  wordText: { fontSize: 32, fontWeight: 'bold', marginBottom: 14 },
+  wordBtns: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  wordBtn: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  wordBtnText: { fontSize: 14, fontWeight: '600' },
+  wordBtnNo: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderColor: colors.border },
+  wordBtnNoText: { fontSize: 14, color: colors.muted },
+  wordCount: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
 
   // Daily question
   dailyCard: {
@@ -406,6 +534,9 @@ const styles = StyleSheet.create({
     width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
   },
   dailyAnswerText: { color: colors.muted, fontSize: 14, fontStyle: 'italic', lineHeight: 20 },
+  dailyOthersBlock: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border, gap: 8 },
+  dailyOthersLabel: { fontSize: 11, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 4 },
+  dailyOtherAnswer: { fontSize: 14, color: colors.white, fontStyle: 'italic', lineHeight: 20, opacity: 0.7 },
 
   // Section headers
   sectionLabel: {

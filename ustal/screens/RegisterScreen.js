@@ -8,6 +8,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LABELS } from '../constants';
 import { colors } from '../theme';
+import { EMAIL_CONFIRM_ENABLED } from '../config';
 
 const validateName = (v) => {
   if (!v.trim()) return 'Введи имя';
@@ -72,23 +73,32 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Ошибка регистрации', error.message);
       return;
     }
-    const { error: insertError } = await supabase.from('users').insert({
-      username: name.trim(),
-      labels: selected,
-      user_id: data.user.id,
-      email,
-    });
-    if (insertError) {
-      await supabase.auth.signOut();
-      setLoading(false);
-      Alert.alert('Ошибка', 'Не удалось создать профиль. Попробуй ещё раз.');
-      return;
-    }
     setLoading(false);
-    store.userId = data.user.id;
-    store.username = name.trim();
-    store.email = email;
-    navigation.navigate('Test');
+    if (EMAIL_CONFIRM_ENABLED) {
+      navigation.navigate('EmailConfirm', {
+        email,
+        password,
+        username: name.trim(),
+        labels: selected,
+      });
+    } else {
+      const { error: insertError } = await supabase.from('users').upsert({
+        username: name.trim(),
+        labels: selected,
+        user_id: data.user.id,
+        email,
+      }, { onConflict: 'user_id' });
+      if (insertError) {
+        await supabase.auth.signOut();
+        setLoading(false);
+        Alert.alert('Ошибка', 'Не удалось создать профиль. Попробуй ещё раз.');
+        return;
+      }
+      store.userId = data.user.id;
+      store.username = name.trim();
+      store.email = email;
+      navigation.navigate('Test');
+    }
   };
 
   return (

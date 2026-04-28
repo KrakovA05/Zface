@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
+import { markRead } from '../utils/unread';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 
@@ -92,6 +93,8 @@ function GlobalChat({ navigation }) {
     const { data } = await supabase.from('messages').select('*')
       .eq('level', 'global').order('created_at', { ascending: false }).limit(50);
     if (data) { setMessages(data); fetchAvatars(data); loadReactions(data); }
+    await markRead('global');
+    store.refreshBadges?.();
   };
 
   const loadReactions = async (msgs) => {
@@ -139,15 +142,15 @@ function GlobalChat({ navigation }) {
 
   const toggleReaction = async (messageId, emoji) => {
     const list = reactions[messageId] || [];
-    const has = list.find(r => r.emoji === emoji && r.user_id === store.userId);
-    if (has) {
-      setReactions(prev => ({ ...prev, [messageId]: (prev[messageId] || []).filter(r => !(r.emoji === emoji && r.user_id === store.userId)) }));
+    const myReaction = list.find(r => r.user_id === store.userId);
+    if (myReaction?.emoji === emoji) {
+      setReactions(prev => ({ ...prev, [messageId]: (prev[messageId] || []).filter(r => r.user_id !== store.userId) }));
       await supabase.from('message_reactions').delete()
-        .eq('message_id', messageId).eq('message_table', 'messages').eq('user_id', store.userId).eq('emoji', emoji);
+        .eq('message_id', messageId).eq('message_table', 'messages').eq('user_id', store.userId);
     } else {
       const r = { message_id: messageId, message_table: 'messages', user_id: store.userId, emoji };
-      setReactions(prev => ({ ...prev, [messageId]: [...(prev[messageId] || []), r] }));
-      await supabase.from('message_reactions').insert(r);
+      setReactions(prev => ({ ...prev, [messageId]: [...(prev[messageId] || []).filter(x => x.user_id !== store.userId), r] }));
+      await supabase.from('message_reactions').upsert(r, { onConflict: 'message_id,message_table,user_id' });
     }
   };
 

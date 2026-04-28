@@ -47,6 +47,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
+  const [testHistory, setTestHistory] = useState(null);
 
   useEffect(() => {
     if (isMe) return;
@@ -54,7 +55,7 @@ export default function UserProfileScreen({ route, navigation }) {
     loadBlockStatus();
     supabase
       .from('users')
-      .select('status, avatar_url, last_seen')
+      .select('status, avatar_url, last_seen, show_history')
       .eq('user_id', user.user_id)
       .single()
       .then(({ data }) => {
@@ -62,6 +63,15 @@ export default function UserProfileScreen({ route, navigation }) {
           setLiveStatus(data.status || '');
           setLiveAvatarUrl(data.avatar_url || null);
           setIsOnline(data.last_seen && (Date.now() - new Date(data.last_seen).getTime()) < 3 * 60 * 1000);
+          if (data.show_history) {
+            supabase
+              .from('test_results')
+              .select('level, created_at')
+              .eq('user_id', user.user_id)
+              .order('created_at', { ascending: false })
+              .limit(10)
+              .then(({ data: history }) => setTestHistory(history || []));
+          }
         }
       });
   }, []);
@@ -309,6 +319,23 @@ export default function UserProfileScreen({ route, navigation }) {
             </View>
           </View>
         )}
+
+        {testHistory && testHistory.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Динамика</Text>
+            {testHistory.map((r, i) => (
+              <View key={i} style={[styles.historyRow, i < testHistory.length - 1 && styles.historyRowBorder]}>
+                <View style={[styles.historyDot, { backgroundColor: LEVEL_COLORS[r.level] }]} />
+                <Text style={[styles.historyLevel, { color: LEVEL_COLORS[r.level] }]}>
+                  {{ green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' }[r.level]}
+                </Text>
+                <Text style={styles.historyDate}>
+                  {new Date(r.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -350,4 +377,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.accent + '55',
   },
   chipText: { color: colors.accent, fontSize: 13 },
+
+  historyRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, gap: 10,
+  },
+  historyRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  historyDot: { width: 8, height: 8, borderRadius: 4 },
+  historyLevel: { flex: 1, fontSize: 14, fontWeight: '600' },
+  historyDate: { fontSize: 12, color: colors.muted },
 });

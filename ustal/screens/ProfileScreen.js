@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TouchableOpacity, Share,
-  ScrollView, Alert, TextInput, ActivityIndicator, Linking,
+  ScrollView, Alert, TextInput, ActivityIndicator, Linking, Switch,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -59,6 +59,7 @@ export default function ProfileScreen({ navigation }) {
     () => MOTIVATORS[Math.floor(Math.random() * MOTIVATORS.length)]
   );
   const [earnedAchievements, setEarnedAchievements] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -67,7 +68,7 @@ export default function ProfileScreen({ navigation }) {
         try {
           const { data, error } = await supabase
             .from('users')
-            .select('status, avatar_url')
+            .select('status, avatar_url, show_history')
             .eq('user_id', store.userId)
             .single();
           if (error) throw error;
@@ -76,6 +77,7 @@ export default function ProfileScreen({ navigation }) {
             store.avatarUrl = data.avatar_url || '';
             setStatus(data.status || '');
             setAvatarUri(data.avatar_url || null);
+            setShowHistory(!!data.show_history);
           }
         } catch {
           // тихий fallback
@@ -170,6 +172,11 @@ export default function ProfileScreen({ navigation }) {
 
     const allEarned = ACHIEVEMENTS.filter(a => earned.has(a.id));
     setEarnedAchievements(allEarned);
+  };
+
+  const toggleShowHistory = async (value) => {
+    setShowHistory(value);
+    await supabase.from('users').update({ show_history: value }).eq('user_id', store.userId);
   };
 
   const saveStatus = async () => {
@@ -352,8 +359,20 @@ export default function ProfileScreen({ navigation }) {
             label="Уровень"
             value={level.label}
             valueColor={level.color}
-            last
+            last={false}
           />
+          <View style={[styles.row, styles.rowLast]}>
+            <View style={[styles.rowIconWrap, { backgroundColor: colors.accent + '22' }]}>
+              <Ionicons name="stats-chart-outline" size={18} color={colors.accent} />
+            </View>
+            <Text style={styles.rowLabel}>Показывать мою динамику</Text>
+            <Switch
+              value={showHistory}
+              onValueChange={toggleShowHistory}
+              trackColor={{ false: colors.border, true: colors.accent + '88' }}
+              thumbColor={showHistory ? colors.accent : colors.muted}
+            />
+          </View>
         </Section>
 
         {/* Мотиватор */}

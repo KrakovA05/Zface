@@ -42,8 +42,6 @@ const ROOMS = [
   { id: 'red',    label: 'Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336', icon: 'flame-outline' },
 ];
 
-const LEVEL_ICONS = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'flame-outline' };
-
 function formatTime(dateStr) {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -65,6 +63,8 @@ export default function RoomsScreen({ route, navigation }) {
   const [replyTo, setReplyTo] = useState(null);
   const [editing, setEditing] = useState(null);
   const [reactions, setReactions] = useState({});
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [presenceCounts, setPresenceCounts] = useState({ named: 0, anon: 0 });
   const flatRef = useRef(null);
   const channelRef = useRef(null);
   const participantsChannelRef = useRef(null);
@@ -85,21 +85,30 @@ export default function RoomsScreen({ route, navigation }) {
   }, []));
 
   useEffect(() => {
-    if (openRoom && openRoom === userLevel) enterRoom(openRoom);
+    if (openRoom && openRoom === userLevel) promptEnterRoom(openRoom);
   }, []);
 
   const loadParticipants = async (roomId) => {
     const { data } = await supabase
       .from('users')
-      .select('user_id, username, level, avatar_url, status')
+      .select('user_id, username, level, avatar_url, status, last_seen')
       .eq('level', roomId);
     setParticipants(data || []);
   };
 
-  const VALID_ROOMS = ['green', 'yellow', 'red'];
+  const promptEnterRoom = (roomId) => {
+    Alert.alert(
+      'Как зайти?',
+      'Можно участвовать в разговоре или просто посидеть молча',
+      [
+        { text: 'С именем', onPress: () => enterRoom(roomId, false) },
+        { text: 'Анонимно', onPress: () => enterRoom(roomId, true) },
+        { text: 'Отмена', style: 'cancel' },
+      ]
+    );
+  };
 
-  const enterRoom = async (roomId) => {
-    if (!VALID_ROOMS.includes(roomId)) return;
+  const enterRoom = async (roomId, anonymous = false) => {
     if (roomId !== userLevel) return;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
@@ -109,7 +118,10 @@ export default function RoomsScreen({ route, navigation }) {
       supabase.removeChannel(participantsChannelRef.current);
       participantsChannelRef.current = null;
     }
+
     setMessages([]);
+    setIsAnonymous(anonymous);
+    setPresenceCounts({ named: 0, anon: 0 });
     setRoom(roomId);
     await markRead(`room_${roomId}`);
 
@@ -123,10 +135,10 @@ export default function RoomsScreen({ route, navigation }) {
     setMessages(msgs);
     loadReactions(msgs);
 
-    await loadParticipants(roomId);
+    if (!anonymous) await loadParticipants(roomId);
 
     const channel = supabase
-      .channel(`room_${roomId}`)
+      .channel(`room_${roomId}`, { config: { presence: { key: store.userId } } })
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `level=eq.${roomId}`,
@@ -146,15 +158,29 @@ export default function RoomsScreen({ route, navigation }) {
       }, (payload) => {
         setMessages(prev => prev.filter(m => m.id !== payload.old.id));
       })
-      .subscribe();
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        let named = 0, anon = 0;
+        Object.values(state).forEach(presences => {
+          presences.forEach(p => { p.is_anonymous ? anon++ : named++; });
+        });
+        setPresenceCounts({ named, anon });
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ user_id: store.userId, is_anonymous: anonymous });
+        }
+      });
     channelRef.current = channel;
 
-    const pChannel = supabase
-      .channel(`participants_${roomId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users' }, () => loadParticipants(roomId))
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, () => loadParticipants(roomId))
-      .subscribe();
-    participantsChannelRef.current = pChannel;
+    if (!anonymous) {
+      const pChannel = supabase
+        .channel(`participants_${roomId}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users' }, () => loadParticipants(roomId))
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, () => loadParticipants(roomId))
+        .subscribe();
+      participantsChannelRef.current = pChannel;
+    }
   };
 
   useEffect(() => {
@@ -217,15 +243,15 @@ export default function RoomsScreen({ route, navigation }) {
 
   const toggleReaction = async (messageId, emoji) => {
     const list = reactions[messageId] || [];
-    const has = list.find(r => r.emoji === emoji && r.user_id === store.userId);
-    if (has) {
-      setReactions(prev => ({ ...prev, [messageId]: (prev[messageId] || []).filter(r => !(r.emoji === emoji && r.user_id === store.userId)) }));
+    const myReaction = list.find(r => r.user_id === store.userId);
+    if (myReaction?.emoji === emoji) {
+      setReactions(prev => ({ ...prev, [messageId]: (prev[messageId] || []).filter(r => r.user_id !== store.userId) }));
       await supabase.from('message_reactions').delete()
-        .eq('message_id', messageId).eq('message_table', 'messages').eq('user_id', store.userId).eq('emoji', emoji);
+        .eq('message_id', messageId).eq('message_table', 'messages').eq('user_id', store.userId);
     } else {
       const r = { message_id: messageId, message_table: 'messages', user_id: store.userId, emoji };
-      setReactions(prev => ({ ...prev, [messageId]: [...(prev[messageId] || []), r] }));
-      await supabase.from('message_reactions').insert(r);
+      setReactions(prev => ({ ...prev, [messageId]: [...(prev[messageId] || []).filter(x => x.user_id !== store.userId), r] }));
+      await supabase.from('message_reactions').upsert(r, { onConflict: 'message_id,message_table,user_id' });
     }
   };
 
@@ -262,7 +288,7 @@ export default function RoomsScreen({ route, navigation }) {
                   isMyRoom && styles.roomCardHighlight,
                   !isMyRoom && styles.roomCardLocked,
                 ]}
-                onPress={() => isMyRoom ? enterRoom(r.id) : null}
+                onPress={() => isMyRoom ? promptEnterRoom(r.id) : null}
                 activeOpacity={isMyRoom ? 0.7 : 1}
               >
                 <View style={[styles.roomIcon, { backgroundColor: r.color + '22' }]}>
@@ -294,42 +320,76 @@ export default function RoomsScreen({ route, navigation }) {
   }
 
   const roomData = ROOMS.find(r => r.id === room);
+  const totalPresence = presenceCounts.named + presenceCounts.anon;
 
   return (
     <View style={styles.safeArea}>
       <View style={[styles.flex, { marginBottom: kbHeight }]}>
         <View style={[styles.roomHeader, { borderBottomColor: roomData.color + '66' }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => { setRoom(null); setIsAnonymous(false); }} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={26} color={colors.white} />
           </TouchableOpacity>
           <View style={[styles.roomHeaderDot, { backgroundColor: roomData.color }]} />
-          <Text style={styles.roomHeaderLabel}>{roomData.label}</Text>
-          <TouchableOpacity
-            style={styles.participantsToggle}
-            onPress={() => setShowParticipants(v => !v)}
-          >
-            <Ionicons name="people-outline" size={18} color={roomData.color} />
-            <Text style={[styles.participantsCount, { color: roomData.color }]}>{participants.length}</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.roomHeaderLabel}>{roomData.label}</Text>
+            {totalPresence > 0 && (
+              <Text style={styles.roomPresenceText}>
+                {presenceCounts.named > 0 ? `${presenceCounts.named} в разговоре` : ''}
+                {presenceCounts.named > 0 && presenceCounts.anon > 0 ? ' · ' : ''}
+                {presenceCounts.anon > 0 ? `${presenceCounts.anon} просто сидят` : ''}
+              </Text>
+            )}
+          </View>
+          {!isAnonymous && (
+            <TouchableOpacity
+              style={styles.participantsToggle}
+              onPress={() => setShowParticipants(v => !v)}
+            >
+              <Ionicons name="people-outline" size={18} color={roomData.color} />
+              <Text style={[styles.participantsCount, { color: roomData.color }]}>{participants.length}</Text>
+            </TouchableOpacity>
+          )}
+          {isAnonymous && (
+            <View style={styles.anonBadge}>
+              <Ionicons name="eye-outline" size={14} color={colors.muted} />
+              <Text style={styles.anonBadgeText}>анонимно</Text>
+            </View>
+          )}
         </View>
 
-        {showParticipants && (
+        {!isAnonymous && showParticipants && (
           <View style={[styles.participantsPanel, { borderBottomColor: roomData.color + '44' }]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.participantsList}>
-              {participants.map(p => (
-                <TouchableOpacity
-                  key={p.user_id}
-                  style={styles.participantItem}
-                  onPress={() => navigation.navigate('UserProfile', {
-                    user: { username: p.username, user_id: p.user_id, level: p.level, avatar_url: p.avatar_url, status: p.status },
-                  })}
-                >
-                  <Avatar uri={p.avatar_url} username={p.username} level={p.level} size={38} />
-                  <Text style={[styles.participantName, { color: LEVEL_COLORS[p.level] || colors.white }]} numberOfLines={1}>
-                    {p.username}
+              {participants.map(p => {
+                const isOnline = p.last_seen && (Date.now() - new Date(p.last_seen).getTime()) < 10 * 60 * 1000;
+                return (
+                  <TouchableOpacity
+                    key={p.user_id}
+                    style={styles.participantItem}
+                    onPress={() => navigation.navigate('UserProfile', {
+                      user: { username: p.username, user_id: p.user_id, level: p.level, avatar_url: p.avatar_url, status: p.status },
+                    })}
+                  >
+                    <View>
+                      <Avatar uri={p.avatar_url} username={p.username} level={p.level} size={38} />
+                      {isOnline && <View style={styles.onlineDot} />}
+                    </View>
+                    <Text style={[styles.participantName, { color: LEVEL_COLORS[p.level] || colors.white }]} numberOfLines={1}>
+                      {p.username}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {presenceCounts.anon > 0 && (
+                <View style={styles.participantItem}>
+                  <View style={styles.anonAvatarCircle}>
+                    <Ionicons name="eye-outline" size={18} color={colors.muted} />
+                  </View>
+                  <Text style={styles.participantName} numberOfLines={1}>
+                    {presenceCounts.anon} сидят
                   </Text>
-                </TouchableOpacity>
-              ))}
+                </View>
+              )}
             </ScrollView>
           </View>
         )}
@@ -346,7 +406,7 @@ export default function RoomsScreen({ route, navigation }) {
             const rxs = groupReactions(reactions[item.id]);
             return (
               <View>
-                <TouchableOpacity onLongPress={() => setMenuMsg(item)} activeOpacity={0.8} delayLongPress={350}>
+                <TouchableOpacity onLongPress={() => !isAnonymous && setMenuMsg(item)} activeOpacity={0.8} delayLongPress={350}>
                   <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
                     <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}>
                       <Avatar uri={isMe ? store.avatarUrl : null} username={item.username} level={item.level} size={30} />
@@ -383,46 +443,57 @@ export default function RoomsScreen({ route, navigation }) {
           }
         />
 
-        {(replyTo || editing) && (
-          <View style={styles.contextBar}>
-            <Ionicons name={editing ? 'pencil-outline' : 'return-down-forward-outline'} size={14} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              {editing
-                ? <Text style={styles.contextLabel}>Редактирование</Text>
-                : <>
-                    <Text style={styles.contextLabel}>{replyTo.username}</Text>
-                    <Text style={styles.contextSub} numberOfLines={1}>{replyTo.text}</Text>
-                  </>
-              }
-            </View>
-            <TouchableOpacity onPress={cancelContext}>
-              <Ionicons name="close" size={18} color={colors.muted} />
+        {isAnonymous ? (
+          <View style={styles.anonBar}>
+            <Ionicons name="eye-outline" size={16} color={colors.muted} />
+            <Text style={styles.anonBarText}>Вы наблюдаете анонимно</Text>
+            <TouchableOpacity onPress={() => enterRoom(room, false)}>
+              <Text style={[styles.anonBarAction, { color: roomData.color }]}>Войти с именем</Text>
             </TouchableOpacity>
           </View>
+        ) : (
+          <>
+            {(replyTo || editing) && (
+              <View style={styles.contextBar}>
+                <Ionicons name={editing ? 'pencil-outline' : 'return-down-forward-outline'} size={14} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  {editing
+                    ? <Text style={styles.contextLabel}>Редактирование</Text>
+                    : <>
+                        <Text style={styles.contextLabel}>{replyTo.username}</Text>
+                        <Text style={styles.contextSub} numberOfLines={1}>{replyTo.text}</Text>
+                      </>
+                  }
+                </View>
+                <TouchableOpacity onPress={cancelContext}>
+                  <Ionicons name="close" size={18} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
+              <TextInput
+                style={styles.input}
+                placeholder={editing ? 'Редактировать...' : 'Написать...'}
+                placeholderTextColor={colors.muted}
+                value={text2}
+                onChangeText={setText2}
+                onSubmitEditing={sendMessage}
+                returnKeyType="send"
+                maxLength={500}
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: roomData.color }, !text2.trim() && styles.sendBtnDisabled]}
+                onPress={sendMessage}
+                disabled={!text2.trim() || sending}
+              >
+                {sending
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Ionicons name={editing ? 'checkmark' : 'arrow-up'} size={20} color="#fff" />
+                }
+              </TouchableOpacity>
+            </View>
+          </>
         )}
-
-        <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
-          <TextInput
-            style={styles.input}
-            placeholder={editing ? 'Редактировать...' : 'Написать...'}
-            placeholderTextColor={colors.muted}
-            value={text2}
-            onChangeText={setText2}
-            onSubmitEditing={sendMessage}
-            returnKeyType="send"
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, { backgroundColor: roomData.color }, !text2.trim() && styles.sendBtnDisabled]}
-            onPress={sendMessage}
-            disabled={!text2.trim() || sending}
-          >
-            {sending
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Ionicons name={editing ? 'checkmark' : 'arrow-up'} size={20} color="#fff" />
-            }
-          </TouchableOpacity>
-        </View>
       </View>
 
       <ChatActionMenu
@@ -478,14 +549,28 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 2 },
   roomHeaderDot: { width: 10, height: 10, borderRadius: 5 },
-  roomHeaderLabel: { flex: 1, fontSize: 16, fontWeight: 'bold', color: colors.white },
+  roomHeaderLabel: { fontSize: 16, fontWeight: 'bold', color: colors.white },
+  roomPresenceText: { fontSize: 11, color: colors.muted, marginTop: 1 },
   participantsToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 4 },
   participantsCount: { fontSize: 14, fontWeight: '600' },
+  anonBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.card, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
+  anonBadgeText: { fontSize: 11, color: colors.muted },
 
   participantsPanel: { borderBottomWidth: 1, paddingVertical: 10 },
   participantsList: { paddingHorizontal: 12, gap: 16 },
   participantItem: { alignItems: 'center', width: 56 },
-  participantName: { fontSize: 10, marginTop: 4, textAlign: 'center' },
+  participantName: { fontSize: 10, marginTop: 4, textAlign: 'center', color: colors.muted },
+  onlineDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2, borderColor: colors.background,
+  },
+  anonAvatarCircle: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
 
   messagesList: { padding: 16, paddingBottom: 8 },
   msgRow: { flexDirection: 'row', marginBottom: 12, alignItems: 'flex-end', gap: 8 },
@@ -511,6 +596,15 @@ const styles = StyleSheet.create({
   reactPillMe: { borderColor: colors.accent, backgroundColor: colors.accent + '18' },
   reactEmoji: { fontSize: 14 },
   reactCount: { fontSize: 12, color: colors.white, fontWeight: '600' },
+
+  anonBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  anonBarText: { flex: 1, fontSize: 13, color: colors.muted },
+  anonBarAction: { fontSize: 13, fontWeight: '600' },
 
   contextBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
   contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },

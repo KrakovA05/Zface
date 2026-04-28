@@ -16,12 +16,6 @@ const ROOMS = [
   { id: 'red',    label: 'Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336', icon: 'flame-outline' },
 ];
 
-const BAR_TABLES = [
-  { id: 'main',   label: 'Общий бар' },
-  { id: 'quiet',  label: 'Тихий уголок' },
-  { id: 'music',  label: 'Музыкальный стол' },
-  { id: 'random', label: 'Случайные темы' },
-];
 
 function Badge({ count }) {
   if (!count) return null;
@@ -59,7 +53,6 @@ export default function MessagesScreen({ navigation }) {
   const [dmUnread, setDmUnread] = useState({});
   const [roomUnread, setRoomUnread] = useState({});
   const [roomOnline, setRoomOnline] = useState({});
-  const [barUnread, setBarUnread] = useState({});
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
@@ -154,16 +147,6 @@ export default function MessagesScreen({ navigation }) {
     setRoomUnread(roomCounts);
     setRoomOnline(onlineCounts);
 
-    const barCounts = {};
-    await Promise.all(BAR_TABLES.map(async (t) => {
-      const lastRead = await getLastRead(`bar_${t.id}`);
-      barCounts[t.id] = await countUnread(
-        'messages', 'level', `bar_${t.id}`,
-        'username', store.username || '__nobody__', lastRead
-      );
-    }));
-    setBarUnread(barCounts);
-
     setLoading(false);
   }, []);
 
@@ -172,8 +155,7 @@ export default function MessagesScreen({ navigation }) {
   }, [loadAll]));
 
   const dmTotal = Object.values(dmUnread).reduce((s, n) => s + n, 0);
-  const chatsTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0)
-    + Object.values(barUnread).reduce((s, n) => s + n, 0);
+  const chatsTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0);
 
   return (
     <View style={styles.safeArea}>
@@ -257,27 +239,6 @@ export default function MessagesScreen({ navigation }) {
                 );
               })}
 
-              {/* Бар */}
-              <SectionHeader icon="wine-outline" label="Онлайн-бар" />
-              {BAR_TABLES.map(t => {
-                const unread = barUnread[t.id] || 0;
-                return (
-                  <TouchableOpacity
-                    key={t.id}
-                    style={styles.row}
-                    onPress={() => navigation.navigate('Bar', { openTable: t.id })}
-                  >
-                    <View style={[styles.rowIconWrap, { backgroundColor: colors.accent + '22' }]}>
-                      <Ionicons name="beer-outline" size={20} color={colors.accent} />
-                    </View>
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.rowLabel}>{t.label}</Text>
-                    </View>
-                    {unread > 0 && <Badge count={unread} />}
-                    <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-                  </TouchableOpacity>
-                );
-              })}
             </>
           ) : (
             <>
