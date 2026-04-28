@@ -72,7 +72,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
                 <Ionicons
                   name={focused ? icons.focused : icons.blur}
                   size={24}
-                  color={focused ? '#ffffff' : 'rgba(255,255,255,0.38)'}
+                  color={focused ? '#7c3aed' : 'rgba(44,36,32,0.35)'}
                 />
                 {!!badge && (
                   <View style={tabStyles.badge}>
@@ -102,17 +102,17 @@ const tabStyles = StyleSheet.create({
   },
   pill: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(13, 13, 20, 0.93)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 34,
     paddingVertical: 8,
     paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    elevation: 18,
+    borderColor: '#E8DFD0',
+    shadowColor: '#8B7B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   tab: {
     flex: 1,
@@ -122,7 +122,7 @@ const tabStyles = StyleSheet.create({
     borderRadius: 26,
   },
   tabActive: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(124,58,237,0.08)',
   },
   iconWrap: {
     position: 'relative',
@@ -139,7 +139,7 @@ const tabStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(13,13,20,0.93)',
+    borderColor: '#FFFFFF',
   },
   badgeText: {
     color: '#fff',
