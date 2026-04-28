@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
 import { registerForPushNotifications } from './utils/notifications';
+import { getLastRead } from './utils/unread';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -150,6 +151,51 @@ const tabStyles = StyleSheet.create({
 });
 
 function MainTabs() {
+  const [msgBadge, setMsgBadge] = useState(null);
+  const [friendBadge, setFriendBadge] = useState(null);
+
+  const refreshBadges = useCallback(async () => {
+    if (!store.userId) return;
+
+    const { count: reqCount } = await supabase
+      .from('friendships')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', store.userId)
+      .eq('status', 'pending');
+    setFriendBadge(reqCount || null);
+
+    const { data: dms } = await supabase
+      .from('direct_messages')
+      .select('conversation_id, sender_id, created_at')
+      .neq('sender_id', store.userId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    const convIds = [...new Set(
+      (dms || [])
+        .filter(m => m.conversation_id.includes(store.userId))
+        .map(m => m.conversation_id)
+    )];
+
+    let dmUnread = 0;
+    for (const cid of convIds) {
+      const lastRead = await getLastRead(`dm_${cid}`);
+      const hasUnread = (dms || []).some(m =>
+        m.conversation_id === cid &&
+        (!lastRead || new Date(m.created_at) > new Date(lastRead))
+      );
+      if (hasUnread) dmUnread++;
+    }
+    setMsgBadge(dmUnread || null);
+  }, []);
+
+  useEffect(() => {
+    refreshBadges();
+    store.refreshBadges = refreshBadges;
+    const interval = setInterval(refreshBadges, 30000);
+    return () => clearInterval(interval);
+  }, [refreshBadges]);
+
   return (
     <Tab.Navigator
       tabBar={props => <CustomTabBar {...props} />}
@@ -160,8 +206,8 @@ function MainTabs() {
     >
       <Tab.Screen name="Home"     component={HomeScreen} />
       <Tab.Screen name="Feed"     component={FeedScreen} />
-      <Tab.Screen name="Messages" component={MessagesScreen} />
-      <Tab.Screen name="Friends"  component={FriendsScreen} />
+      <Tab.Screen name="Messages" component={MessagesScreen} options={{ tabBarBadge: msgBadge }} />
+      <Tab.Screen name="Friends"  component={FriendsScreen} options={{ tabBarBadge: friendBadge }} />
       <Tab.Screen name="Profile"  component={ProfileScreen} />
     </Tab.Navigator>
   );

@@ -76,6 +76,7 @@ export default function FriendsScreen({ navigation }) {
       .eq('receiver_id', store.userId);
     if (error) { Alert.alert('Ошибка', 'Не удалось принять заявку'); return; }
     loadFriends();
+    store.refreshBadges?.();
   };
 
   const rejectRequest = async (user) => {
@@ -85,6 +86,7 @@ export default function FriendsScreen({ navigation }) {
       .eq('receiver_id', store.userId);
     if (error) { Alert.alert('Ошибка', 'Не удалось отклонить заявку'); return; }
     loadFriends();
+    store.refreshBadges?.();
   };
 
   const toggleLabel = (label) => {

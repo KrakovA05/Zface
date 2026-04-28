@@ -32,6 +32,9 @@ export default function FeedScreen({ navigation }) {
   const [commentCounts, setCommentCounts] = useState({});
   const [mediaUri, setMediaUri] = useState(null);
   const [mediaType, setMediaType] = useState(null);
+  const [mediaUrl, setMediaUrl] = useState(null);
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const uploadGenRef = useRef(0);
   const cursorRef = useRef(null);
   const fetchedAuthors = useRef(new Set());
   const inputRef = useRef(null);
@@ -122,6 +125,18 @@ export default function FeedScreen({ navigation }) {
     return () => { Keyboard.dismiss(); };
   }, [loadPosts]));
 
+  const uploadMedia = async (uri, type) => {
+    const ext = type === 'video' ? 'mp4' : 'jpg';
+    const path = `${store.userId}/${Date.now()}.${ext}`;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const { error } = await supabase.storage
+      .from('post-media')
+      .upload(path, blob, { contentType: type === 'video' ? 'video/mp4' : 'image/jpeg' });
+    if (error) { Alert.alert('Ошибка загрузки', error.message); return null; }
+    return `${SUPABASE_URL}/storage/v1/object/public/post-media/${path}`;
+  };
+
   const pickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -135,30 +150,37 @@ export default function FeedScreen({ navigation }) {
     });
     if (!result.canceled && result.assets?.[0]) {
       const asset = result.assets[0];
+      const type = asset.type === 'video' ? 'video' : 'image';
       setMediaUri(asset.uri);
-      setMediaType(asset.type === 'video' ? 'video' : 'image');
+      setMediaType(type);
+      setMediaUrl(null);
+      setMediaUploading(true);
+
+      const gen = ++uploadGenRef.current;
+      const url = await uploadMedia(asset.uri, type);
+      if (gen !== uploadGenRef.current) return;
+      setMediaUrl(url);
+      setMediaUploading(false);
     }
   };
 
-  const uploadMedia = async () => {
-    if (!mediaUri) return null;
-    const ext = mediaType === 'video' ? 'mp4' : 'jpg';
-    const path = `${store.userId}/${Date.now()}.${ext}`;
-    const response = await fetch(mediaUri);
-    const blob = await response.blob();
-    const { error } = await supabase.storage
-      .from('post-media')
-      .upload(path, blob, { contentType: mediaType === 'video' ? 'video/mp4' : 'image/jpeg' });
-    if (error) { Alert.alert('Ошибка загрузки', error.message); return null; }
-    return `${SUPABASE_URL}/storage/v1/object/public/post-media/${path}`;
+  const removeMedia = () => {
+    uploadGenRef.current++;
+    setMediaUri(null);
+    setMediaType(null);
+    setMediaUrl(null);
+    setMediaUploading(false);
   };
 
   const post = async () => {
     if (!text.trim() && !mediaUri) return;
+    if (mediaUploading) {
+      Alert.alert('Подожди', 'Медиафайл ещё загружается...');
+      return;
+    }
     setPosting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const mediaUrl = await uploadMedia();
       const targetLevels = filter === 'mine' ? [level] : ['green', 'yellow', 'red'];
       await supabase.from('feed_posts').insert({
         author_id: user.id,
@@ -171,6 +193,8 @@ export default function FeedScreen({ navigation }) {
       setText('');
       setMediaUri(null);
       setMediaType(null);
+      setMediaUrl(null);
+      setMediaUploading(false);
       fetchedAuthors.current.delete(store.userId);
       await loadPosts(true);
     }
@@ -305,14 +329,25 @@ export default function FeedScreen({ navigation }) {
       <View style={[styles.inputWrap, { bottom: inputBottom }]}>
         {mediaUri && (
           <View style={styles.mediaPreviewWrap}>
-            {mediaType === 'image'
-              ? <Image source={{ uri: mediaUri }} style={styles.mediaPreview} resizeMode="cover" />
-              : <View style={styles.videoPreview}>
-                  <Ionicons name="videocam" size={24} color={colors.accent} />
-                  <Text style={styles.videoPreviewText}>Видео выбрано</Text>
+            <View style={styles.mediaThumbWrap}>
+              {mediaType === 'image'
+                ? <Image source={{ uri: mediaUri }} style={styles.mediaPreview} resizeMode="cover" />
+                : <View style={styles.videoPreview}>
+                    <Ionicons name="videocam" size={24} color={colors.accent} />
+                    <Text style={styles.videoPreviewText}>Видео</Text>
+                  </View>
+              }
+              {mediaUploading ? (
+                <View style={styles.mediaOverlay}>
+                  <ActivityIndicator color="#fff" size="small" />
                 </View>
-            }
-            <TouchableOpacity style={styles.removeMedia} onPress={() => { setMediaUri(null); setMediaType(null); }}>
+              ) : mediaUrl ? (
+                <View style={[styles.mediaOverlay, styles.mediaOverlayDone]}>
+                  <Ionicons name="checkmark" size={16} color="#fff" />
+                </View>
+              ) : null}
+            </View>
+            <TouchableOpacity style={styles.removeMedia} onPress={removeMedia}>
               <Ionicons name="close-circle" size={22} color={colors.muted} />
             </TouchableOpacity>
           </View>
@@ -332,9 +367,9 @@ export default function FeedScreen({ navigation }) {
             maxLength={280}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, !hasContent && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, (!hasContent || mediaUploading) && styles.sendBtnDisabled]}
             onPress={post}
-            disabled={!hasContent || posting}
+            disabled={!hasContent || posting || mediaUploading}
           >
             {posting
               ? <ActivityIndicator color="#fff" size="small" />
@@ -393,14 +428,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: colors.border,
     backgroundColor: colors.background,
   },
-  mediaPreviewWrap: { paddingHorizontal: 12, paddingTop: 8 },
+  mediaPreviewWrap: { paddingHorizontal: 12, paddingTop: 8, flexDirection: 'row', alignItems: 'flex-start' },
+  mediaThumbWrap: { position: 'relative' },
   mediaPreview: { width: 80, height: 80, borderRadius: 10 },
   videoPreview: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: colors.card, borderRadius: 10, padding: 10, alignSelf: 'flex-start',
+    width: 80, height: 80, justifyContent: 'center',
   },
-  videoPreviewText: { color: colors.white, fontSize: 13 },
-  removeMedia: { position: 'absolute', top: 2, right: 2 },
+  videoPreviewText: { color: colors.white, fontSize: 11 },
+  mediaOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaOverlayDone: { backgroundColor: 'rgba(76,175,80,0.7)' },
+  removeMedia: { marginLeft: 4, marginTop: 2 },
   inputRow: {
     flexDirection: 'row', padding: 12, gap: 10, alignItems: 'center',
   },

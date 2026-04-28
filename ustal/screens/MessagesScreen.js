@@ -171,16 +171,6 @@ export default function MessagesScreen({ navigation }) {
     loadAll();
   }, [loadAll]));
 
-  useFocusEffect(useCallback(() => {
-    const dmTotal = Object.values(dmUnread).reduce((s, n) => s + n, 0);
-    const roomTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0);
-    const barTotal = Object.values(barUnread).reduce((s, n) => s + n, 0);
-    const total = dmTotal + roomTotal + barTotal;
-    navigation.getParent()?.setOptions({
-      tabBarBadge: total > 0 ? (total > 99 ? '99+' : total) : null,
-    });
-  }, [dmUnread, roomUnread, barUnread]));
-
   const dmTotal = Object.values(dmUnread).reduce((s, n) => s + n, 0);
   const chatsTotal = Object.values(roomUnread).reduce((s, n) => s + n, 0)
     + Object.values(barUnread).reduce((s, n) => s + n, 0);

@@ -38,7 +38,7 @@ export default function DirectMessageScreen({ route, navigation }) {
   }, []);
 
   useEffect(() => {
-    markRead(`dm_${conversationId}`);
+    markRead(`dm_${conversationId}`).then(() => store.refreshBadges?.());
     fetchMessages();
     fetchFriendOnline();
 
