@@ -12,26 +12,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Аватар и цвет никнейма везде отображают уровень пользователя — визуальный язык состояния
 
 ### Основные экраны
-- **HomeScreen** — главный экран с виджетами: настроение дня, быстрый доступ к чатам и активностям
-- **FeedScreen** — лента постов, можно писать для своего уровня или для всех
-- **MessagesScreen** — две вкладки: «Чаты» (общий чат, комнаты по уровню, бар) и «Личные» (DM с друзьями и собеседниками)
-- **FriendsScreen** — поиск людей по никнейму, заявки в друзья, список друзей
-- **ProfileScreen** — профиль текущего пользователя: аватар, статус, уровень, история тестов, выход
-- **ChatScreen** — глобальный чат (все уровни вместе)
-- **RoomsScreen** — комнаты по уровню с realtime чатом и списком участников
-- **BarScreen** — онлайн-бар: 4 столика (главный, тихий, музыкальный, случайный) с чатом
-- **DirectMessageScreen** — личная переписка между двумя пользователями
-- **UserProfileScreen** — профиль другого пользователя: добавить в друзья / принять заявку / написать
-- **RelaxScreen** — ambient звуки для успокоения (дождь, лес, волны и т.д.)
+- **HomeScreen** — статус-карточка уровня, динамика изменений, кнопки «Пройти тест» / «Рекомендации», вопрос дня (daily_answers), сетка модулей, график истории тестов, напоминание пройти тест если прошло >3 дней
+- **FeedScreen** — лента постов с фильтром по уровню, создание поста (свой уровень / все), лайки
+- **MessagesScreen** — две вкладки: «Чаты» (общий чат, комнаты по уровню, бар) и «Личные» (DM с друзьями)
+- **FriendsScreen** — поиск по никнейму, заявки в друзья (входящие/исходящие), список друзей, кнопка DM
+- **ProfileScreen** — аватар (base64, редактируемый), статус (редактируемый), уровень, мотиватор дня, достижения (система из 8 ачивок), выход, удаление аккаунта, приглашение друга через Share API
+- **ChatScreen** — глобальный чат (все уровни вместе), realtime, удаление своих сообщений
+- **RoomsScreen** — комнаты по уровню, только своя доступна, realtime чат, список участников, тап аватара → профиль
+- **BarScreen** — онлайн-бар: 4 столика с realtime чатом, тап аватара → профиль
+- **DirectMessageScreen** — личная переписка, блокировка проверяется перед отправкой, тап аватара → профиль
+- **UserProfileScreen** — профиль другого пользователя: добавить в друзья / принять / отклонить / удалить, DM, блокировка, жалоба
+- **BreathingScreen** — коробочное дыхание 4-4-4-4, Animated-анимация круга, фазы вдох/задержка/выдох/пауза
 - **FishingScreen** — мини-игра «рыбалка» как медитативная активность
-- **TestScreen** — тест из 10 вопросов, определяет уровень
-- **RecommendationsScreen** — персональные рекомендации после теста, динамика изменений уровня
+- **TestScreen** — тест из 10 вопросов, определяет уровень, один раз в сутки (проверка по last test date)
+- **RecommendationsScreen** — персональные рекомендации после теста, Ionicons-иконки, тапабельные активности, динамика уровня
 
 ### Целевая аудитория
 Люди 16–30 лет, которым бывает плохо и которые хотят найти других таких же — без лишних слов и фальши.
 
 ### Текущий статус
-MVP в разработке. Основной функционал реализован: авторизация, тест, лента, чаты, друзья, DM, комнаты, бар, рыбалка, релакс-звуки.
+MVP реализован. Функционал: авторизация, тест (1 раз в сутки), лента, чаты (глобальный/комнаты/бар), друзья, DM, блокировки, жалобы, достижения, вопрос дня, дыхательные упражнения, рыбалка, рекомендации.
+
+### Роадмап
+Запланированные фичи и задачи перед релизом — в файле **[ROADMAP.md](ROADMAP.md)**.
+Клод обновляет его самостоятельно, но **всегда спрашивает перед добавлением нового пункта**.
 
 ---
 
@@ -73,19 +77,19 @@ npx expo install <package> --npm
 - **React Native 0.81** + **Expo ~54** (Expo Go, New Architecture включена)
 - **Supabase** — PostgreSQL + auth + realtime (postgres_changes)
 - **React Navigation v7** — Stack + BottomTabs (вложенная навигация)
-- **expo-av** — аудио (RelaxScreen)
-- **expo-image-picker** — выбор фото для аватара
+- **expo-image-picker** — выбор фото для аватара (base64, quality 0.4)
 
 ### Navigation structure
 ```
 Stack.Navigator
   ├── Login / Register / Test / Recommendations   (auth flow + post-test, без хедера)
-  ├── Main → Tab.Navigator
-  │     ├── Home, Feed, Chat, Friends, Profile
+  ├── Main → Tab.Navigator (CustomTabBar — floating pill)
+  │     ├── Home, Feed, Messages, Friends, Profile
   ├── DirectMessage      (личная переписка, поверх табов)
   ├── UserProfile        (профиль другого юзера, поверх табов)
-  ├── Rooms              (комнаты по статусу, поверх табов)
-  ├── Relax              (ambient звуки, поверх табов)
+  ├── Rooms              (комнаты по уровню, поверх табов)
+  ├── Chat               (глобальный чат, поверх табов)
+  ├── Breathing          (дыхательные упражнения, поверх табов)
   ├── Fishing            (мини-игра рыбалка, поверх табов)
   └── Bar                (онлайн-бар, поверх табов)
 ```
@@ -102,7 +106,7 @@ store = { username, email, level, userId, avatarUrl, status }
 Поля заполняются при логине/регистрации и при восстановлении сессии в App.js. Для отображения актуальных данных в экранах с профилем используется `useFocusEffect`.
 
 ### Shared resources
-- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`
+- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`
 - `theme.js` — объект `colors` (все цвета приложения) + `shared` StyleSheet (переиспользуемые стили: кнопки, инпуты, ярлыки)
 - `utils.js` — `getConversationId(uid1, uid2)` для стабильного ID личного чата
 - `components/Avatar.js` — аватар с fallback на букву+цвет уровня
@@ -111,12 +115,16 @@ store = { username, email, level, userId, avatarUrl, status }
 
 | Таблица | Ключевые поля | RLS |
 |---------|--------------|-----|
-| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url` | ✅ |
-| `messages` | `id`, `username`, `text`, `level`, `created_at` — глобальный чат + комнаты + бар | ✅ |
+| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url`, `last_seen` | ✅ |
+| `messages` | `id`, `username`, `text`, `level`, `created_at`, `sender_id` — глобальный чат + комнаты + бар | ✅ |
 | `direct_messages` | `id`, `conversation_id TEXT`, `sender_id UUID`, `sender_username`, `text`, `created_at` | ✅ |
 | `friendships` | `id`, `requester_id UUID`, `receiver_id UUID`, `status ('pending'\|'accepted')` | ✅ |
 | `test_results` | `id`, `user_id UUID`, `level TEXT`, `score INT`, `created_at` — история тестов | ✅ |
 | `feed_posts` | `id`, `author_id UUID`, `author_username`, `author_level`, `text`, `target_levels TEXT[]`, `likes INT`, `created_at` | ✅ |
+| `daily_answers` | `id`, `user_id UUID`, `question_date DATE`, `question_text`, `answer`, `created_at` | ✅ |
+| `user_achievements` | `id`, `user_id UUID`, `achievement_id TEXT`, `created_at` | ✅ |
+| `blocks` | `id`, `blocker_id UUID`, `blocked_id UUID` | ✅ |
+| `reports` | `id`, `reporter_id UUID`, `reported_user_id UUID`, `reason TEXT` | ✅ |
 
 #### Использование таблицы `messages` для разных чатов
 - Глобальный чат: `level = 'global'`
@@ -144,9 +152,5 @@ store = { username, email, level, userId, avatarUrl, status }
 - После теста переход на `RecommendationsScreen` с `{ level }` параметром
 - `RecommendationsScreen` — загружает историю тестов из `test_results`, показывает динамику (лучше/хуже/стабильно) и персональные рекомендации
 
-### Новые экраны (добавлены в рамках MVP модернизации)
-- `RecommendationsScreen` — персональные рекомендации после теста
-- `FeedScreen` — лента постов с фильтром по уровню
-- `RoomsScreen` — комнаты по статусу с realtime чатом
-- `FishingScreen` — мини-игра рыбалка (успокаивающая активность)
-- `BarScreen` — онлайн-бар с несколькими столиками и чатом
+### Дизайн-система
+Все экраны — тёмная тема (`colors.background`). Ionicons везде, эмодзи не используются. Floating pill CustomTabBar (абсолютное позиционирование, `useSafeAreaInsets`). Поля ввода в чатах — полупрозрачные `rgba(255,255,255,0.07)`, `borderRadius: 22` (Telegram-стиль). Аватары — компонент `Avatar` с fallback на первую букву + цвет уровня.
