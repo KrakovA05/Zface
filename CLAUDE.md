@@ -12,26 +12,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Аватар и цвет никнейма везде отображают уровень пользователя — визуальный язык состояния
 
 ### Основные экраны
-- **HomeScreen** — статус-карточка уровня, динамика изменений, кнопки «Пройти тест» / «Рекомендации», вопрос дня (daily_answers), сетка модулей, график истории тестов, напоминание пройти тест если прошло >3 дней
-- **FeedScreen** — лента постов с фильтром по уровню, создание поста (свой уровень / все), лайки
-- **MessagesScreen** — две вкладки: «Чаты» (общий чат, комнаты по уровню, бар) и «Личные» (DM с друзьями)
-- **FriendsScreen** — поиск по никнейму, заявки в друзья (входящие/исходящие), список друзей, кнопка DM
-- **ProfileScreen** — аватар (base64, редактируемый), статус (редактируемый), уровень, мотиватор дня, достижения (система из 8 ачивок), выход, удаление аккаунта, приглашение друга через Share API
-- **ChatScreen** — глобальный чат (все уровни вместе), realtime, удаление своих сообщений
-- **RoomsScreen** — комнаты по уровню, только своя доступна, realtime чат, список участников, тап аватара → профиль
-- **BarScreen** — онлайн-бар: 4 столика с realtime чатом, тап аватара → профиль
-- **DirectMessageScreen** — личная переписка, блокировка проверяется перед отправкой, тап аватара → профиль
-- **UserProfileScreen** — профиль другого пользователя: добавить в друзья / принять / отклонить / удалить, DM, блокировка, жалоба
+- **HomeScreen** — статус-карточка уровня, динамика изменений, кнопки «Пройти тест» / «Рекомендации», вопрос дня (`daily_answers`), «Одно слово дня» (`daily_word_taps`), динамика сообщества, сетка модулей, график истории тестов, напоминание если прошло >3 дней
+- **FeedScreen** — лента постов с фильтром по уровню, создание поста (свой уровень / все), лайки, комментарии
+- **MessagesScreen** — две вкладки: «Чаты» (общий чат, комнаты по уровню) и «Личные» (DM с друзьями), бейджи непрочитанных
+- **FriendsScreen** — поиск по никнейму, поиск по ярлыкам, заявки в друзья (входящие/исходящие), список друзей, кнопка DM
+- **ProfileScreen** — аватар (base64, редактируемый), статус (редактируемый), уровень, мотиватор дня, достижения (8 ачивок), свитч «Показывать динамику», выход, удаление аккаунта, приглашение друга через Share API
+- **ChatScreen** — глобальный чат (все уровни вместе), realtime, удаление своих сообщений, timestamp
+- **RoomsScreen** — комнаты по уровню, только своя доступна, realtime чат, список участников + анонимные наблюдатели (Presence), тап аватара → профиль, timestamp
+- **DirectMessageScreen** — личная переписка, блокировка проверяется перед отправкой, тап аватара → профиль, timestamp
+- **PostScreen** — комментарии к посту ленты, realtime, удаление своих комментариев
+- **ThoughtsScreen** — анонимная мысль дня (1 раз в сутки), реакции «я понимаю / я тоже / держись», счётчики реакций других
+- **ResourcesScreen** — психологические материалы: 5 тем (тревога, депрессия, выгорание, одиночество, самооценка), аккордеон с анимацией, реальные ссылки на YouTube и b17.ru/psychologies.ru через `Linking.openURL()`
+- **UserProfileScreen** — профиль другого пользователя: добавить в друзья / принять / отклонить / удалить, DM, блокировка, жалоба, динамика уровня (если `show_history = true`)
 - **BreathingScreen** — коробочное дыхание 4-4-4-4, Animated-анимация круга, фазы вдох/задержка/выдох/пауза
-- **FishingScreen** — мини-игра «рыбалка» как медитативная активность
-- **TestScreen** — тест из 10 вопросов, определяет уровень, один раз в сутки (проверка по last test date)
-- **RecommendationsScreen** — персональные рекомендации после теста, Ionicons-иконки, тапабельные активности, динамика уровня
+- **FishingScreen** — мини-игра «рыбалка» как медитативная активность; математически прорисованная удочка (seg-helper через atan2), float с анимацией, 14 рыб с временно́й привязкой, «Записка в бутылке»
+- **TestScreen** — тест из 10 вопросов, определяет уровень, один раз в 24 часа
+- **RecommendationsScreen** — персональные рекомендации после теста, динамика уровня (лучше/хуже/стабильно)
+- **OnboardingMomentScreen** — после первого теста показывает: сколько человек с тем же уровнем + один анонимный ответ на вопрос дня
+
+> **BarScreen.js** — файл существует, но экран удалён из навигации и Home. Не использовать.
 
 ### Целевая аудитория
 Люди 16–30 лет, которым бывает плохо и которые хотят найти других таких же — без лишних слов и фальши.
 
 ### Текущий статус
-MVP реализован. Функционал: авторизация, тест (1 раз в сутки), лента, чаты (глобальный/комнаты/бар), друзья, DM, блокировки, жалобы, достижения, вопрос дня, дыхательные упражнения, рыбалка, рекомендации.
+MVP+. Функционал: авторизация с подтверждением email, тест (1 раз в 24ч), лента с комментариями, чаты (глобальный/комнаты), DM, друзья, блокировки, жалобы, достижения, вопрос дня, слово дня, анонимные мысли + реакции, дыхание, рыбалка, рекомендации, онбординг, психологические материалы, проактивные пуши, push-уведомления по DM и заявкам.
 
 ### Роадмап
 Запланированные фичи и задачи перед релизом — в файле **[ROADMAP.md](ROADMAP.md)**.
@@ -82,21 +87,24 @@ npx expo install <package> --npm
 ### Navigation structure
 ```
 Stack.Navigator
-  ├── Login / Register / Test / Recommendations   (auth flow + post-test, без хедера)
+  ├── Login / Register / EmailConfirm          (auth flow, без хедера)
+  ├── Test / Recommendations / OnboardingMoment (post-test flow, без хедера)
   ├── Main → Tab.Navigator (CustomTabBar — floating pill)
   │     ├── Home, Feed, Messages, Friends, Profile
   ├── DirectMessage      (личная переписка, поверх табов)
   ├── UserProfile        (профиль другого юзера, поверх табов)
   ├── Rooms              (комнаты по уровню, поверх табов)
   ├── Chat               (глобальный чат, поверх табов)
+  ├── Post               (комментарии к посту, поверх табов)
+  ├── Thoughts           (анонимные мысли, поверх табов)
+  ├── Resources          (психологические материалы, поверх табов)
   ├── Breathing          (дыхательные упражнения, поверх табов)
-  ├── Fishing            (мини-игра рыбалка, поверх табов)
-  └── Bar                (онлайн-бар, поверх табов)
+  └── Fishing            (мини-игра рыбалка, поверх табов)
 ```
 
 `App.js` при старте вызывает `supabase.auth.getSession()` — если сессия активна, грузит профиль и идёт сразу на `Main`, иначе на `Login`.
 
-После прохождения теста (TestScreen) навигация идёт на `Recommendations`, откуда на `Main`.
+После прохождения теста (TestScreen) → `Recommendations` → `OnboardingMoment` (только первый раз) → `Main`.
 
 ### Global state (`store.js`)
 Простой мутируемый объект — **не реактивный**. Компоненты не ре-рендерятся при изменении store автоматически. Используется только для данных текущего пользователя:
@@ -106,7 +114,7 @@ store = { username, email, level, userId, avatarUrl, status }
 Поля заполняются при логине/регистрации и при восстановлении сессии в App.js. Для отображения актуальных данных в экранах с профилем используется `useFocusEffect`.
 
 ### Shared resources
-- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`
+- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`, `WORDS_OF_DAY`
 - `theme.js` — объект `colors` (все цвета приложения) + `shared` StyleSheet (переиспользуемые стили: кнопки, инпуты, ярлыки)
 - `utils.js` — `getConversationId(uid1, uid2)` для стабильного ID личного чата
 - `components/Avatar.js` — аватар с fallback на букву+цвет уровня
@@ -115,13 +123,17 @@ store = { username, email, level, userId, avatarUrl, status }
 
 | Таблица | Ключевые поля | RLS |
 |---------|--------------|-----|
-| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url`, `last_seen` | ✅ |
-| `messages` | `id`, `username`, `text`, `level`, `created_at`, `sender_id` — глобальный чат + комнаты + бар | ✅ |
+| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url`, `last_seen`, `show_history BOOL` | ✅ |
+| `messages` | `id`, `username`, `text`, `level`, `created_at`, `sender_id` — глобальный чат + комнаты | ✅ |
 | `direct_messages` | `id`, `conversation_id TEXT`, `sender_id UUID`, `sender_username`, `text`, `created_at` | ✅ |
 | `friendships` | `id`, `requester_id UUID`, `receiver_id UUID`, `status ('pending'\|'accepted')` | ✅ |
 | `test_results` | `id`, `user_id UUID`, `level TEXT`, `score INT`, `created_at` — история тестов | ✅ |
 | `feed_posts` | `id`, `author_id UUID`, `author_username`, `author_level`, `text`, `target_levels TEXT[]`, `likes INT`, `created_at` | ✅ |
+| `post_comments` | `id`, `post_id UUID`, `author_id UUID`, `author_username`, `author_level`, `text`, `created_at` | ✅ |
 | `daily_answers` | `id`, `user_id UUID`, `question_date DATE`, `question_text`, `answer`, `created_at` | ✅ |
+| `daily_word_taps` | `id`, `user_id UUID`, `word_date DATE`, `word TEXT`, `reaction TEXT`, `created_at` | ✅ |
+| `anonymous_thoughts` | `id`, `user_id UUID`, `thought_date DATE`, `text`, `created_at` | ✅ |
+| `thought_reactions` | `id`, `thought_id UUID`, `user_id UUID`, `reaction TEXT ('понимаю'\|'тоже'\|'держись')`, `created_at` | ✅ |
 | `user_achievements` | `id`, `user_id UUID`, `achievement_id TEXT`, `created_at` | ✅ |
 | `blocks` | `id`, `blocker_id UUID`, `blocked_id UUID` | ✅ |
 | `reports` | `id`, `reporter_id UUID`, `reported_user_id UUID`, `reason TEXT` | ✅ |
@@ -129,17 +141,19 @@ store = { username, email, level, userId, avatarUrl, status }
 #### Использование таблицы `messages` для разных чатов
 - Глобальный чат: `level = 'global'`
 - Комнаты по статусу (RoomsScreen): `level = 'green' | 'yellow' | 'red'`
-- Бар (BarScreen): `level = 'bar_main' | 'bar_quiet' | 'bar_music' | 'bar_random'`
 
 `conversation_id` = `[uid1, uid2].sort().join('_')` — всегда стабильный для пары юзеров.
 
 Дружба однонаправленная в таблице: одна строка на заявку. `status='pending'` — заявка отправлена, `status='accepted'` — друзья. Для запроса "мои друзья" используется `.or('requester_id.eq.X,receiver_id.eq.X').eq('status','accepted')`.
 
+#### Удаление аккаунта
+Реализовано через Postgres-функцию `delete_user()` с `SECURITY DEFINER` — удаляет `public.users`, затем `auth.users`. Вызывается через `supabase.rpc('delete_user')`.
+
 ### Realtime
 - Глобальный чат: подписка на `INSERT` в `messages` (channel `global_messages`)
 - Комнаты: подписка с фильтром `level=eq.${roomId}` в `messages` (channel `room_${roomId}`)
-- Бар: подписка с фильтром `level=eq.bar_${tableId}` в `messages` (channel `bar_${tableId}`)
 - Личные сообщения: подписка с фильтром `conversation_id=eq.${id}` в `direct_messages` (требует `REPLICA IDENTITY FULL` на таблице)
+- Анонимные мысли: подписка на `INSERT/UPDATE` в `thought_reactions`
 
 ### Avatar storage
 Аватары хранятся как base64 data URI прямо в `users.avatar_url`. Сжатие через `expo-image-picker` с `quality: 0.4, base64: true, aspect: [1,1]`.

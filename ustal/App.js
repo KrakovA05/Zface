@@ -31,6 +31,7 @@ import FeedScreen from './screens/FeedScreen';
 import RoomsScreen from './screens/RoomsScreen';
 import FishingScreen from './screens/FishingScreen';
 import PostScreen from './screens/PostScreen';
+import ResourcesScreen from './screens/ResourcesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -330,6 +331,7 @@ export default function App() {
             <Stack.Screen name="Fishing"         component={FishingScreen} />
             <Stack.Screen name="Post"            component={PostScreen} />
             <Stack.Screen name="Thoughts"        component={ThoughtsScreen} />
+            <Stack.Screen name="Resources"       component={ResourcesScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         </SafeAreaView>

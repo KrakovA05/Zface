@@ -22,6 +22,7 @@ const MODULE_ITEMS = [
   { icon: 'sync-outline',        label: 'Дыхание', route: 'Breathing' },
   { icon: 'fish-outline',       label: 'Рыбалка', route: 'Fishing' },
   { icon: 'pencil-outline',     label: 'Мысли',   route: 'Thoughts' },
+  { icon: 'library-outline',    label: 'Материалы', route: 'Resources' },
 ];
 
 let testReminderShown = false;
