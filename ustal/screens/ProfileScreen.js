@@ -258,9 +258,9 @@ export default function ProfileScreen({ navigation }) {
           onPress: async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
-            const { error } = await supabase.functions.invoke('delete-account');
+            const { error } = await supabase.rpc('delete_user');
             if (error) {
-              Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуй позже.');
+              Alert.alert('Ошибка', error.message || 'Не удалось удалить аккаунт.');
               return;
             }
             const channels = supabase.getChannels();

@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  ScrollView, TextInput, Alert,
+  ScrollView, TextInput, Alert, Linking,
 } from 'react-native';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +43,7 @@ export default function RegisterScreen({ navigation }) {
   const [showPass, setShowPass] = useState(false);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [errors, setErrors] = useState({ name: '', email: '', password: '', labels: '' });
 
   const toggleLabel = (label) => {
@@ -73,32 +74,34 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Ошибка регистрации', error.message);
       return;
     }
-    setLoading(false);
-    if (EMAIL_CONFIRM_ENABLED) {
+
+    if (EMAIL_CONFIRM_ENABLED || !data.session) {
+      setLoading(false);
       navigation.navigate('EmailConfirm', {
         email,
         password,
         username: name.trim(),
         labels: selected,
       });
-    } else {
-      const { error: insertError } = await supabase.from('users').upsert({
-        username: name.trim(),
-        labels: selected,
-        user_id: data.user.id,
-        email,
-      }, { onConflict: 'user_id' });
-      if (insertError) {
-        await supabase.auth.signOut();
-        setLoading(false);
-        Alert.alert('Ошибка', 'Не удалось создать профиль. Попробуй ещё раз.');
-        return;
-      }
-      store.userId = data.user.id;
-      store.username = name.trim();
-      store.email = email;
-      navigation.navigate('Test');
+      return;
     }
+
+    const { error: insertError } = await supabase.from('users').upsert({
+      username: name.trim(),
+      labels: selected,
+      user_id: data.user.id,
+      email,
+    }, { onConflict: 'user_id' });
+    setLoading(false);
+    if (insertError) {
+      await supabase.auth.signOut();
+      Alert.alert('Ошибка', insertError.message || 'Не удалось создать профиль.');
+      return;
+    }
+    store.userId = data.user.id;
+    store.username = name.trim();
+    store.email = email;
+    navigation.navigate('Test');
   };
 
   return (
@@ -187,9 +190,28 @@ export default function RegisterScreen({ navigation }) {
         {errors.labels ? <Text style={styles.errorText}>{errors.labels}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={styles.privacyRow}
+          onPress={() => setPrivacyAccepted(v => !v)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.checkbox, privacyAccepted && styles.checkboxActive]}>
+            {privacyAccepted && <Ionicons name="checkmark" size={13} color={colors.onAccent} />}
+          </View>
+          <Text style={styles.privacyText}>
+            Я принимаю{' '}
+            <Text
+              style={styles.privacyLink}
+              onPress={() => Linking.openURL('https://krakova05.github.io/Zface/')}
+            >
+              политику конфиденциальности
+            </Text>
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, (!privacyAccepted || loading) && styles.buttonDisabled]}
           onPress={register}
-          disabled={loading}
+          disabled={!privacyAccepted || loading}
           activeOpacity={0.8}
         >
           <Text style={styles.buttonText}>{loading ? 'Создаём аккаунт...' : 'Создать аккаунт'}</Text>
@@ -267,6 +289,20 @@ const styles = StyleSheet.create({
   labelChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   labelText: { color: colors.muted, fontSize: 14 },
   labelTextActive: { color: colors.onAccent },
+
+  privacyRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginTop: 16, marginBottom: 4, gap: 10,
+  },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6,
+    borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.card,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  privacyText: { flex: 1, color: colors.muted, fontSize: 13, lineHeight: 18 },
+  privacyLink: { color: colors.accent, textDecorationLine: 'underline' },
 
   button: {
     backgroundColor: colors.accent,
