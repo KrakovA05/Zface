@@ -23,6 +23,7 @@ const MODULE_ITEMS = [
   { icon: 'fish-outline',       label: 'Рыбалка', route: 'Fishing' },
   { icon: 'pencil-outline',     label: 'Мысли',   route: 'Thoughts' },
   { icon: 'library-outline',    label: 'Материалы', route: 'Resources' },
+  { icon: 'mail-outline',       label: 'Письмо',   route: 'Letter' },
 ];
 
 let testReminderShown = false;
@@ -80,6 +81,7 @@ export default function HomeScreen({ navigation }) {
   const [communityCount, setCommunityCount] = useState(0);
   const [moodScore,      setMoodScore]      = useState(null);
   const [moodCount,      setMoodCount]      = useState(0);
+  const [similarUser,    setSimilarUser]    = useState(null);
   const dailyQuestion = getTodayQuestion();
   const todayWord = getTodayWord();
 
@@ -136,6 +138,8 @@ export default function HomeScreen({ navigation }) {
         setDailyAnswered(ans ? ans.answer : false);
         if (ans) fetchOtherAnswers(user.id);
 
+        await findSimilarUser(user.id, currentLevel);
+
         const { data: myMood } = await supabase
           .from('mood_checkins').select('score')
           .eq('user_id', user.id).eq('checkin_date', today).maybeSingle();
@@ -171,6 +175,96 @@ export default function HomeScreen({ navigation }) {
       await supabase.from('daily_word_taps').insert({
         user_id: user.id, word: todayWord, word_date: getTodayDate(), reaction,
       });
+    }
+  };
+
+  const findSimilarUser = async (userId, level) => {
+    // Показываем не чаще раз в 7 дней
+    const { data: recent } = await supabase
+      .from('similar_user_shown')
+      .select('shown_at')
+      .eq('user_id', userId)
+      .order('shown_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (recent) {
+      const daysSince = (Date.now() - new Date(recent.shown_at).getTime()) / 86400000;
+      if (daysSince < 7) return;
+    }
+
+    // Берём свои последние ответы
+    const { data: myAnswers } = await supabase
+      .from('daily_answers')
+      .select('answer')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(14);
+    if (!myAnswers || myAnswers.length < 3) return;
+
+    const myWords = new Set(
+      myAnswers.flatMap(a => a.answer.toLowerCase().split(/\s+/).filter(w => w.length > 3))
+    );
+    if (myWords.size < 5) return;
+
+    // Берём ответы других с тем же уровнем
+    const { data: others } = await supabase
+      .from('daily_answers')
+      .select('user_id, answer')
+      .neq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (!others || others.length === 0) return;
+
+    // Фильтруем по уровню
+    const { data: sameLevelUsers } = await supabase
+      .from('users')
+      .select('user_id, username, avatar_url')
+      .eq('level', level)
+      .neq('user_id', userId);
+    if (!sameLevelUsers || sameLevelUsers.length === 0) return;
+    const sameLevelSet = new Set(sameLevelUsers.map(u => u.user_id));
+
+    // Исключаем уже показанных
+    const { data: shownBefore } = await supabase
+      .from('similar_user_shown')
+      .select('matched_user_id')
+      .eq('user_id', userId);
+    const shownSet = new Set((shownBefore || []).map(s => s.matched_user_id));
+
+    // Считаем совпадения слов по пользователям
+    const scoreMap = {};
+    others.forEach(({ user_id, answer }) => {
+      if (!sameLevelSet.has(user_id) || shownSet.has(user_id)) return;
+      const words = answer.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const matches = words.filter(w => myWords.has(w)).length;
+      if (matches > 0) scoreMap[user_id] = (scoreMap[user_id] || 0) + matches;
+    });
+
+    const sorted = Object.entries(scoreMap).sort((a, b) => b[1] - a[1]);
+    if (sorted.length === 0) return;
+
+    const [bestId] = sorted[0];
+    const bestUser = sameLevelUsers.find(u => u.user_id === bestId);
+    if (!bestUser) return;
+
+    // Записываем показ
+    await supabase.from('similar_user_shown').upsert(
+      { user_id: userId, matched_user_id: bestId },
+      { onConflict: 'user_id,matched_user_id' }
+    );
+
+    setSimilarUser(bestUser);
+  };
+
+  const dismissSimilar = async () => {
+    setSimilarUser(null);
+    if (!similarUser) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('similar_user_shown')
+        .update({ dismissed: true })
+        .eq('user_id', user.id)
+        .eq('matched_user_id', similarUser.user_id);
     }
   };
 
@@ -269,6 +363,34 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.communityText}>
               сегодня {communityCount} {pluralPeople(communityCount)} с твоим уровнем заходили
             </Text>
+          </View>
+        )}
+
+        {!loading && similarUser && (
+          <View style={[styles.similarCard, { borderLeftColor: lvlColor }]}>
+            <TouchableOpacity style={styles.similarDismiss} onPress={dismissSimilar} hitSlop={{ top:8, right:8, bottom:8, left:8 }}>
+              <Ionicons name="close" size={16} color={colors.muted} />
+            </TouchableOpacity>
+            <Text style={styles.similarLabel}>кажется, вы похожи</Text>
+            <Text style={[styles.similarName, { color: lvlColor }]}>{similarUser.username}</Text>
+            <Text style={styles.similarDesc}>отвечает на вопросы дня похоже на тебя</Text>
+            <View style={styles.similarBtns}>
+              <TouchableOpacity
+                style={[styles.similarBtn, { backgroundColor: lvlColor }]}
+                onPress={() => {
+                  dismissSimilar();
+                  navigation.navigate('UserProfile', {
+                    user: { user_id: similarUser.user_id, username: similarUser.username, level, avatar_url: similarUser.avatar_url, status: '' }
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.similarBtnText}>Посмотреть профиль</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.similarBtnSkip} onPress={dismissSimilar} activeOpacity={0.7}>
+                <Text style={styles.similarBtnSkipText}>Не сейчас</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -557,6 +679,27 @@ const styles = StyleSheet.create({
     marginBottom: 14, paddingHorizontal: 4,
   },
   communityText: { fontSize: 13, color: colors.muted },
+
+  // Similar user
+  similarCard: {
+    backgroundColor: colors.card, borderRadius: 16,
+    padding: 16, marginBottom: 16, borderLeftWidth: 3, position: 'relative',
+  },
+  similarDismiss: { position: 'absolute', top: 12, right: 12 },
+  similarLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6,
+  },
+  similarName: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  similarDesc: { fontSize: 13, color: colors.muted, marginBottom: 14 },
+  similarBtns: { flexDirection: 'row', gap: 8 },
+  similarBtn: { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  similarBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  similarBtnSkip: {
+    flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center',
+    borderWidth: 1, borderColor: colors.border,
+  },
+  similarBtnSkipText: { color: colors.muted, fontSize: 14 },
 
   // Mood checkin
   moodCard: {
