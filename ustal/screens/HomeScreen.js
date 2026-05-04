@@ -116,6 +116,7 @@ export default function HomeScreen({ navigation }) {
   useFocusEffect(useCallback(() => {
     const load = async () => {
       setLoading(true);
+      try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: recent } = await supabase
@@ -205,6 +206,7 @@ export default function HomeScreen({ navigation }) {
           .gte('last_seen', tenMinAgo).neq('user_id', user.id);
         setOnlineCount(onlineC || 0);
       }
+      } catch {}
       setLoading(false);
     };
     load();
@@ -380,7 +382,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.greetingRow}>
           <Text style={styles.greeting}>Привет, {store.username || 'друг'}</Text>
           <View style={styles.greetingBadges}>
-            {streak > 1 && (
+            {streak > 0 && (
               <View style={styles.streakBadge}>
                 <Ionicons name="flame-outline" size={12} color={colors.accent} />
                 <Text style={styles.streakText}>{streak}</Text>
@@ -496,7 +498,7 @@ export default function HomeScreen({ navigation }) {
             activeOpacity={0.8}
           >
             <Ionicons name="clipboard-outline" size={18} color="#fff" />
-            <Text style={styles.ctaPrimaryText}>Узнать где ты сейчас</Text>
+            <Text style={styles.ctaPrimaryText} numberOfLines={1} adjustsFontSizeToFit>Как ты сейчас?</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.ctaSecondary}
