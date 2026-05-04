@@ -61,6 +61,24 @@ const QUEST_MESSAGES = {
   ],
 };
 
+const NIGHT_MESSAGES = {
+  green:  { title: 'Не спишь?', body: 'Ночная комната открыта. Там свои.' },
+  yellow: { title: 'Не спится?', body: 'Зайди в ночную комнату. Там тихо.' },
+  red:    { title: 'Ночь бывает тяжёлой', body: 'Мы здесь. Ночная комната открыта.' },
+};
+
+const WEEKEND_MESSAGES = {
+  green:  { title: 'Пятница', body: 'Как провёл неделю? Зайди, расскажи.' },
+  yellow: { title: 'Пятница вечером', body: 'Самое время зайти к своим.' },
+  red:    { title: 'Неделя позади', body: 'Ты справился. Зайди если хочется просто побыть.' },
+};
+
+const RETURN_MESSAGES = {
+  green:  { title: 'Привет', body: 'Давно не видели тебя. Как ты?' },
+  yellow: { title: 'Мы здесь', body: 'Несколько дней не заходил. Всё нормально?' },
+  red:    { title: 'Ты не один', body: 'Мы заметили что тебя не было. Зайди, если нужно.' },
+};
+
 export async function scheduleQuestNotifications(level) {
   try {
     const { status } = await Notifications.getPermissionsAsync();
@@ -75,6 +93,40 @@ export async function scheduleQuestNotifications(level) {
         trigger: { hour: QUEST_HOURS[i], minute: 0, repeats: true },
       });
     }
+
+    // Ночная комната — 23:00 каждую ночь
+    const night = NIGHT_MESSAGES[level] || NIGHT_MESSAGES.green;
+    await Notifications.scheduleNotificationAsync({
+      content: { title: night.title, body: night.body, sound: true },
+      trigger: { hour: 23, minute: 0, repeats: true },
+    });
+
+    // Пятничный пуш — каждую пятницу в 21:00 (weekday: 6 = пятница)
+    const weekend = WEEKEND_MESSAGES[level] || WEEKEND_MESSAGES.green;
+    await Notifications.scheduleNotificationAsync({
+      content: { title: weekend.title, body: weekend.body, sound: true },
+      trigger: { weekday: 6, hour: 21, minute: 0, repeats: true },
+    });
+
+  } catch {}
+}
+
+// Вызывается при каждом открытии приложения — откладывает напоминание на 3 дня вперёд.
+// Если пользователь не открывает 3 дня — пуш придёт.
+export async function scheduleReturnReminder(level) {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const existing = scheduled.filter(n => n.content.data?.type === 'return_reminder');
+    await Promise.all(existing.map(n => Notifications.cancelScheduledNotificationAsync(n.identifier)));
+
+    const msg = RETURN_MESSAGES[level] || RETURN_MESSAGES.green;
+    await Notifications.scheduleNotificationAsync({
+      content: { title: msg.title, body: msg.body, sound: true, data: { type: 'return_reminder' } },
+      trigger: { seconds: 3 * 24 * 60 * 60 },
+    });
   } catch {}
 }
 

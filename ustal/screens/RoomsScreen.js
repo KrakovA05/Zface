@@ -42,6 +42,13 @@ const ROOMS = [
   { id: 'red',    label: 'Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336', icon: 'flame-outline' },
 ];
 
+const NIGHT_ROOM = { id: 'night', label: 'Ночная комната', desc: 'Для тех кому не спится', color: '#7B68EE', icon: 'moon-outline' };
+
+function isNightTime() {
+  const h = new Date().getHours();
+  return h >= 23 || h < 6;
+}
+
 function formatTime(dateStr) {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -51,7 +58,7 @@ export default function RoomsScreen({ route, navigation }) {
   const userLevel = store.level || 'green';
   const openRoom = route?.params?.openRoom;
   const insets = useSafeAreaInsets();
-  const [room, setRoom] = useState(openRoom === userLevel ? openRoom : null);
+  const [room, setRoom] = useState((openRoom === userLevel || openRoom === 'night') ? openRoom : null);
   const [messages, setMessages] = useState([]);
   const [text2, setText2] = useState('');
   const [kbHeight, setKbHeight] = useState(0);
@@ -85,10 +92,11 @@ export default function RoomsScreen({ route, navigation }) {
   }, []));
 
   useEffect(() => {
-    if (openRoom && openRoom === userLevel) promptEnterRoom(openRoom);
+    if (openRoom && (openRoom === userLevel || openRoom === 'night')) promptEnterRoom(openRoom);
   }, []);
 
   const loadParticipants = async (roomId) => {
+    if (roomId === 'night') { setParticipants([]); return; }
     const { data } = await supabase
       .from('users')
       .select('user_id, username, level, avatar_url, status, last_seen')
@@ -109,7 +117,7 @@ export default function RoomsScreen({ route, navigation }) {
   };
 
   const enterRoom = async (roomId, anonymous = false) => {
-    if (roomId !== userLevel) return;
+    if (roomId !== userLevel && roomId !== 'night') return;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -260,6 +268,7 @@ export default function RoomsScreen({ route, navigation }) {
   const cancelContext = () => { setEditing(null); setReplyTo(null); setText2(''); };
 
   if (!room) {
+    const nightActive = isNightTime();
     const myRoom = ROOMS.find(r => r.id === userLevel);
     return (
       <View style={styles.safeArea}>
@@ -275,6 +284,25 @@ export default function RoomsScreen({ route, navigation }) {
               <Text style={styles.myLevelText}>Твой уровень:</Text>
               <Text style={[styles.myLevelValue, { color: myRoom.color }]}>{myRoom.label}</Text>
             </View>
+          )}
+
+          {nightActive && (
+            <TouchableOpacity
+              style={[styles.roomCard, { borderLeftColor: NIGHT_ROOM.color }, styles.roomCardHighlight]}
+              onPress={() => promptEnterRoom(NIGHT_ROOM.id)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.roomIcon, { backgroundColor: NIGHT_ROOM.color + '22' }]}>
+                <Ionicons name={NIGHT_ROOM.icon} size={20} color={NIGHT_ROOM.color} />
+              </View>
+              <View style={styles.roomInfo}>
+                <Text style={styles.roomLabel}>{NIGHT_ROOM.label}</Text>
+                <Text style={styles.roomDesc}>{NIGHT_ROOM.desc} · до 6:00</Text>
+              </View>
+              <View style={[styles.matchBadge, { backgroundColor: NIGHT_ROOM.color }]}>
+                <Text style={styles.matchText}>ОТКРЫТА</Text>
+              </View>
+            </TouchableOpacity>
           )}
 
           {ROOMS.map(r => {
@@ -319,7 +347,7 @@ export default function RoomsScreen({ route, navigation }) {
     );
   }
 
-  const roomData = ROOMS.find(r => r.id === room);
+  const roomData = ROOMS.find(r => r.id === room) || NIGHT_ROOM;
   const totalPresence = presenceCounts.named + presenceCounts.anon;
 
   return (

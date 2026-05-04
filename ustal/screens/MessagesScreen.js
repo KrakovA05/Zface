@@ -46,9 +46,15 @@ async function countUnread(table, field, value, excludeField, excludeValue, last
   return count || 0;
 }
 
+function isNightTime() {
+  const h = new Date().getHours();
+  return h >= 23 || h < 6;
+}
+
 export default function MessagesScreen({ navigation }) {
   const userLevel = store.level || 'green';
   const [tab, setTab] = useState('chats');
+  const nightActive = isNightTime();
   const [friends, setFriends] = useState([]);
   const [dmUnread, setDmUnread] = useState({});
   const [roomUnread, setRoomUnread] = useState({});
@@ -195,6 +201,23 @@ export default function MessagesScreen({ navigation }) {
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.muted} />
               </TouchableOpacity>
+
+              {/* Ночная комната */}
+              {nightActive && (
+                <TouchableOpacity
+                  style={[styles.row, { borderLeftWidth: 3, borderLeftColor: '#7B68EE' }]}
+                  onPress={() => navigation.navigate('Rooms', { openRoom: 'night' })}
+                >
+                  <View style={[styles.rowIconWrap, { backgroundColor: '#7B68EE22' }]}>
+                    <Ionicons name="moon-outline" size={20} color="#7B68EE" />
+                  </View>
+                  <View style={styles.rowInfo}>
+                    <Text style={[styles.rowLabel, { color: '#7B68EE' }]}>Ночная комната</Text>
+                    <Text style={styles.rowSub}>Для тех кому не спится · до 6:00</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                </TouchableOpacity>
+              )}
 
               {/* Комнаты */}
               <SectionHeader icon="grid-outline" label="Комнаты по статусу" />

@@ -78,6 +78,8 @@ export default function HomeScreen({ navigation }) {
   const [wordTapped,     setWordTapped]     = useState(false);
   const [wordCount,      setWordCount]      = useState(0);
   const [communityCount, setCommunityCount] = useState(0);
+  const [moodScore,      setMoodScore]      = useState(null);
+  const [moodCount,      setMoodCount]      = useState(0);
   const dailyQuestion = getTodayQuestion();
   const todayWord = getTodayWord();
 
@@ -134,6 +136,17 @@ export default function HomeScreen({ navigation }) {
         setDailyAnswered(ans ? ans.answer : false);
         if (ans) fetchOtherAnswers(user.id);
 
+        const { data: myMood } = await supabase
+          .from('mood_checkins').select('score')
+          .eq('user_id', user.id).eq('checkin_date', today).maybeSingle();
+        if (myMood) {
+          setMoodScore(myMood.score);
+          const { count: mc } = await supabase
+            .from('mood_checkins').select('*', { count: 'exact', head: true })
+            .eq('checkin_date', today).eq('score', myMood.score);
+          setMoodCount(mc || 0);
+        }
+
         const word = getTodayWord();
         const { data: myTap } = await supabase
           .from('daily_word_taps').select('reaction')
@@ -158,6 +171,22 @@ export default function HomeScreen({ navigation }) {
       await supabase.from('daily_word_taps').insert({
         user_id: user.id, word: todayWord, word_date: getTodayDate(), reaction,
       });
+    }
+  };
+
+  const tapMood = async (score) => {
+    if (moodScore !== null) return;
+    setMoodScore(score);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('mood_checkins').upsert(
+        { user_id: user.id, checkin_date: getTodayDate(), score },
+        { onConflict: 'user_id,checkin_date' }
+      );
+      const { count: mc } = await supabase
+        .from('mood_checkins').select('*', { count: 'exact', head: true })
+        .eq('checkin_date', getTodayDate()).eq('score', score);
+      setMoodCount(mc || 0);
     }
   };
 
@@ -186,6 +215,12 @@ export default function HomeScreen({ navigation }) {
       }
     }
     setDailySubmitting(false);
+  };
+
+  const getMoodColor = (score) => {
+    if (score <= 3) return '#E57373';
+    if (score <= 6) return '#FFB74D';
+    return '#81C784';
   };
 
   const lvlColor   = LEVEL_COLORS[level];
@@ -234,6 +269,38 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.communityText}>
               сегодня {communityCount} {pluralPeople(communityCount)} с твоим уровнем заходили
             </Text>
+          </View>
+        )}
+
+        {!loading && (
+          <View style={styles.moodCard}>
+            {moodScore === null ? (
+              <>
+                <Text style={styles.moodLabel}>как ты сейчас?</Text>
+                <View style={styles.moodRow}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <TouchableOpacity key={n} style={[styles.moodBtn, { borderColor: getMoodColor(n) }]} onPress={() => tapMood(n)} activeOpacity={0.7}>
+                      <Text style={[styles.moodBtnText, { color: getMoodColor(n) }]}>{n}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.moodHints}>
+                  <Text style={styles.moodHint}>совсем плохо</Text>
+                  <Text style={styles.moodHint}>отлично</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.moodDoneScore, { color: getMoodColor(moodScore) }]}>
+                  ты на {moodScore} из 10
+                </Text>
+                {moodCount > 1 && (
+                  <Text style={styles.moodDoneCount}>
+                    ты и ещё {moodCount - 1} {pluralPeople(moodCount - 1)} сегодня чувствуют себя так же
+                  </Text>
+                )}
+              </>
+            )}
           </View>
         )}
 
@@ -490,6 +557,26 @@ const styles = StyleSheet.create({
     marginBottom: 14, paddingHorizontal: 4,
   },
   communityText: { fontSize: 13, color: colors.muted },
+
+  // Mood checkin
+  moodCard: {
+    backgroundColor: colors.card, borderRadius: 16,
+    padding: 16, marginBottom: 16,
+  },
+  moodLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12,
+  },
+  moodRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  moodBtn: {
+    width: 28, height: 28, borderRadius: 8, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  moodBtnText: { fontSize: 11, fontWeight: '700' },
+  moodHints: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  moodHint: { fontSize: 10, color: colors.muted },
+  moodDoneScore: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  moodDoneCount: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
 
   // CTA row
   ctaRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },

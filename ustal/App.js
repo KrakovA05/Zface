@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
-import { registerForPushNotifications, scheduleQuestNotifications } from './utils/notifications';
+import { registerForPushNotifications, scheduleQuestNotifications, scheduleReturnReminder } from './utils/notifications';
 import { getLastRead } from './utils/unread';
 
 import LoginScreen from './screens/LoginScreen';
@@ -277,6 +277,7 @@ export default function App() {
             if (token) supabase.from('users').update({ push_token: token }).eq('user_id', session.user.id);
           });
           scheduleQuestNotifications(userData?.level || 'green');
+          scheduleReturnReminder(userData?.level || 'green');
         } else {
           setInitialRoute('Login');
         }
