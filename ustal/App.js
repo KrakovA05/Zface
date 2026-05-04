@@ -11,6 +11,7 @@ import { store } from './store';
 import { colors } from './theme';
 import { registerForPushNotifications, scheduleQuestNotifications, scheduleReturnReminder } from './utils/notifications';
 import { getLastRead } from './utils/unread';
+import StreakModal from './components/StreakModal';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -250,6 +251,7 @@ const updatePresence = async () => {
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
+  const [streakData, setStreakData] = useState(null);
   const presenceInterval = useRef(null);
 
   useEffect(() => {
@@ -260,7 +262,7 @@ export default function App() {
         if (session?.user) {
           const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('username, level, email, avatar_url, status')
+            .select('username, level, email, avatar_url, status, login_streak, last_login_date')
             .eq('user_id', session.user.id)
             .single();
           if (userError) throw userError;
@@ -272,6 +274,20 @@ export default function App() {
             store.avatarUrl = userData.avatar_url || '';
             store.status = userData.status || '';
           }
+
+          // Стрик по дням входа
+          const today = new Date().toISOString().split('T')[0];
+          const lastDate = userData?.last_login_date;
+          if (lastDate !== today) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yStr = yesterday.toISOString().split('T')[0];
+            const prevStreak = userData?.login_streak || 1;
+            const newStreak = lastDate === yStr ? prevStreak + 1 : 1;
+            await supabase.from('users').update({ login_streak: newStreak, last_login_date: today }).eq('user_id', session.user.id);
+            setStreakData(newStreak);
+          }
+
           setInitialRoute('Main');
           updatePresence();
           registerForPushNotifications().then(token => {
@@ -337,6 +353,7 @@ export default function App() {
             <Stack.Screen name="Letter"          component={LetterScreen} />
           </Stack.Navigator>
         </NavigationContainer>
+        <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />
         </SafeAreaView>
       </SafeAreaProvider>
     </GestureHandlerRootView>

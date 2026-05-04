@@ -130,6 +130,27 @@ export async function scheduleReturnReminder(level) {
   } catch {}
 }
 
+export async function scheduleLowMoodPush() {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const existing = scheduled.filter(n => n.content.data?.type === 'low_mood_support');
+    if (existing.length > 0) return; // уже запланирован
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Ты держишься',
+        body: 'Последние дни непростые. Зайди подышать или просто побудь с нами.',
+        sound: true,
+        data: { type: 'low_mood_support' },
+      },
+      trigger: { seconds: 3 * 60 * 60 },
+    });
+  } catch {}
+}
+
 export async function sendPushNotification(token, title, body) {
   if (!token) return;
   try {

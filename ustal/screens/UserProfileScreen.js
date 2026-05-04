@@ -48,11 +48,15 @@ export default function UserProfileScreen({ route, navigation }) {
   const [blockLoading, setBlockLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [testHistory, setTestHistory] = useState(null);
+  const [helpCount, setHelpCount] = useState(0);
+  const [hasHelped, setHasHelped] = useState(false);
+  const [helpLoading, setHelpLoading] = useState(false);
 
   useEffect(() => {
     if (isMe) return;
     loadFriendStatus();
     loadBlockStatus();
+    loadHelpData();
     supabase
       .from('users')
       .select('status, avatar_url, last_seen, show_history')
@@ -75,6 +79,30 @@ export default function UserProfileScreen({ route, navigation }) {
         }
       });
   }, []);
+
+  const loadHelpData = async () => {
+    const [{ count: total }, { data: mine }] = await Promise.all([
+      supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', user.user_id),
+      supabase.from('user_helps').select('id').eq('helper_id', user.user_id).eq('helped_by_id', store.userId).maybeSingle(),
+    ]);
+    setHelpCount(total || 0);
+    setHasHelped(!!mine);
+  };
+
+  const toggleHelp = async () => {
+    if (helpLoading) return;
+    setHelpLoading(true);
+    if (hasHelped) {
+      await supabase.from('user_helps').delete().eq('helper_id', user.user_id).eq('helped_by_id', store.userId);
+      setHasHelped(false);
+      setHelpCount(c => Math.max(0, c - 1));
+    } else {
+      await supabase.from('user_helps').insert({ helper_id: user.user_id, helped_by_id: store.userId });
+      setHasHelped(true);
+      setHelpCount(c => c + 1);
+    }
+    setHelpLoading(false);
+  };
 
   const loadBlockStatus = async () => {
     const { data } = await supabase
@@ -299,6 +327,29 @@ export default function UserProfileScreen({ route, navigation }) {
           {liveStatus ? <Text style={styles.status}>"{liveStatus}"</Text> : null}
         </View>
 
+        {!isMe && (
+          <TouchableOpacity
+            style={[styles.helpBtn, hasHelped && styles.helpBtnActive]}
+            onPress={toggleHelp}
+            activeOpacity={0.8}
+            disabled={helpLoading}
+          >
+            <Ionicons
+              name={hasHelped ? 'heart' : 'heart-outline'}
+              size={20}
+              color={hasHelped ? '#fff' : level.color}
+            />
+            <Text style={[styles.helpBtnText, hasHelped && { color: '#fff' }]}>
+              {hasHelped ? 'Помог мне' : 'Он мне помог'}
+            </Text>
+            {helpCount > 0 && (
+              <View style={[styles.helpCountBadge, hasHelped && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                <Text style={styles.helpCountText}>{helpCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
         <View style={styles.actionsWrap}>
           {isMe ? (
             <View style={[styles.actionBtn, { backgroundColor: colors.card }]}>
@@ -386,4 +437,21 @@ const styles = StyleSheet.create({
   historyDot: { width: 8, height: 8, borderRadius: 4 },
   historyLevel: { flex: 1, fontSize: 14, fontWeight: '600' },
   historyDate: { fontSize: 12, color: colors.muted },
+
+  helpBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 20,
+    marginBottom: 12, borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  helpBtnActive: {
+    backgroundColor: '#e74c3c', borderColor: '#e74c3c',
+  },
+  helpBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
+  helpCountBadge: {
+    backgroundColor: 'rgba(0,0,0,0.08)', borderRadius: 10,
+    minWidth: 22, height: 22, paddingHorizontal: 6,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  helpCountText: { fontSize: 12, fontWeight: '700', color: colors.white },
 });

@@ -7,6 +7,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_WORDS, DAILY_WORDS_CONTEXT } from '../constants';
 import { colors } from '../theme';
+import { scheduleLowMoodPush } from '../utils/notifications';
 
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
 const LEVEL_ICONS  = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'thunderstorm-outline' };
@@ -28,6 +29,7 @@ const MODULE_ITEMS = [
 ];
 
 let testReminderShown = false;
+const wordTapCache = {}; // { 'YYYY-MM-DD': 'yes'|'no' }
 
 function getDynamic(history) {
   if (history.length < 2) return null;
@@ -36,7 +38,7 @@ function getDynamic(history) {
   const prev = order[history[1]?.level];
   if (curr < prev) return { label: 'Становится лучше',  color: '#4CAF50', icon: 'trending-up-outline'   };
   if (curr > prev) return { label: 'Становится хуже',   color: '#F44336', icon: 'trending-down-outline' };
-  return               { label: 'Стабильно',            color: '#FFC107', icon: 'remove-outline'        };
+  return               { label: 'Стабильно',            color: '#AA7C00', icon: 'remove-outline'        };
 }
 
 function getTodayQuestion() {
@@ -105,6 +107,7 @@ export default function HomeScreen({ navigation }) {
   const [communityCount, setCommunityCount] = useState(0);
   const [moodScore,      setMoodScore]      = useState(null);
   const [moodCount,      setMoodCount]      = useState(0);
+  const [moodSuggested,  setMoodSuggested]  = useState(null);
   const [similarUser,    setSimilarUser]    = useState(null);
   const [streak,         setStreak]         = useState(0);
   const [onlineCount,    setOnlineCount]    = useState(0);
@@ -123,8 +126,9 @@ export default function HomeScreen({ navigation }) {
           .from('test_results').select('level, created_at')
           .eq('user_id', user.id).order('created_at', { ascending: false }).limit(5);
 
+        let currentLevel = store.level || 'green';
         if (recent?.length) {
-          const currentLevel = recent[0].level;
+          currentLevel = recent[0].level;
           setLevel(currentLevel);
           store.level = currentLevel;
           setHistory(recent);
@@ -181,10 +185,16 @@ export default function HomeScreen({ navigation }) {
         }
 
         const word = getTodayWord();
-        const { data: myTap } = await supabase
-          .from('daily_word_taps').select('reaction')
-          .eq('user_id', user.id).eq('word_date', today).maybeSingle();
-        setWordTapped(myTap ? myTap.reaction : false);
+        if (wordTapCache[today] !== undefined) {
+          setWordTapped(wordTapCache[today]);
+        } else {
+          const { data: taps } = await supabase
+            .from('daily_word_taps').select('reaction')
+            .eq('user_id', user.id).eq('word_date', today).limit(1);
+          const tapVal = taps?.[0]?.reaction || false;
+          wordTapCache[today] = tapVal;
+          setWordTapped(tapVal);
+        }
         const { count } = await supabase
           .from('daily_word_taps').select('*', { count: 'exact', head: true })
           .eq('word_date', today).eq('word', word).eq('reaction', 'yes');
@@ -215,12 +225,14 @@ export default function HomeScreen({ navigation }) {
   const tapWord = async (reaction) => {
     if (wordTapped) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const today = getTodayDate();
     setWordTapped(reaction);
+    wordTapCache[today] = reaction;
     if (reaction === 'yes') setWordCount(c => c + 1);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('daily_word_taps').insert({
-        user_id: user.id, word: todayWord, word_date: getTodayDate(), reaction,
+        user_id: user.id, word: todayWord, word_date: today, reaction,
       });
     }
   };
@@ -315,20 +327,44 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const getMoodSuggestion = (score) => {
+    if (score <= 3) return { icon: 'sync-outline',       label: 'Может, подышать?',          route: 'Breathing' };
+    if (score <= 6) return { icon: 'people-outline',     label: 'Загляни к своим в комнату', route: 'Rooms'     };
+    return                 { icon: 'newspaper-outline',  label: 'Поделись в ленте',          route: 'Feed'      };
+  };
+
   const tapMood = async (score) => {
     if (moodScore !== null) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMoodScore(score);
+    setMoodSuggested(getMoodSuggestion(score));
+
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('mood_checkins').upsert(
-        { user_id: user.id, checkin_date: getTodayDate(), score },
-        { onConflict: 'user_id,checkin_date' }
-      );
-      const { count: mc } = await supabase
-        .from('mood_checkins').select('*', { count: 'exact', head: true })
-        .eq('checkin_date', getTodayDate()).eq('score', score);
-      setMoodCount(mc || 0);
+    if (!user) return;
+
+    await supabase.from('mood_checkins').upsert(
+      { user_id: user.id, checkin_date: getTodayDate(), score },
+      { onConflict: 'user_id,checkin_date' }
+    );
+    const { count: mc } = await supabase
+      .from('mood_checkins').select('*', { count: 'exact', head: true })
+      .eq('checkin_date', getTodayDate()).eq('score', score);
+    setMoodCount(mc || 0);
+
+    // C) Если 3 дня подряд оценка ≤3 — поддерживающий пуш через 3 часа
+    if (score <= 3) {
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 2);
+      const { data: recentMoods } = await supabase
+        .from('mood_checkins')
+        .select('score, checkin_date')
+        .eq('user_id', user.id)
+        .gte('checkin_date', threeDaysAgo.toISOString().split('T')[0])
+        .order('checkin_date', { ascending: false })
+        .limit(3);
+      if (recentMoods && recentMoods.length >= 3 && recentMoods.every(m => m.score <= 3)) {
+        scheduleLowMoodPush();
+      }
     }
   };
 
@@ -485,6 +521,17 @@ export default function HomeScreen({ navigation }) {
                   <Text style={styles.moodDoneCount}>
                     ты и ещё {moodCount - 1} {pluralPeople(moodCount - 1)} сегодня чувствуют себя так же
                   </Text>
+                )}
+                {moodSuggested && (
+                  <TouchableOpacity
+                    style={styles.moodSuggestion}
+                    onPress={() => navigation.navigate(moodSuggested.route)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name={moodSuggested.icon} size={15} color={colors.accent} />
+                    <Text style={styles.moodSuggestionText}>{moodSuggested.label}</Text>
+                    <Ionicons name="arrow-forward" size={13} color={colors.accent} />
+                  </TouchableOpacity>
                 )}
               </>
             )}
@@ -671,7 +718,7 @@ function TestChart({ history }) {
           <View key={i} style={{
             position: 'absolute', left: 0, right: 0,
             top: PAD_Y + (1 - val) * innerH, height: 1,
-            backgroundColor: val === 1 ? '#4CAF5033' : val === 0.5 ? '#FFC10733' : '#F4433633',
+            backgroundColor: val === 1 ? '#4CAF5033' : val === 0.5 ? '#AA7C0033' : '#F4433633',
           }} />
         ))}
 
@@ -715,7 +762,7 @@ function TestChart({ history }) {
 
         {chartWidth > 0 && [
           { val: 1, color: '#4CAF50' },
-          { val: 0.5, color: '#FFC107' },
+          { val: 0.5, color: '#AA7C00' },
           { val: 0, color: '#F44336' },
         ].map((item, i) => (
           <View key={i} style={{
@@ -814,7 +861,14 @@ const styles = StyleSheet.create({
   moodHints: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   moodHint: { fontSize: 10, color: colors.muted },
   moodDoneScore: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  moodDoneCount: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  moodDoneCount: { fontSize: 13, color: colors.muted, fontStyle: 'italic', marginBottom: 12 },
+  moodSuggestion: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4,
+    backgroundColor: colors.accent + '12', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 9,
+    alignSelf: 'flex-start',
+  },
+  moodSuggestionText: { fontSize: 13, fontWeight: '600', color: colors.accent },
 
   // CTA row
   ctaRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },

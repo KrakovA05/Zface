@@ -12,7 +12,7 @@ import Avatar from '../components/Avatar';
 
 const ROOMS = [
   { id: 'green',  label: 'Зелёная комната', desc: 'Для тех кто держится', color: '#4CAF50', icon: 'leaf-outline' },
-  { id: 'yellow', label: 'Жёлтая комната',  desc: 'Для тех на грани',     color: '#FFC107', icon: 'partly-sunny-outline' },
+  { id: 'yellow', label: 'Жёлтая комната',  desc: 'Для тех на грани',     color: '#AA7C00', icon: 'partly-sunny-outline' },
   { id: 'red',    label: 'Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336', icon: 'flame-outline' },
 ];
 

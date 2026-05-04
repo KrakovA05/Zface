@@ -133,7 +133,7 @@ export default function LetterScreen({ navigation }) {
     );
   };
 
-  const levelColor = { green: '#4CAF50', yellow: '#FFC107', red: '#F44336' };
+  const levelColor = { green: '#4CAF50', yellow: '#AA7C00', red: '#F44336' };
   const unreadCount = inbox.filter(l => !l.opened).length;
 
   return (

@@ -12,18 +12,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Аватар и цвет никнейма везде отображают уровень пользователя — визуальный язык состояния
 
 ### Основные экраны
-- **HomeScreen** — статус-карточка уровня, динамика изменений, кнопки «Узнать где ты сейчас» / «Рекомендации», стрик-бейдж, счётчик онлайна, вопрос дня (`daily_answers`), «Одно слово дня» + контекст (`daily_word_taps`), чекин настроения, динамика сообщества, сетка модулей, график истории тестов (список — за кнопкой), напоминание если прошло >3 дней
+- **HomeScreen** — статус-карточка уровня, динамика изменений, кнопки «Узнать где ты сейчас» / «Рекомендации», стрик-бейдж, счётчик онлайна, вопрос дня (`daily_answers`), «Одно слово дня» + контекст (`daily_word_taps`, кеш в `wordTapCache`), чекин настроения + контекстная подсказка маршрута + пуш если 3 дня подряд ≤3, динамика сообщества, сетка модулей, график истории тестов (список — за кнопкой), напоминание если прошло >3 дней
 - **FeedScreen** — лента постов с фильтром по уровню, создание поста (свой уровень / все), лайки, комментарии
 - **MessagesScreen** — две вкладки: «Чаты» (общий чат, комнаты по уровню) и «Личные» (DM с друзьями), бейджи непрочитанных
 - **FriendsScreen** — поиск по никнейму, поиск по ярлыкам, заявки в друзья (входящие/исходящие), список друзей, кнопка DM
-- **ProfileScreen** — аватар (base64, редактируемый), статус (редактируемый), уровень, мотиватор дня, достижения (8 ачивок), свитч «Показывать динамику», выход, удаление аккаунта, приглашение друга через Share API
+- **ProfileScreen** — аватар (base64, редактируемый), статус (редактируемый), уровень, мотиватор дня, достижения (8 ачивок), свитч «Показывать динамику», счётчик «помог N людям» (`user_helps`), выход, удаление аккаунта, приглашение друга через Share API
 - **ChatScreen** — глобальный чат (все уровни вместе), realtime, удаление своих сообщений, timestamp
-- **RoomsScreen** — комнаты по уровню, только своя доступна, realtime чат, список участников + анонимные наблюдатели (Presence), тап аватара → профиль, timestamp
+- **RoomsScreen** — комнаты по уровню, только своя доступна, realtime чат, список участников + анонимные наблюдатели (Presence), тап аватара → профиль, timestamp; ночная комната — вход и написание только анонимно, кастомный аватар скрыт
 - **DirectMessageScreen** — личная переписка, блокировка проверяется перед отправкой, тап аватара → профиль, timestamp
 - **PostScreen** — комментарии к посту ленты, realtime, удаление своих комментариев
 - **ThoughtsScreen** — анонимная мысль дня (1 раз в сутки), реакции «я понимаю / я тоже / держись», счётчики реакций других
 - **ResourcesScreen** — психологические материалы: 5 тем (тревога, депрессия, выгорание, одиночество, самооценка), аккордеон с анимацией, реальные ссылки на YouTube и b17.ru/psychologies.ru через `Linking.openURL()`
-- **UserProfileScreen** — профиль другого пользователя: добавить в друзья / принять / отклонить / удалить, DM, блокировка, жалоба, динамика уровня (если `show_history = true`)
+- **UserProfileScreen** — профиль другого пользователя: добавить в друзья / принять / отклонить / удалить, DM, блокировка, жалоба, динамика уровня (если `show_history = true`), кнопка «Он мне помог» с каунтером (`user_helps`)
 - **BreathingScreen** — коробочное дыхание 4-4-4-4, Animated-анимация круга, фазы вдох/задержка/выдох/пауза
 - **FishingScreen** — мини-игра «рыбалка» как медитативная активность; математически прорисованная удочка (seg-helper через atan2), float с анимацией, 14 рыб с временно́й привязкой, «Записка в бутылке»
 - **TestScreen** — тест из 10 вопросов, определяет уровень, один раз в 24 часа
@@ -118,16 +118,17 @@ store = { username, email, level, userId, avatarUrl, status }
 Поля заполняются при логине/регистрации и при восстановлении сессии в App.js. Для отображения актуальных данных в экранах с профилем используется `useFocusEffect`.
 
 ### Shared resources
-- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`, `DAILY_WORDS`
+- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`, `DAILY_WORDS`; `LEVEL_COLORS.yellow = '#AA7C00'` (контрастный золотисто-жёлтый на светлом фоне)
 - `theme.js` — объект `colors` (все цвета приложения) + `shared` StyleSheet (переиспользуемые стили: кнопки, инпуты, ярлыки)
 - `utils.js` — `getConversationId(uid1, uid2)` для стабильного ID личного чата
 - `components/Avatar.js` — аватар с fallback на букву+цвет уровня
+- `components/StreakModal.js` — анимированный модал стрика входа (`Animated.spring` + смена цвета пламени по прогрессу); показывается из `App.js` раз в день
 
 ### Database schema (Supabase)
 
 | Таблица | Ключевые поля | RLS |
 |---------|--------------|-----|
-| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url`, `last_seen`, `show_history BOOL`, `push_token TEXT` | ✅ |
+| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url`, `last_seen`, `show_history BOOL`, `push_token TEXT`, `login_streak INT`, `last_login_date DATE` | ✅ |
 | `messages` | `id`, `username`, `text`, `level`, `created_at`, `sender_id`, `edited_at` — глобальный чат + комнаты | ✅ |
 | `direct_messages` | `id`, `conversation_id TEXT`, `sender_id UUID`, `sender_username`, `text`, `created_at`, `edited_at` | ✅ |
 | `message_reactions` | `id`, `message_id UUID`, `message_table TEXT`, `user_id UUID`, `reaction TEXT`, `created_at` — уникальный индекс `(message_id, message_table, user_id)` | ✅ |
@@ -143,6 +144,7 @@ store = { username, email, level, userId, avatarUrl, status }
 | `user_achievements` | `id`, `user_id UUID`, `achievement_id TEXT`, `created_at` | ✅ |
 | `blocks` | `id`, `blocker_id UUID`, `blocked_id UUID` | ✅ |
 | `reports` | `id`, `reporter_id UUID`, `reported_user_id UUID`, `reason TEXT` | ✅ |
+| `user_helps` | `id`, `helper_id UUID`, `helped_id UUID`, `created_at` — кнопка «Он мне помог» в UserProfileScreen | ✅ |
 
 #### Использование таблицы `messages` для разных чатов
 - Глобальный чат: `level = 'global'`

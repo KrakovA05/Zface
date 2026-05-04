@@ -87,7 +87,7 @@ const RARITY = {
   common:    { color: '#8B7B6B', label: 'Обычная' },
   uncommon:  { color: '#4CAF50', label: 'Необычная' },
   rare:      { color: '#5b9bd5', label: 'Редкая' },
-  legendary: { color: '#FFC107', label: 'Легендарная' },
+  legendary: { color: '#AA7C00', label: 'Легендарная' },
   special:   { color: '#9B6B9B', label: 'Особая находка' },
   trash:     { color: '#666',    label: 'Мусор' },
 };

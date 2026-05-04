@@ -61,6 +61,7 @@ export default function ProfileScreen({ navigation }) {
   const [earnedAchievements, setEarnedAchievements] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [presenceStats, setPresenceStats] = useState(null);
+  const [moodHistory, setMoodHistory] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -85,11 +86,11 @@ export default function ProfileScreen({ navigation }) {
         }
 
         const [
-          { count: reactCount },
+          { count: helpCount },
           { count: ansCount },
           { data: firstTest },
         ] = await Promise.all([
-          supabase.from('thought_reactions').select('*', { count: 'exact', head: true }).eq('user_id', store.userId),
+          supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', store.userId),
           supabase.from('daily_answers').select('*', { count: 'exact', head: true }).eq('user_id', store.userId),
           supabase.from('test_results').select('created_at').eq('user_id', store.userId)
             .order('created_at', { ascending: true }).limit(1).maybeSingle(),
@@ -97,7 +98,29 @@ export default function ProfileScreen({ navigation }) {
         const daysHere = firstTest
           ? Math.max(1, Math.floor((Date.now() - new Date(firstTest.created_at)) / 86400000) + 1)
           : 1;
-        setPresenceStats({ daysHere, reactionsGiven: reactCount || 0, answersGiven: ansCount || 0 });
+        setPresenceStats({ daysHere, helpedCount: helpCount || 0, answersGiven: ansCount || 0 });
+
+        // 7-дневный тренд настроения
+        const sevenAgo = new Date();
+        sevenAgo.setDate(sevenAgo.getDate() - 6);
+        const { data: moods } = await supabase
+          .from('mood_checkins')
+          .select('score, checkin_date')
+          .eq('user_id', store.userId)
+          .gte('checkin_date', sevenAgo.toISOString().split('T')[0])
+          .order('checkin_date', { ascending: true });
+        // Строим массив 7 дней
+        const moodMap = {};
+        (moods || []).forEach(m => { moodMap[m.checkin_date] = m.score; });
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const key = d.toISOString().split('T')[0];
+          const dayLabel = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()];
+          days.push({ date: key, label: dayLabel, score: moodMap[key] ?? null });
+        }
+        setMoodHistory(days);
       };
       loadProfile();
       checkAndAwardAchievements();
@@ -375,13 +398,42 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={styles.presenceDivider} />
             <View style={styles.presenceStat}>
-              <Text style={styles.presenceNum}>{presenceStats.reactionsGiven}</Text>
+              <Text style={styles.presenceNum}>{presenceStats.helpedCount}</Text>
               <Text style={styles.presenceLabel}>людей{'\n'}поддержал</Text>
             </View>
             <View style={styles.presenceDivider} />
             <View style={styles.presenceStat}>
               <Text style={styles.presenceNum}>{presenceStats.answersGiven}</Text>
               <Text style={styles.presenceLabel}>{presenceStats.answersGiven === 1 ? 'ответ' : presenceStats.answersGiven < 5 ? 'ответа' : 'ответов'}{'\n'}на вопрос дня</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Настроение за 7 дней */}
+        {moodHistory.some(d => d.score !== null) && (
+          <View style={styles.moodChartCard}>
+            <Text style={styles.moodChartTitle}>Настроение за 7 дней</Text>
+            <View style={styles.moodChartBars}>
+              {moodHistory.map((d, i) => {
+                const barColor = d.score === null ? colors.border
+                  : d.score <= 3 ? '#E57373'
+                  : d.score <= 6 ? '#FFB74D'
+                  : '#81C784';
+                const barH = d.score === null ? 4 : Math.max(6, (d.score / 10) * 60);
+                return (
+                  <View key={i} style={styles.moodChartCol}>
+                    <View style={styles.moodChartBarWrap}>
+                      <View style={[styles.moodChartBar, { height: barH, backgroundColor: barColor }]} />
+                    </View>
+                    <Text style={styles.moodChartLabel}>{d.label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.moodChartLegend}>
+              <View style={styles.moodChartLegendItem}><View style={[styles.moodChartDot, { backgroundColor: '#E57373' }]} /><Text style={styles.moodChartLegendText}>плохо</Text></View>
+              <View style={styles.moodChartLegendItem}><View style={[styles.moodChartDot, { backgroundColor: '#FFB74D' }]} /><Text style={styles.moodChartLegendText}>средне</Text></View>
+              <View style={styles.moodChartLegendItem}><View style={[styles.moodChartDot, { backgroundColor: '#81C784' }]} /><Text style={styles.moodChartLegendText}>хорошо</Text></View>
             </View>
           </View>
         )}
@@ -603,4 +655,20 @@ const styles = StyleSheet.create({
   presenceNum: { fontSize: 26, fontWeight: '700', color: colors.white },
   presenceLabel: { fontSize: 11, color: colors.muted, textAlign: 'center', lineHeight: 15 },
   presenceDivider: { width: 1, height: 36, backgroundColor: colors.border },
+
+  moodChartCard: {
+    backgroundColor: colors.card, borderRadius: 16,
+    padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  moodChartTitle: { fontSize: 13, fontWeight: '700', color: colors.muted, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 },
+  moodChartBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 72 },
+  moodChartCol: { flex: 1, alignItems: 'center', gap: 4 },
+  moodChartBarWrap: { flex: 1, justifyContent: 'flex-end', width: '100%', alignItems: 'center' },
+  moodChartBar: { width: '80%', borderRadius: 4, minHeight: 4 },
+  moodChartLabel: { fontSize: 10, color: colors.muted, fontWeight: '500' },
+  moodChartLegend: { flexDirection: 'row', gap: 14, marginTop: 12, justifyContent: 'center' },
+  moodChartLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  moodChartDot: { width: 8, height: 8, borderRadius: 4 },
+  moodChartLegendText: { fontSize: 11, color: colors.muted },
 });

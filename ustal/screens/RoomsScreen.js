@@ -38,7 +38,7 @@ function ReplyQuote({ username, text }) {
 
 const ROOMS = [
   { id: 'green',  label: 'Зелёная комната', desc: 'Для тех кто держится', color: '#4CAF50', icon: 'leaf-outline' },
-  { id: 'yellow', label: 'Жёлтая комната',  desc: 'Для тех на грани',     color: '#FFC107', icon: 'partly-sunny-outline' },
+  { id: 'yellow', label: 'Жёлтая комната',  desc: 'Для тех на грани',     color: '#AA7C00', icon: 'partly-sunny-outline' },
   { id: 'red',    label: 'Красная комната',  desc: 'Для тех кому тяжело',  color: '#F44336', icon: 'flame-outline' },
 ];
 
@@ -105,6 +105,17 @@ export default function RoomsScreen({ route, navigation }) {
   };
 
   const promptEnterRoom = (roomId) => {
+    if (roomId === 'night') {
+      Alert.alert(
+        'Ночная комната',
+        'Здесь все анонимны — никто не узнает кто ты.',
+        [
+          { text: 'Войти', onPress: () => enterRoom(roomId, true) },
+          { text: 'Отмена', style: 'cancel' },
+        ]
+      );
+      return;
+    }
     Alert.alert(
       'Как зайти?',
       'Можно участвовать в разговоре или просто посидеть молча',
@@ -223,7 +234,8 @@ export default function RoomsScreen({ route, navigation }) {
     if (editing) { await saveEdit(); return; }
     if (!text2.trim() || !room) return;
     setSending(true);
-    const payload = { username: store.username || 'Аноним', text: text2.trim(), level: room, sender_id: store.userId };
+    const username = room === 'night' ? 'Аноним' : (store.username || 'Аноним');
+    const payload = { username, text: text2.trim(), level: room, sender_id: store.userId };
     if (replyTo) {
       payload.reply_to_id = replyTo.id;
       payload.reply_to_text = replyTo.text;
@@ -379,8 +391,8 @@ export default function RoomsScreen({ route, navigation }) {
           )}
           {isAnonymous && (
             <View style={styles.anonBadge}>
-              <Ionicons name="eye-outline" size={14} color={colors.muted} />
-              <Text style={styles.anonBadgeText}>анонимно</Text>
+              <Ionicons name={room === 'night' ? 'moon-outline' : 'eye-outline'} size={14} color={colors.muted} />
+              <Text style={styles.anonBadgeText}>{room === 'night' ? 'все анонимны' : 'анонимно'}</Text>
             </View>
           )}
         </View>
@@ -434,13 +446,16 @@ export default function RoomsScreen({ route, navigation }) {
             const rxs = groupReactions(reactions[item.id]);
             return (
               <View>
-                <TouchableOpacity onLongPress={() => !isAnonymous && setMenuMsg(item)} activeOpacity={0.8} delayLongPress={350}>
+                <TouchableOpacity onLongPress={() => !(isAnonymous && room !== 'night') && setMenuMsg(item)} activeOpacity={0.8} delayLongPress={350}>
                   <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
-                    <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}>
-                      <Avatar uri={isMe ? store.avatarUrl : null} username={item.username} level={item.level} size={30} />
+                    <TouchableOpacity
+                      onPress={() => room !== 'night' && navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}
+                      activeOpacity={room === 'night' ? 1 : 0.7}
+                    >
+                      <Avatar uri={room !== 'night' && isMe ? store.avatarUrl : null} username={room === 'night' ? '?' : item.username} level={room === 'night' ? null : item.level} size={30} />
                     </TouchableOpacity>
                     <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
-                      {!isMe && <Text style={[styles.msgUsername, { color: lvlColor }]}>{item.username}</Text>}
+                      {!isMe && room !== 'night' && <Text style={[styles.msgUsername, { color: lvlColor }]}>{item.username}</Text>}
                       {item.reply_to_text && <ReplyQuote username={item.reply_to_username} text={item.reply_to_text} />}
                       <Text style={styles.msgText}>{item.text}</Text>
                       <View style={styles.bubbleFoot}>
@@ -471,7 +486,7 @@ export default function RoomsScreen({ route, navigation }) {
           }
         />
 
-        {isAnonymous ? (
+        {isAnonymous && room !== 'night' ? (
           <View style={styles.anonBar}>
             <Ionicons name="eye-outline" size={16} color={colors.muted} />
             <Text style={styles.anonBarText}>Вы наблюдаете анонимно</Text>

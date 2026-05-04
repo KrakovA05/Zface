@@ -88,7 +88,7 @@ function getDynamicMessage(history, currentLevel) {
   const order = { green: 0, yellow: 1, red: 2 };
   if (order[currentLevel] < order[prev]) return { text: 'Состояние улучшилось с прошлого раза', color: '#4CAF50', icon: 'trending-up-outline' };
   if (order[currentLevel] > order[prev]) return { text: 'Состояние ухудшилось. Отнесись к себе бережно.', color: '#F44336', icon: 'trending-down-outline' };
-  return { text: 'Состояние стабильное — держись в этом ритме.', color: '#FFC107', icon: 'remove-outline' };
+  return { text: 'Состояние стабильное — держись в этом ритме.', color: '#AA7C00', icon: 'remove-outline' };
 }
 
 function Section({ icon, title, items, dotColor }) {

@@ -48,7 +48,7 @@ export const LABELS = [
 
 export const LEVEL_COLORS = {
   green: '#4CAF50',
-  yellow: '#FFC107',
+  yellow: '#AA7C00',
   red: '#F44336',
 };
 
@@ -61,7 +61,7 @@ export const LEVEL_DATA = {
   },
   yellow: {
     label: '🟡 Жёлтый',
-    color: '#FFC107',
+    color: '#AA7C00',
     text: 'Сейчас непросто. Бывают лучше дни, бывают хуже — и это нормально.',
     emoji: '🌤',
   },
