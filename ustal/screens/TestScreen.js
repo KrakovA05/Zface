@@ -137,11 +137,24 @@ export default function TestScreen({ navigation }) {
 
   if (finished && level) {
     const lvlData = LEVEL_DATA[level];
+    const btnLabels = { green: 'Что это значит →', yellow: 'Найти что поможет →', red: 'Узнать что можно сделать →' };
     return (
       <View style={styles.container}>
         <Text style={styles.resultEmoji}>{lvlData.emoji}</Text>
         <Text style={[styles.resultLevel, { color: lvlData.color }]}>{lvlData.label}</Text>
         <Text style={styles.resultText}>{lvlData.text}</Text>
+        <Text style={styles.disclaimer}>
+          Это не медицинский диагноз — только отражение твоего состояния сейчас.{'\n'}
+          Если тебе очень плохо, поговори с живым человеком.
+        </Text>
+        {level === 'red' && (
+          <TouchableOpacity
+            style={styles.crisisBtn}
+            onPress={() => { const { Linking } = require('react-native'); Linking.openURL('tel:88002000122'); }}
+          >
+            <Text style={styles.crisisBtnText}>Телефон доверия: 8-800-2000-122</Text>
+          </TouchableOpacity>
+        )}
         {saving ? (
           <ActivityIndicator color={lvlData.color} style={styles.saving} />
         ) : (
@@ -149,7 +162,7 @@ export default function TestScreen({ navigation }) {
             style={[shared.button, { backgroundColor: lvlData.color }]}
             onPress={() => navigation.replace(isFirstTest ? 'OnboardingMoment' : 'Recommendations', { level })}
           >
-            <Text style={shared.buttonText}>Смотреть рекомендации →</Text>
+            <Text style={shared.buttonText}>{btnLabels[level]}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -251,7 +264,29 @@ const styles = StyleSheet.create({
     color: colors.white,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 40,
+    marginBottom: 16,
+  },
+  disclaimer: {
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  crisisBtn: {
+    borderWidth: 1,
+    borderColor: '#F44336',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  crisisBtnText: {
+    color: '#F44336',
+    fontSize: 14,
+    fontWeight: '600',
   },
   saving: {
     marginTop: 8,

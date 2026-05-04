@@ -2,9 +2,10 @@ import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_WORDS } from '../constants';
+import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_WORDS, DAILY_WORDS_CONTEXT } from '../constants';
 import { colors } from '../theme';
 
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
@@ -57,6 +58,29 @@ function getTodayWord() {
   return DAILY_WORDS[day % DAILY_WORDS.length];
 }
 
+function getTodayWordContext() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const day = Math.floor((now - start) / 86400000);
+  return DAILY_WORDS_CONTEXT[day % DAILY_WORDS_CONTEXT.length];
+}
+
+function calcStreak(answers) {
+  if (!answers || answers.length === 0) return 0;
+  const dates = [...new Set(answers.map(a => a.question_date))].sort().reverse();
+  let streak = 0;
+  const cur = new Date();
+  cur.setHours(0, 0, 0, 0);
+  for (const d of dates) {
+    const expected = [cur.getFullYear(), String(cur.getMonth()+1).padStart(2,'0'), String(cur.getDate()).padStart(2,'0')].join('-');
+    if (d === expected) {
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    } else break;
+  }
+  return streak;
+}
+
 function pluralPeople(n) {
   if (n < 0) return 'человек';
   const mod10 = n % 10, mod100 = n % 100;
@@ -82,8 +106,12 @@ export default function HomeScreen({ navigation }) {
   const [moodScore,      setMoodScore]      = useState(null);
   const [moodCount,      setMoodCount]      = useState(0);
   const [similarUser,    setSimilarUser]    = useState(null);
+  const [streak,         setStreak]         = useState(0);
+  const [onlineCount,    setOnlineCount]    = useState(0);
+  const [showHistory,    setShowHistory]    = useState(false);
   const dailyQuestion = getTodayQuestion();
   const todayWord = getTodayWord();
+  const todayWordContext = getTodayWordContext();
 
   useFocusEffect(useCallback(() => {
     const load = async () => {
@@ -160,6 +188,22 @@ export default function HomeScreen({ navigation }) {
           .from('daily_word_taps').select('*', { count: 'exact', head: true })
           .eq('word_date', today).eq('word', word).eq('reaction', 'yes');
         setWordCount(count || 0);
+
+        // Стрик: последовательные дни с ответом на вопрос дня
+        const thirtyAgo = new Date();
+        thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+        const { data: streakData } = await supabase
+          .from('daily_answers').select('question_date')
+          .eq('user_id', user.id)
+          .gte('question_date', thirtyAgo.toISOString().split('T')[0]);
+        setStreak(calcStreak(streakData));
+
+        // Онлайн-счётчик: кто был активен последние 10 минут
+        const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { count: onlineC } = await supabase
+          .from('users').select('*', { count: 'exact', head: true })
+          .gte('last_seen', tenMinAgo).neq('user_id', user.id);
+        setOnlineCount(onlineC || 0);
       }
       setLoading(false);
     };
@@ -168,6 +212,7 @@ export default function HomeScreen({ navigation }) {
 
   const tapWord = async (reaction) => {
     if (wordTapped) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setWordTapped(reaction);
     if (reaction === 'yes') setWordCount(c => c + 1);
     const { data: { user } } = await supabase.auth.getUser();
@@ -270,6 +315,7 @@ export default function HomeScreen({ navigation }) {
 
   const tapMood = async (score) => {
     if (moodScore !== null) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMoodScore(score);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -295,6 +341,7 @@ export default function HomeScreen({ navigation }) {
 
   const submitDailyAnswer = async () => {
     if (!dailyAnswer.trim()) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setDailySubmitting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -330,7 +377,23 @@ export default function HomeScreen({ navigation }) {
         scrollIndicatorInsets={{ bottom: 80 }}
       >
 
-        <Text style={styles.greeting}>Привет, {store.username || 'друг'}</Text>
+        <View style={styles.greetingRow}>
+          <Text style={styles.greeting}>Привет, {store.username || 'друг'}</Text>
+          <View style={styles.greetingBadges}>
+            {streak > 1 && (
+              <View style={styles.streakBadge}>
+                <Ionicons name="flame-outline" size={12} color={colors.accent} />
+                <Text style={styles.streakText}>{streak}</Text>
+              </View>
+            )}
+            {onlineCount > 0 && (
+              <View style={styles.onlineBadge}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.onlineText}>{onlineCount}</Text>
+              </View>
+            )}
+          </View>
+        </View>
 
         {loading ? (
           <ActivityIndicator color={colors.accent} style={{ marginVertical: 24 }} />
@@ -433,7 +496,7 @@ export default function HomeScreen({ navigation }) {
             activeOpacity={0.8}
           >
             <Ionicons name="clipboard-outline" size={18} color="#fff" />
-            <Text style={styles.ctaPrimaryText}>Пройти тест</Text>
+            <Text style={styles.ctaPrimaryText}>Узнать где ты сейчас</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.ctaSecondary}
@@ -450,9 +513,12 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.wordLabel}>Слово дня</Text>
             <Text style={[styles.wordText, { color: lvlColor }]}>{todayWord}</Text>
             {wordTapped === 'yes' ? (
-              <Text style={styles.wordCount}>
-                ты и ещё {wordCount > 1 ? wordCount - 1 : 0} {pluralPeople(wordCount - 1)} чувствуют то же
-              </Text>
+              <>
+                <Text style={styles.wordCount}>
+                  ты и ещё {wordCount > 1 ? wordCount - 1 : 0} {pluralPeople(wordCount - 1)} чувствуют то же
+                </Text>
+                <Text style={styles.wordContext}>{todayWordContext}</Text>
+              </>
             ) : (
               <View style={styles.wordBtns}>
                 <TouchableOpacity style={[styles.wordBtn, { borderColor: lvlColor }]} onPress={() => tapWord('yes')}>
@@ -527,21 +593,33 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.section}>
             <View style={styles.sectionRow}>
               <Text style={styles.sectionTitle}>Динамика</Text>
-              {allHistory.length > 5 && (
-                <TouchableOpacity onPress={() => setShowAllChart(v => !v)}>
-                  <Text style={styles.chartToggle}>
-                    {showAllChart ? 'Последние 5' : `Все (${allHistory.length})`}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {!showHistory && history.length > 0 && (
+                  <TouchableOpacity onPress={() => setShowHistory(true)}>
+                    <Text style={styles.chartToggle}>Список</Text>
+                  </TouchableOpacity>
+                )}
+                {allHistory.length > 5 && (
+                  <TouchableOpacity onPress={() => setShowAllChart(v => !v)}>
+                    <Text style={styles.chartToggle}>
+                      {showAllChart ? 'Последние 5' : `Все (${allHistory.length})`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             <TestChart history={chartData} />
           </View>
         )}
 
-        {history.length > 0 && (
+        {history.length > 0 && showHistory && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>История тестов</Text>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>История тестов</Text>
+              <TouchableOpacity onPress={() => setShowHistory(false)}>
+                <Text style={styles.chartToggle}>Скрыть</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.historyBlock}>
               {history.map((r, i) => (
                 <View key={i} style={[styles.historyRow, i < history.length - 1 && styles.historyRowBorder]}>
@@ -655,7 +733,22 @@ const styles = StyleSheet.create({
   scroll:    { flex: 1 },
   content:   { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
 
-  greeting:  { fontSize: 22, fontWeight: '700', color: colors.white, marginBottom: 20 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  greeting:  { fontSize: 22, fontWeight: '700', color: colors.white },
+  greetingBadges: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  streakBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: colors.accent + '15', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  streakText: { fontSize: 12, fontWeight: '700', color: colors.accent },
+  onlineBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#4CAF5015', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4CAF50' },
+  onlineText: { fontSize: 12, fontWeight: '600', color: '#4CAF50' },
 
   // Status card
   statusCard: {
@@ -747,7 +840,8 @@ const styles = StyleSheet.create({
   wordBtnText: { fontSize: 14, fontWeight: '600' },
   wordBtnNo: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderColor: colors.border },
   wordBtnNoText: { fontSize: 14, color: colors.muted },
-  wordCount: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  wordCount: { fontSize: 13, color: colors.muted, fontStyle: 'italic', marginBottom: 6 },
+  wordContext: { fontSize: 12, color: colors.accent, fontStyle: 'italic', opacity: 0.8 },
 
   // Daily question
   dailyCard: {

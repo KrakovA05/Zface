@@ -5,9 +5,13 @@ import {
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import * as StoreReview from 'expo-store-review';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+
+let reviewRequested = false;
 
 function getTodayDate() {
   const d = new Date();
@@ -104,6 +108,7 @@ export default function LetterScreen({ navigation }) {
       return;
     }
 
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setText('');
     setSentToday(true);
     setSent(true);
@@ -113,6 +118,13 @@ export default function LetterScreen({ navigation }) {
     if (!letter.opened) {
       await supabase.from('anonymous_letters').update({ opened: true }).eq('id', letter.id);
       setInbox(prev => prev.map(l => l.id === letter.id ? { ...l, opened: true } : l));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (!reviewRequested) {
+        reviewRequested = true;
+        setTimeout(async () => {
+          if (await StoreReview.isAvailableAsync()) StoreReview.requestReview();
+        }, 1500);
+      }
     }
     Alert.alert(
       'Письмо для тебя',
@@ -221,8 +233,8 @@ export default function LetterScreen({ navigation }) {
               {inbox.length === 0 ? (
                 <View style={styles.emptyBlock}>
                   <Ionicons name="mail-open-outline" size={48} color={colors.muted} />
-                  <Text style={styles.emptyText}>Пока писем нет</Text>
-                  <Text style={styles.emptyDesc}>Напиши кому-то сам — и тебе тоже напишут</Text>
+                  <Text style={styles.emptyText}>Пока ничего не прилетело</Text>
+                  <Text style={styles.emptyDesc}>Напиши кому-нибудь сам — иногда начать первым и есть поддержка</Text>
                 </View>
               ) : (
                 inbox.map(letter => (

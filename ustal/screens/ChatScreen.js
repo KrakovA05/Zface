@@ -28,6 +28,12 @@ function groupReactions(list) {
   return Object.entries(g).map(([emoji, d]) => ({ emoji, ...d }));
 }
 
+const CRISIS_PHRASES = ['хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой', 'нет смысла жить', 'лучше бы меня не было'];
+function hasCrisisContent(text) {
+  const t = text.toLowerCase();
+  return CRISIS_PHRASES.some(p => t.includes(p));
+}
+
 function ReplyQuote({ username, text }) {
   return (
     <View style={s.replyQuote}>
@@ -225,6 +231,13 @@ function GlobalChat({ navigation }) {
         </View>
       )}
 
+      {hasCrisisContent(text) && (
+        <View style={s.crisisBanner}>
+          <Ionicons name="heart-outline" size={14} color="#7c3aed" />
+          <Text style={s.crisisText}>Звучит тяжело. Если совсем плохо — 8-800-2000-122 (бесплатно)</Text>
+        </View>
+      )}
+
       <View style={[s.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
         <TextInput
           style={s.input}
@@ -295,6 +308,9 @@ const s = StyleSheet.create({
   contextBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
   contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },
   contextSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
+
+  crisisBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#7c3aed10' },
+  crisisText: { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
 
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)' },
   input: { flex: 1, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: colors.white, fontSize: 15 },

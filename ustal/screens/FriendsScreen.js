@@ -199,8 +199,8 @@ export default function FriendsScreen({ navigation }) {
             <View style={styles.emptyIconWrap}>
               <Ionicons name="people-outline" size={32} color={colors.muted} />
             </View>
-            <Text style={styles.emptyTitle}>Пока нет друзей</Text>
-            <Text style={styles.emptyHint}>Найди своих во вкладке Поиск</Text>
+            <Text style={styles.emptyTitle}>Пока никого нет рядом</Text>
+            <Text style={styles.emptyHint}>Найди кого-то во вкладке Поиск — иногда начать первым это и есть поддержка</Text>
           </View>
         )}
       </>
@@ -254,7 +254,7 @@ export default function FriendsScreen({ navigation }) {
       </TouchableOpacity>
 
       {searched && results.length === 0 && (
-        <Text style={styles.noResults}>Никого не нашлось</Text>
+        <Text style={styles.noResults}>Никого с таким именем нет — или они ещё не пришли</Text>
       )}
 
       {results.map(user => (

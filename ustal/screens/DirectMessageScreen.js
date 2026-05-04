@@ -15,6 +15,12 @@ import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 
+const CRISIS_PHRASES = ['хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой', 'нет смысла жить', 'лучше бы меня не было'];
+function hasCrisisContent(text) {
+  const t = text.toLowerCase();
+  return CRISIS_PHRASES.some(p => t.includes(p));
+}
+
 function groupReactions(list) {
   const g = {};
   (list || []).forEach(r => {
@@ -269,6 +275,13 @@ export default function DirectMessageScreen({ route, navigation }) {
           </View>
         )}
 
+        {hasCrisisContent(text) && (
+          <View style={styles.crisisBanner}>
+            <Ionicons name="heart-outline" size={14} color="#7c3aed" />
+            <Text style={styles.crisisText}>Звучит тяжело. Если совсем плохо — 8-800-2000-122 (бесплатно)</Text>
+          </View>
+        )}
+
         <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
           <TextInput
             style={styles.input}
@@ -389,6 +402,9 @@ const styles = StyleSheet.create({
   contextBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border },
   contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },
   contextSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
+
+  crisisBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#7c3aed10' },
+  crisisText: { flex: 1, fontSize: 12, color: '#7c3aed', lineHeight: 16 },
 
   // Input
   inputRow: {

@@ -327,7 +327,12 @@ export default function FeedScreen({ navigation }) {
           contentContainerStyle={[styles.list, { paddingBottom: inputBottom + 16 }]}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={<Text style={styles.empty}>Постов пока нет. Будь первым!</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyBlock}>
+              <Text style={styles.emptyTitle}>Здесь пока тихо</Text>
+              <Text style={styles.emptyHint}>Возможно, кто-то ждёт именно твои слова</Text>
+            </View>
+          }
           ListFooterComponent={renderFooter}
         />
       )}
@@ -446,6 +451,9 @@ const styles = StyleSheet.create({
   actionBtnText: { color: colors.muted, fontSize: 13 },
 
   empty: { color: colors.muted, textAlign: 'center', marginTop: 60, fontSize: 16 },
+  emptyBlock: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.muted, marginBottom: 8 },
+  emptyHint: { fontSize: 14, color: colors.muted, textAlign: 'center', lineHeight: 20, opacity: 0.7 },
   loadMoreBtn: { alignItems: 'center', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginHorizontal: 16, marginBottom: 8 },
   loadMoreText: { color: colors.muted, fontSize: 14 },
 
