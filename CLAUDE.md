@@ -114,7 +114,7 @@ store = { username, email, level, userId, avatarUrl, status }
 Поля заполняются при логине/регистрации и при восстановлении сессии в App.js. Для отображения актуальных данных в экранах с профилем используется `useFocusEffect`.
 
 ### Shared resources
-- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`, `WORDS_OF_DAY`
+- `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`, `DAILY_WORDS`
 - `theme.js` — объект `colors` (все цвета приложения) + `shared` StyleSheet (переиспользуемые стили: кнопки, инпуты, ярлыки)
 - `utils.js` — `getConversationId(uid1, uid2)` для стабильного ID личного чата
 - `components/Avatar.js` — аватар с fallback на букву+цвет уровня
@@ -123,12 +123,14 @@ store = { username, email, level, userId, avatarUrl, status }
 
 | Таблица | Ключевые поля | RLS |
 |---------|--------------|-----|
-| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url`, `last_seen`, `show_history BOOL` | ✅ |
-| `messages` | `id`, `username`, `text`, `level`, `created_at`, `sender_id` — глобальный чат + комнаты | ✅ |
-| `direct_messages` | `id`, `conversation_id TEXT`, `sender_id UUID`, `sender_username`, `text`, `created_at` | ✅ |
+| `users` | `user_id UUID`, `username`, `email`, `level`, `labels TEXT[]`, `status`, `avatar_url`, `last_seen`, `show_history BOOL`, `push_token TEXT` | ✅ |
+| `messages` | `id`, `username`, `text`, `level`, `created_at`, `sender_id`, `edited_at` — глобальный чат + комнаты | ✅ |
+| `direct_messages` | `id`, `conversation_id TEXT`, `sender_id UUID`, `sender_username`, `text`, `created_at`, `edited_at` | ✅ |
+| `message_reactions` | `id`, `message_id UUID`, `message_table TEXT`, `user_id UUID`, `reaction TEXT`, `created_at` — уникальный индекс `(message_id, message_table, user_id)` | ✅ |
 | `friendships` | `id`, `requester_id UUID`, `receiver_id UUID`, `status ('pending'\|'accepted')` | ✅ |
 | `test_results` | `id`, `user_id UUID`, `level TEXT`, `score INT`, `created_at` — история тестов | ✅ |
-| `feed_posts` | `id`, `author_id UUID`, `author_username`, `author_level`, `text`, `target_levels TEXT[]`, `likes INT`, `created_at` | ✅ |
+| `feed_posts` | `id`, `author_id UUID`, `author_username`, `author_level`, `text`, `media_url TEXT`, `media_type TEXT`, `target_levels TEXT[]`, `likes INT`, `created_at` | ✅ |
+| `post_likes` | `id`, `post_id UUID`, `user_id UUID` — трекинг индивидуальных лайков | ✅ |
 | `post_comments` | `id`, `post_id UUID`, `author_id UUID`, `author_username`, `author_level`, `text`, `created_at` | ✅ |
 | `daily_answers` | `id`, `user_id UUID`, `question_date DATE`, `question_text`, `answer`, `created_at` | ✅ |
 | `daily_word_taps` | `id`, `user_id UUID`, `word_date DATE`, `word TEXT`, `reaction TEXT`, `created_at` | ✅ |
@@ -142,6 +144,9 @@ store = { username, email, level, userId, avatarUrl, status }
 - Глобальный чат: `level = 'global'`
 - Комнаты по статусу (RoomsScreen): `level = 'green' | 'yellow' | 'red'`
 
+#### Supabase Storage
+- Bucket `post-media` — фото и видео из постов ленты (FeedScreen). Загружается через `supabase.storage.from('post-media').upload(...)`, URL сохраняется в `feed_posts.media_url`.
+
 `conversation_id` = `[uid1, uid2].sort().join('_')` — всегда стабильный для пары юзеров.
 
 Дружба однонаправленная в таблице: одна строка на заявку. `status='pending'` — заявка отправлена, `status='accepted'` — друзья. Для запроса "мои друзья" используется `.or('requester_id.eq.X,receiver_id.eq.X').eq('status','accepted')`.
@@ -150,8 +155,8 @@ store = { username, email, level, userId, avatarUrl, status }
 Реализовано через Postgres-функцию `delete_user()` с `SECURITY DEFINER` — удаляет `public.users`, затем `auth.users`. Вызывается через `supabase.rpc('delete_user')`.
 
 ### Realtime
-- Глобальный чат: подписка на `INSERT` в `messages` (channel `global_messages`)
-- Комнаты: подписка с фильтром `level=eq.${roomId}` в `messages` (channel `room_${roomId}`)
+- Глобальный чат: подписка на `INSERT/UPDATE/DELETE` в `messages` (channel `global_messages`)
+- Комнаты: подписка с фильтром `level=eq.${roomId}` в `messages` (channel `room_${roomId}`) + **Supabase Presence** для счётчика анонимных наблюдателей (channel с `config.presence`)
 - Личные сообщения: подписка с фильтром `conversation_id=eq.${id}` в `direct_messages` (требует `REPLICA IDENTITY FULL` на таблице)
 - Анонимные мысли: подписка на `INSERT/UPDATE` в `thought_reactions`
 
