@@ -485,68 +485,7 @@ export default function HomeScreen({ navigation }) {
           })()
         )}
 
-        {loading ? (
-          <ActivityIndicator color={colors.accent} style={{ marginVertical: 24 }} />
-        ) : (
-          <View style={[styles.statusCard, { borderLeftColor: lvlColor }]}>
-            <View style={[styles.statusIconWrap, { backgroundColor: lvlColor + '22' }]}>
-              <Ionicons name={LEVEL_ICONS[level]} size={22} color={lvlColor} />
-            </View>
-            <View style={styles.statusInfo}>
-              <Text style={[styles.statusLevel, { color: lvlColor }]}>
-                {LEVEL_NAMES[level]}
-              </Text>
-              <Text style={styles.statusDesc}>{LEVEL_TEXTS[level]}</Text>
-              {dynamic && (
-                <View style={styles.dynamicRow}>
-                  <Ionicons name={dynamic.icon} size={13} color={dynamic.color} />
-                  <Text style={[styles.dynamicLabel, { color: dynamic.color }]}>{dynamic.label}</Text>
-                </View>
-              )}
-              {!history.length && (
-                <Text style={styles.noTestHint}>Пройди тест чтобы узнать своё состояние</Text>
-              )}
-            </View>
-          </View>
-        )}
-
-        {!loading && communityCount > 0 && (
-          <View style={styles.communityStrip}>
-            <Ionicons name="people-outline" size={14} color={colors.muted} />
-            <Text style={styles.communityText}>
-              сегодня {communityCount} {pluralPeople(communityCount)} с твоим уровнем заходили
-            </Text>
-          </View>
-        )}
-
-        {!loading && similarUser && (
-          <View style={[styles.similarCard, { borderLeftColor: lvlColor }]}>
-            <TouchableOpacity style={styles.similarDismiss} onPress={dismissSimilar} hitSlop={{ top:8, right:8, bottom:8, left:8 }}>
-              <Ionicons name="close" size={16} color={colors.muted} />
-            </TouchableOpacity>
-            <Text style={styles.similarLabel}>кажется, вы похожи</Text>
-            <Text style={[styles.similarName, { color: lvlColor }]}>{similarUser.username}</Text>
-            <Text style={styles.similarDesc}>отвечает на вопросы дня похоже на тебя</Text>
-            <View style={styles.similarBtns}>
-              <TouchableOpacity
-                style={[styles.similarBtn, { backgroundColor: lvlColor }]}
-                onPress={() => {
-                  dismissSimilar();
-                  navigation.navigate('UserProfile', {
-                    user: { user_id: similarUser.user_id, username: similarUser.username, level, avatar_url: similarUser.avatar_url, status: '' }
-                  });
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.similarBtnText}>Посмотреть профиль</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.similarBtnSkip} onPress={dismissSimilar} activeOpacity={0.7}>
-                <Text style={styles.similarBtnSkipText}>Не сейчас</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
+        {/* ── Чекин настроения — сразу под фокусом ── */}
         {!loading && (
           <View style={styles.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
             {moodScore === null ? (
@@ -590,13 +529,76 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+        {/* ── Статус уровня — тихая справка ── */}
+        {loading ? (
+          <ActivityIndicator color={colors.accent} style={{ marginVertical: 16 }} />
+        ) : (
+          <View style={[styles.statusCard, { borderLeftColor: lvlColor }]}>
+            <View style={[styles.statusIconWrap, { backgroundColor: lvlColor + '18' }]}>
+              <Ionicons name={LEVEL_ICONS[level]} size={16} color={lvlColor} />
+            </View>
+            <View style={styles.statusInfo}>
+              <View style={styles.statusRow}>
+                <Text style={[styles.statusLevel, { color: lvlColor }]}>{LEVEL_NAMES[level]}</Text>
+                {dynamic && (
+                  <View style={styles.dynamicRow}>
+                    <Ionicons name={dynamic.icon} size={11} color={dynamic.color} />
+                    <Text style={[styles.dynamicLabel, { color: dynamic.color }]}>{dynamic.label}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.statusDesc}>{LEVEL_TEXTS[level]}</Text>
+              {!history.length && (
+                <Text style={styles.noTestHint}>Пройди тест чтобы узнать своё состояние</Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {!loading && communityCount > 0 && (
+          <View style={styles.communityStrip}>
+            <Ionicons name="people-outline" size={13} color={colors.muted} />
+            <Text style={styles.communityText}>
+              сегодня {communityCount} {pluralPeople(communityCount)} с твоим уровнем заходили
+            </Text>
+          </View>
+        )}
+
+        {!loading && similarUser && (
+          <View style={[styles.similarCard, { borderLeftColor: lvlColor }]}>
+            <TouchableOpacity style={styles.similarDismiss} onPress={dismissSimilar} hitSlop={{ top:8, right:8, bottom:8, left:8 }}>
+              <Ionicons name="close" size={16} color={colors.muted} />
+            </TouchableOpacity>
+            <Text style={styles.similarLabel}>кажется, вы похожи</Text>
+            <Text style={[styles.similarName, { color: lvlColor }]}>{similarUser.username}</Text>
+            <Text style={styles.similarDesc}>отвечает на вопросы дня похоже на тебя</Text>
+            <View style={styles.similarBtns}>
+              <TouchableOpacity
+                style={[styles.similarBtn, { backgroundColor: lvlColor }]}
+                onPress={() => {
+                  dismissSimilar();
+                  navigation.navigate('UserProfile', {
+                    user: { user_id: similarUser.user_id, username: similarUser.username, level, avatar_url: similarUser.avatar_url, status: '' }
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.similarBtnText}>Посмотреть профиль</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.similarBtnSkip} onPress={dismissSimilar} activeOpacity={0.7}>
+                <Text style={styles.similarBtnSkipText}>Не сейчас</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <View style={styles.ctaRow}>
           <TouchableOpacity
             style={[styles.ctaPrimary, { backgroundColor: lvlColor }]}
             onPress={() => navigation.navigate('Test')}
             activeOpacity={0.8}
           >
-            <Ionicons name="clipboard-outline" size={18} color="#fff" />
+            <Ionicons name="clipboard-outline" size={17} color="#fff" />
             <Text style={styles.ctaPrimaryText} numberOfLines={1} adjustsFontSizeToFit>Как ты сейчас?</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -604,7 +606,7 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate('Recommendations', { level })}
             activeOpacity={0.8}
           >
-            <Ionicons name="bulb-outline" size={18} color={colors.white} />
+            <Ionicons name="bulb-outline" size={16} color={colors.muted} />
             <Text style={styles.ctaSecondaryText}>Рекомендации</Text>
           </TouchableOpacity>
         </View>
@@ -694,7 +696,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate(m.route)}
               activeOpacity={0.7}
             >
-              <Ionicons name={m.icon} size={26} color={colors.accent} />
+              <Ionicons name={m.icon} size={22} color={colors.accent} />
               <Text style={styles.moduleLabel}>{m.label}</Text>
             </TouchableOpacity>
           ))}
@@ -873,22 +875,24 @@ const styles = StyleSheet.create({
   onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4CAF50' },
   onlineText: { fontSize: 12, fontWeight: '600', color: '#4CAF50' },
 
-  // Status card
+  // Status card — compact, secondary info
   statusCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
-    backgroundColor: colors.card, borderRadius: 16,
-    padding: 16, borderLeftWidth: 3, marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.card, borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderLeftWidth: 3, marginBottom: 12,
   },
   statusIconWrap: {
-    width: 42, height: 42, borderRadius: 12,
+    width: 30, height: 30, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
   statusInfo:   { flex: 1 },
-  statusLevel:  { fontSize: 17, fontWeight: '700', marginBottom: 4 },
-  statusDesc:   { fontSize: 13, color: colors.muted, lineHeight: 18, marginBottom: 6 },
-  dynamicRow:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  dynamicLabel: { fontSize: 12, fontWeight: '600' },
-  noTestHint:   { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  statusRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  statusLevel:  { fontSize: 13, fontWeight: '700' },
+  statusDesc:   { fontSize: 11, color: colors.muted, lineHeight: 15 },
+  dynamicRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dynamicLabel: { fontSize: 11, fontWeight: '600' },
+  noTestHint:   { fontSize: 11, color: colors.muted, fontStyle: 'italic' },
 
   communityStrip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -954,9 +958,9 @@ const styles = StyleSheet.create({
   ctaSecondary: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, borderRadius: 14, paddingVertical: 14,
-    backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.border,
   },
-  ctaSecondaryText: { color: colors.white, fontWeight: '600', fontSize: 14 },
+  ctaSecondaryText: { color: colors.muted, fontWeight: '600', fontSize: 14 },
 
   // Word of the day
   wordCard: {
@@ -1016,13 +1020,13 @@ const styles = StyleSheet.create({
   chartToggle:{ color: colors.accent, fontSize: 12, fontWeight: '600' },
 
   // Modules grid
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
   moduleButton: {
-    backgroundColor: colors.card, borderRadius: 14,
-    padding: 16, alignItems: 'center', justifyContent: 'center',
-    width: '30%', flexGrow: 1, gap: 8,
+    backgroundColor: colors.card, borderRadius: 12,
+    padding: 12, alignItems: 'center', justifyContent: 'center',
+    width: '30%', flexGrow: 1, gap: 6,
   },
-  moduleLabel: { color: colors.white, fontSize: 12, fontWeight: '500', textAlign: 'center' },
+  moduleLabel: { color: colors.muted, fontSize: 11, fontWeight: '500', textAlign: 'center' },
 
   // Chart
   chartCard: { backgroundColor: colors.card, borderRadius: 14, padding: 14 },
