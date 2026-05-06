@@ -186,6 +186,68 @@ export async function scheduleLowMoodPush() {
   } catch {}
 }
 
+const STOP_WORDS = new Set([
+  'это','что','как','так','но','все','же','уже','вот','или','для','при','нет','ещё',
+  'раз','там','тут','когда','если','чтобы','бы','можно','очень','просто','только',
+  'себя','тебя','меня','него','неё','них','твой','мой','свой','наш','ваш','они',
+  'тоже','хочу','знаю','надо','стало','было','есть','быть','буду','тоже','тебе','меня',
+  'мне','этот','этой','этом','того','тому','кого','кому','кем','чем','чего','чему',
+  'между','перед','после','снова','через','пока','сюда','туда','теперь','потом','здесь',
+]);
+
+export async function scheduleRoomDigestPush(level) {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const existing = scheduled.filter(n => n.content.data?.type === 'room_digest');
+    await Promise.all(existing.map(n => Notifications.cancelScheduledNotificationAsync(n.identifier)));
+
+    const { supabase } = await import('../supabase');
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: msgs } = await supabase
+      .from('messages')
+      .select('text')
+      .eq('level', level)
+      .gte('created_at', since);
+
+    if (!msgs || msgs.length < 5) return;
+
+    const freq = {};
+    for (const { text } of msgs) {
+      for (const raw of text.toLowerCase().split(/\s+/)) {
+        const w = raw.replace(/[^а-яёa-z]/gi, '');
+        if (w.length < 4 || STOP_WORDS.has(w)) continue;
+        freq[w] = (freq[w] || 0) + 1;
+      }
+    }
+
+    const top = Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([w]) => w);
+
+    if (top.length === 0) return;
+
+    const body = top.join(', ');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    const secondsUntil = Math.floor((tomorrow.getTime() - Date.now()) / 1000);
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'сегодня в комнате говорили о...',
+        body,
+        sound: true,
+        data: { type: 'room_digest' },
+      },
+      trigger: { seconds: secondsUntil },
+    });
+  } catch {}
+}
+
 export async function sendPushNotification(token, title, body) {
   if (!token) return;
   try {
