@@ -29,8 +29,8 @@ const RECOMMENDATIONS = {
     activities: [
       { icon: 'sync-outline',        label: 'Дыхание',     route: 'Breathing' },
       { icon: 'fish-outline',        label: 'Рыбалка',     route: 'Fishing'   },
-      { icon: 'wine-outline',        label: 'Бар',         route: 'Bar'       },
       { icon: 'chatbubbles-outline', label: 'Общий чат',   route: 'Chat'      },
+      { icon: 'pencil-outline',      label: 'Мысли',       route: 'Thoughts'  },
     ],
   },
   yellow: {
