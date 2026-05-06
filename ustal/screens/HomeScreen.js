@@ -8,6 +8,7 @@ import { store } from '../store';
 import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_WORDS, DAILY_WORDS_CONTEXT } from '../constants';
 import { colors } from '../theme';
 import { scheduleLowMoodPush } from '../utils/notifications';
+import { logEvent } from '../utils/analytics';
 
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
 const LEVEL_ICONS  = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'thunderstorm-outline' };
@@ -348,6 +349,7 @@ export default function HomeScreen({ navigation }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    logEvent('checkin', { score, level: store.level });
     await supabase.from('mood_checkins').upsert(
       { user_id: user.id, checkin_date: getTodayDate(), score },
       { onConflict: 'user_id,checkin_date' }

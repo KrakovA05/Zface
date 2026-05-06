@@ -11,7 +11,11 @@ import { store } from './store';
 import { colors } from './theme';
 import { registerForPushNotifications, scheduleQuestNotifications, scheduleReturnReminder, scheduleWeeklyReport, scheduleRoomDigestPush } from './utils/notifications';
 import { getLastRead } from './utils/unread';
+import { initCrashReporting } from './utils/crashReporting';
+import { createNavigationListener } from './utils/analytics';
 import StreakModal from './components/StreakModal';
+
+initCrashReporting();
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -253,6 +257,7 @@ export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [streakData, setStreakData] = useState(null);
   const presenceInterval = useRef(null);
+  const navigationRef = useRef(null);
 
   useEffect(() => {
     const init = async () => {
@@ -331,7 +336,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef} onStateChange={createNavigationListener(navigationRef)}>
           <Stack.Navigator
             initialRouteName={initialRoute}
             screenOptions={{ headerShown: false }}

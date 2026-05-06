@@ -5,6 +5,7 @@ import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS, TEST_PACKS } from '../constants';
 import { colors, shared } from '../theme';
 import { scheduleQuestNotifications } from '../utils/notifications';
+import { logEvent } from '../utils/analytics';
 
 function isWithin24Hours(dateStr) {
   return (Date.now() - new Date(dateStr).getTime()) < 24 * 60 * 60 * 1000;
@@ -86,6 +87,7 @@ export default function TestScreen({ navigation }) {
       setFinished(true);
       setSaving(true);
       await saveResult(lvl, newCount);
+      logEvent('test_complete', { level: lvl, score: newCount });
       setSaving(false);
     } else {
       setCurrent(current + 1);
