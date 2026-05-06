@@ -13,9 +13,9 @@ import { logEvent } from '../utils/analytics';
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
 const LEVEL_ICONS  = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'thunderstorm-outline' };
 const LEVEL_TEXTS  = {
-  green:  'Ты держишься. Жизненный хаос тебя пока не накрыл.',
-  yellow: 'Ты на грани. Бывают хорошие дни, бывают плохие.',
-  red:    'Похоже, тебе действительно плохо. Но ты не один.',
+  green:  'Ты держишься. Это честный результат.',
+  yellow: 'Сейчас непросто. Бывают лучше дни, бывают хуже — и это нормально.',
+  red:    'Сейчас тяжело. Ты это замечаешь — и это важно. Ты не один.',
 };
 
 const MODULE_ITEMS = [

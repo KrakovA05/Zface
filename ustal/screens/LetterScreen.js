@@ -125,7 +125,7 @@ export default function LetterScreen({ navigation }) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (letter.author_id) {
         const { data: author } = await supabase.from('users').select('push_token').eq('user_id', letter.author_id).single();
-        if (author?.push_token) sendPushNotification(author.push_token, 'Письмо дошло', 'твоё письмо дошло');
+        if (author?.push_token) sendPushNotification(author.push_token, 'Письмо дошло', 'твоё письмо дошло', { screen: 'Letter' });
       }
       if (!reviewRequested) {
         reviewRequested = true;

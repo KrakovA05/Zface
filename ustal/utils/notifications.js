@@ -39,25 +39,25 @@ const QUEST_HOURS = [8, 11, 14, 17, 20];
 
 const QUEST_MESSAGES = {
   green: [
-    { title: 'Доброе утро', body: 'Как ты сегодня? Зайди, напиши мысль.' },
-    { title: 'Выдели минуту', body: 'Подыши немного. Это займёт 4 минуты.' },
-    { title: 'Середина дня', body: 'Закинь удочку. Просто так.' },
-    { title: 'Как дела?', body: 'Зайди, посмотри что пишут другие.' },
-    { title: 'Вечер', body: 'Напиши мысль дня. Никто не осудит.' },
+    { title: 'Доброе утро', body: 'Как ты сегодня? Зайди, напиши мысль.', screen: 'Thoughts' },
+    { title: 'Выдели минуту', body: 'Подыши немного. Это займёт 4 минуты.', screen: 'Breathing' },
+    { title: 'Середина дня', body: 'Закинь удочку. Просто так.', screen: 'Fishing' },
+    { title: 'Как дела?', body: 'Зайди, посмотри что пишут другие.', screen: 'Feed' },
+    { title: 'Вечер', body: 'Напиши мысль дня. Никто не осудит.', screen: 'Thoughts' },
   ],
   yellow: [
-    { title: 'Доброе утро', body: 'Начни день тихо. Зайди подышать.' },
-    { title: 'Тихая минута', body: 'Выдели 4 минуты. Подыши вместе с нами.' },
-    { title: 'Как ты?', body: 'Можно просто посидеть. Мы здесь.' },
-    { title: 'Загляни', body: 'Закинь удочку. Медитативно и без давления.' },
-    { title: 'Вечер', body: 'Напиши мысль дня. Тебя услышат.' },
+    { title: 'Доброе утро', body: 'Начни день тихо. Зайди подышать.', screen: 'Breathing' },
+    { title: 'Тихая минута', body: 'Выдели 4 минуты. Подыши вместе с нами.', screen: 'Breathing' },
+    { title: 'Как ты?', body: 'Можно просто посидеть. Мы здесь.', screen: 'Rooms' },
+    { title: 'Загляни', body: 'Закинь удочку. Медитативно и без давления.', screen: 'Fishing' },
+    { title: 'Вечер', body: 'Напиши мысль дня. Тебя услышат.', screen: 'Thoughts' },
   ],
   red: [
-    { title: 'Доброе утро', body: 'Не нужно ничего делать. Просто загляни.' },
-    { title: 'Ты не один', body: 'Выдели минуту. Подыши вместе с нами.' },
-    { title: 'Тихий час', body: 'Можно просто посидеть рядом. Рыбалка ждёт.' },
-    { title: 'Загляни', body: 'Здесь есть люди с таким же уровнем.' },
-    { title: 'Тихий вечер', body: 'Один короткий вдох. Больше ничего не нужно.' },
+    { title: 'Доброе утро', body: 'Не нужно ничего делать. Просто загляни.', screen: 'Home' },
+    { title: 'Ты не один', body: 'Выдели минуту. Подыши вместе с нами.', screen: 'Breathing' },
+    { title: 'Тихий час', body: 'Можно просто посидеть рядом. Рыбалка ждёт.', screen: 'Fishing' },
+    { title: 'Загляни', body: 'Здесь есть люди с таким же уровнем.', screen: 'Rooms' },
+    { title: 'Тихий вечер', body: 'Один короткий вдох. Больше ничего не нужно.', screen: 'Breathing' },
   ],
 };
 
@@ -89,7 +89,7 @@ export async function scheduleQuestNotifications(level) {
     const messages = QUEST_MESSAGES[level] || QUEST_MESSAGES.green;
     for (let i = 0; i < QUEST_HOURS.length; i++) {
       await Notifications.scheduleNotificationAsync({
-        content: { title: messages[i].title, body: messages[i].body, sound: true },
+        content: { title: messages[i].title, body: messages[i].body, sound: true, data: { type: 'quest', screen: messages[i].screen } },
         trigger: { hour: QUEST_HOURS[i], minute: 0, repeats: true },
       });
     }
@@ -97,14 +97,14 @@ export async function scheduleQuestNotifications(level) {
     // Ночная комната — 23:00 каждую ночь
     const night = NIGHT_MESSAGES[level] || NIGHT_MESSAGES.green;
     await Notifications.scheduleNotificationAsync({
-      content: { title: night.title, body: night.body, sound: true },
+      content: { title: night.title, body: night.body, sound: true, data: { type: 'quest', screen: 'Rooms' } },
       trigger: { hour: 23, minute: 0, repeats: true },
     });
 
     // Пятничный пуш — каждую пятницу в 21:00 (weekday: 6 = пятница)
     const weekend = WEEKEND_MESSAGES[level] || WEEKEND_MESSAGES.green;
     await Notifications.scheduleNotificationAsync({
-      content: { title: weekend.title, body: weekend.body, sound: true },
+      content: { title: weekend.title, body: weekend.body, sound: true, data: { type: 'quest', screen: 'Messages' } },
       trigger: { weekday: 6, hour: 21, minute: 0, repeats: true },
     });
 
@@ -248,13 +248,13 @@ export async function scheduleRoomDigestPush(level) {
   } catch {}
 }
 
-export async function sendPushNotification(token, title, body) {
+export async function sendPushNotification(token, title, body, data = {}) {
   if (!token) return;
   try {
     await fetch('https://exp.host/--/exponent-push-token/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: token, title, body, sound: 'default' }),
+      body: JSON.stringify({ to: token, title, body, sound: 'default', data }),
     });
   } catch {}
 }

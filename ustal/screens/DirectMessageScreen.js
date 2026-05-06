@@ -179,7 +179,12 @@ export default function DirectMessageScreen({ route, navigation }) {
     const { error } = await supabase.from('direct_messages').insert(payload);
     if (error) { setText(trimmed); Alert.alert('Ошибка', 'Не удалось отправить сообщение'); return; }
     const { data: friendData } = await supabase.from('users').select('push_token').eq('user_id', friend.userId).maybeSingle();
-    if (friendData?.push_token) sendPushNotification(friendData.push_token, store.username, trimmed);
+    if (friendData?.push_token) sendPushNotification(friendData.push_token, store.username, trimmed, {
+      screen: 'DirectMessage',
+      friendUserId: store.userId,
+      friendUsername: store.username,
+      friendLevel: store.level,
+    });
   };
 
   const saveEdit = async () => {

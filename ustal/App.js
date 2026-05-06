@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
+import * as Notifications from 'expo-notifications';
 import { registerForPushNotifications, scheduleQuestNotifications, scheduleReturnReminder, scheduleWeeklyReport, scheduleRoomDigestPush } from './utils/notifications';
 import { getLastRead } from './utils/unread';
 import { initCrashReporting } from './utils/crashReporting';
@@ -253,11 +254,55 @@ const updatePresence = async () => {
     .eq('user_id', store.userId);
 };
 
+function navigateFromNotification(navigationRef, data) {
+  if (!data?.screen || !navigationRef.current) return;
+  const nav = navigationRef.current;
+  switch (data.screen) {
+    case 'Letter':
+      nav.navigate('Letter');
+      break;
+    case 'Friends':
+      nav.navigate('Main', { screen: 'Friends' });
+      break;
+    case 'Feed':
+      nav.navigate('Main', { screen: 'Feed' });
+      break;
+    case 'Profile':
+      nav.navigate('Main', { screen: 'Profile' });
+      break;
+    case 'Messages':
+      nav.navigate('Main', { screen: 'Messages' });
+      break;
+    case 'Rooms':
+      nav.navigate('Rooms', { level: store.level || 'green' });
+      break;
+    case 'Breathing':
+      nav.navigate('Breathing');
+      break;
+    case 'Fishing':
+      nav.navigate('Fishing');
+      break;
+    case 'Thoughts':
+      nav.navigate('Thoughts');
+      break;
+    case 'DirectMessage':
+      if (data.friendUserId && data.friendUsername) {
+        nav.navigate('DirectMessage', {
+          friend: { userId: data.friendUserId, username: data.friendUsername, level: data.friendLevel || 'green', avatarUrl: null },
+        });
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [streakData, setStreakData] = useState(null);
   const presenceInterval = useRef(null);
   const navigationRef = useRef(null);
+  const pendingNotificationData = useRef(null);
 
   useEffect(() => {
     const init = async () => {
@@ -324,6 +369,26 @@ export default function App() {
     };
   }, []);
 
+  // Слушатель тапа по уведомлению (приложение в фоне или закрыто)
+  useEffect(() => {
+    // Приложение было закрыто — берём последний ответ
+    Notifications.getLastNotificationResponseAsync().then(response => {
+      const data = response?.notification?.request?.content?.data;
+      if (data?.screen) pendingNotificationData.current = data;
+    });
+
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (!data?.screen) return;
+      if (navigationRef.current) {
+        navigateFromNotification(navigationRef, data);
+      } else {
+        pendingNotificationData.current = data;
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   if (!initialRoute) {
     return (
       <View style={styles.loading}>
@@ -336,7 +401,16 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.background }}>
-        <NavigationContainer ref={navigationRef} onStateChange={createNavigationListener(navigationRef)}>
+        <NavigationContainer
+          ref={navigationRef}
+          onStateChange={createNavigationListener(navigationRef)}
+          onReady={() => {
+            if (pendingNotificationData.current) {
+              navigateFromNotification(navigationRef, pendingNotificationData.current);
+              pendingNotificationData.current = null;
+            }
+          }}
+        >
           <Stack.Navigator
             initialRouteName={initialRoute}
             screenOptions={{ headerShown: false }}
