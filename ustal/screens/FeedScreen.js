@@ -195,10 +195,10 @@ export default function FeedScreen({ navigation }) {
     ));
     if (isLiked) {
       await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', store.userId);
-      await supabase.from('feed_posts').update({ likes: supabase.rpc('decrement', {}) });
     } else {
       await supabase.from('post_likes').insert({ post_id: postId, user_id: store.userId });
     }
+    // DB trigger update_post_likes_count() maintains feed_posts.likes automatically
   };
 
   const onLongPressPost = (item) => {

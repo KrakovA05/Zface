@@ -185,6 +185,7 @@ export default function HomeScreen({ navigation }) {
           .eq('user_id', user.id).eq('checkin_date', today).maybeSingle();
         if (myMood) {
           setMoodScore(myMood.score);
+          setMoodSuggested(getMoodSuggestion(myMood.score));
           const { count: mc } = await supabase
             .from('mood_checkins').select('*', { count: 'exact', head: true })
             .eq('checkin_date', today).eq('score', myMood.score);

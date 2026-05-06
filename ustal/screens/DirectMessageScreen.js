@@ -74,6 +74,14 @@ export default function DirectMessageScreen({ route, navigation }) {
         setMessages(prev => [payload.new, ...prev]);
       })
       .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'direct_messages',
+        filter: `conversation_id=eq.${conversationId}`,
+      }, payload => {
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? payload.new : m));
+      })
+      .on('postgres_changes', {
         event: 'DELETE',
         schema: 'public',
         table: 'direct_messages',
