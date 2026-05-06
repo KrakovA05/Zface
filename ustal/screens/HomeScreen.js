@@ -112,6 +112,7 @@ export default function HomeScreen({ navigation }) {
   const [streak,         setStreak]         = useState(0);
   const [onlineCount,    setOnlineCount]    = useState(0);
   const [showHistory,    setShowHistory]    = useState(false);
+  const [hasUnreadLetter, setHasUnreadLetter] = useState(false);
   const dailyQuestion = getTodayQuestion();
   const todayWord = getTodayWord();
   const todayWordContext = getTodayWordContext();
@@ -165,6 +166,11 @@ export default function HomeScreen({ navigation }) {
         setAllHistory(full || []);
 
         const today = getTodayDate();
+        const { count: letterCount } = await supabase
+          .from('anonymous_letters').select('*', { count: 'exact', head: true })
+          .eq('recipient_id', user.id).eq('opened', false);
+        setHasUnreadLetter((letterCount || 0) > 0);
+
         const { data: ans } = await supabase
           .from('daily_answers').select('answer')
           .eq('user_id', user.id).eq('question_date', today).maybeSingle();
@@ -432,6 +438,45 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
         </View>
+
+        {!loading && (hasUnreadLetter || dailyAnswered === false || moodScore === null) && (
+          (() => {
+            let icon, text, sub, onPress;
+            if (hasUnreadLetter) {
+              icon = 'mail-outline';
+              text = 'тебе пришло письмо';
+              sub = 'кто-то написал тебе';
+              onPress = () => navigation.navigate('Letter');
+            } else if (dailyAnswered === false) {
+              icon = 'chatbubble-ellipses-outline';
+              text = 'вопрос дня ждёт';
+              sub = dailyQuestion;
+              onPress = null;
+            } else {
+              icon = 'heart-outline';
+              text = 'как ты сейчас?';
+              sub = 'оцени своё состояние';
+              onPress = null;
+            }
+            return (
+              <TouchableOpacity
+                style={styles.focusCard}
+                onPress={onPress}
+                activeOpacity={onPress ? 0.75 : 1}
+                disabled={!onPress}
+              >
+                <View style={[styles.focusIconWrap, { backgroundColor: lvlColor + '18' }]}>
+                  <Ionicons name={icon} size={18} color={lvlColor} />
+                </View>
+                <View style={styles.focusInfo}>
+                  <Text style={[styles.focusTitle, { color: lvlColor }]}>{text}</Text>
+                  <Text style={styles.focusSub} numberOfLines={1}>{sub}</Text>
+                </View>
+                {onPress && <Ionicons name="chevron-forward" size={15} color={colors.muted} />}
+              </TouchableOpacity>
+            );
+          })()
+        )}
 
         {loading ? (
           <ActivityIndicator color={colors.accent} style={{ marginVertical: 24 }} />
@@ -791,6 +836,17 @@ const styles = StyleSheet.create({
   safeArea:  { flex: 1, backgroundColor: colors.background },
   scroll:    { flex: 1 },
   content:   { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
+
+  focusCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.card, borderRadius: 14,
+    marginHorizontal: 16, marginBottom: 12, padding: 14,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  focusIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  focusInfo: { flex: 1 },
+  focusTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  focusSub: { fontSize: 12, color: colors.muted },
 
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   greeting:  { fontSize: 22, fontWeight: '700', color: colors.white },
