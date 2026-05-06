@@ -14,6 +14,9 @@ import { sendPushNotification } from '../utils/notifications';
 
 let reviewRequested = false;
 
+const CRISIS_PHRASES = ['хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой', 'нет смысла жить', 'лучше бы меня не было'];
+function hasCrisis(t) { return CRISIS_PHRASES.some(p => t.toLowerCase().includes(p)); }
+
 function getTodayDate() {
   const d = new Date();
   return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
@@ -216,6 +219,12 @@ export default function LetterScreen({ navigation }) {
                   <View style={styles.charRow}>
                     <Text style={styles.charCount}>{text.length}/600</Text>
                   </View>
+                  {hasCrisis(text) && (
+                    <View style={styles.crisisBanner}>
+                      <Ionicons name="heart-outline" size={14} color={colors.accent} />
+                      <Text style={styles.crisisText}>Звучит тяжело. Если совсем плохо — 8-800-2000-122 (бесплатно)</Text>
+                    </View>
+                  )}
                   <TouchableOpacity
                     style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
                     onPress={sendLetter}
@@ -314,8 +323,15 @@ const styles = StyleSheet.create({
     lineHeight: 22, minHeight: 160, marginBottom: 4,
     borderWidth: 1, borderColor: colors.border,
   },
-  charRow: { alignItems: 'flex-end', marginBottom: 16 },
+  charRow: { alignItems: 'flex-end', marginBottom: 8 },
   charCount: { fontSize: 11, color: colors.muted },
+
+  crisisBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.accent + '12', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12,
+  },
+  crisisText: { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
 
   sendBtn: {
     backgroundColor: colors.accent, borderRadius: 14,

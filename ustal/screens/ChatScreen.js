@@ -164,6 +164,16 @@ function GlobalChat({ navigation }) {
   const startReply = (item) => { setReplyTo(item); setEditing(null); };
   const cancelContext = () => { setEditing(null); setReplyTo(null); setText(''); };
 
+  const reportMessage = (item) => {
+    Alert.alert('Пожаловаться на сообщение?', 'Мы получим уведомление и проверим его.', [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Пожаловаться', style: 'destructive', onPress: async () => {
+        await supabase.from('reports').insert({ reporter_id: store.userId, reported_user_id: item.sender_id, message_id: item.id, message_text: item.text, message_table: 'messages' });
+        Alert.alert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время.');
+      }},
+    ]);
+  };
+
   return (
     <View style={[s.flex, { marginBottom: kbHeight }]}>
       <FlatList
@@ -260,6 +270,7 @@ function GlobalChat({ navigation }) {
         onEdit={() => startEdit(menuMsg)}
         onDelete={() => { deleteMessage(menuMsg); setMenuMsg(null); }}
         onReact={(emoji) => toggleReaction(menuMsg.id, emoji)}
+        onReport={() => reportMessage(menuMsg)}
       />
     </View>
   );
