@@ -283,22 +283,37 @@ export default function ProfileScreen({ navigation }) {
       return;
     }
 
-    const dataUri = `data:image/jpeg;base64,${asset.base64}`;
     setUploadingAvatar(true);
-    const { data, error } = await supabase
-      .from('users')
-      .update({ avatar_url: dataUri })
-      .eq('user_id', store.userId)
-      .select('avatar_url')
-      .single();
-    setUploadingAvatar(false);
+    try {
+      // base64 → Uint8Array
+      const byteStr = atob(asset.base64);
+      const bytes = new Uint8Array(byteStr.length);
+      for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
 
-    if (error || !data) {
+      const path = `${store.userId}/avatar.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      // Bust cache with timestamp
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ avatar_url: avatarUrl })
+        .eq('user_id', store.userId);
+
+      if (dbError) throw dbError;
+
+      store.avatarUrl = avatarUrl;
+      setAvatarUri(avatarUrl);
+    } catch {
       Alert.alert('Ошибка', 'Не удалось сохранить аватар. Попробуй ещё раз.');
-      return;
     }
-    store.avatarUrl = data.avatar_url;
-    setAvatarUri(data.avatar_url);
+    setUploadingAvatar(false);
   };
 
   const inviteFriend = async () => {

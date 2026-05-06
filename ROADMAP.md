@@ -85,7 +85,7 @@
 
 - [x] **Базовая аналитика событий** — таблица `events`, утилита `logEvent(name, props)`. Трекинг: screen_view (все экраны через NavigationContainer), test_complete, checkin. Расширяемо без новых пакетов.
 
-- [ ] **Рефакторинг аватаров → Supabase Storage** — сейчас base64 в поле `users.avatar_url`. При тысяче пользователей таблица `users` начнёт тормозить на любом SELECT. Перенести в Storage bucket как медиа постов.
+- [x] **Рефакторинг аватаров → Supabase Storage** — новые аватары загружаются в bucket `avatars/{userId}/avatar.jpg`, URL пишется в `users.avatar_url`. Старые base64 продолжают отображаться (Avatar компонент принимает оба формата).
 
 ---
 

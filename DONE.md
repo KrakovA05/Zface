@@ -101,6 +101,7 @@
 ## Аналитика и надёжность
 - Crash reporting — глобальный JS-обработчик (`utils/crashReporting.js`) пишет ошибки в таблицу `crash_logs`
 - Аналитика событий — `utils/analytics.js`, таблица `events`, трекинг screen_view + test_complete + checkin
+- Аватары переехали в Supabase Storage (bucket `avatars`, с кэш-bustingом); старые base64 обратно совместимы
 
 ## Качество и психологическая безопасность
 - Тексты уровней (`LEVEL_DATA`) переписаны в безопасном психологическом фрейминге (без «тебе действительно плохо»)
