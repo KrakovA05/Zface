@@ -139,10 +139,26 @@ export default function LetterScreen({ navigation }) {
         }, 1500);
       }
     }
+    const crisis = hasCrisis(letter.text);
     Alert.alert(
       'Письмо для тебя',
       letter.text,
-      [{ text: 'Закрыть', style: 'cancel' }]
+      [{
+        text: 'Закрыть',
+        style: 'cancel',
+        onPress: () => {
+          if (crisis) {
+            Alert.alert(
+              'Это звучит тяжело',
+              'В этом письме есть слова, которые бывают, когда очень плохо. Если тебе сейчас тоже непросто — ты не один. Телефон доверия работает бесплатно.',
+              [
+                { text: 'Позвонить 8-800-2000-122', onPress: () => Linking.openURL('tel:88002000122') },
+                { text: 'Закрыть', style: 'cancel' },
+              ]
+            );
+          }
+        },
+      }]
     );
   };
 

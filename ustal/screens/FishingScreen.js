@@ -154,6 +154,7 @@ export default function FishingScreen() {
   const wave2      = useRef(new Animated.Value(0)).current;
   const resultAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim  = useRef(new Animated.Value(1)).current;
+  const legendAnim = useRef(new Animated.Value(0)).current;
   const ripple1    = useRef(new Animated.Value(0)).current;
   const ripple2    = useRef(new Animated.Value(0)).current;
 
@@ -243,7 +244,8 @@ export default function FishingScreen() {
     const note = fish.rarity === 'special'
       ? BOTTLE_NOTES[Math.floor(Math.random() * BOTTLE_NOTES.length)]
       : null;
-    const r = { ...fish, weight, note, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) };
+    const isNew = fish.rarity !== 'trash' && fish.rarity !== 'special' && !collection.includes(fish.name);
+    const r = { ...fish, weight, note, isNew, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) };
     setResult(r);
     setCatches(prev => [r, ...prev].slice(0, 20));
     if (store.userId && fish.rarity !== 'trash' && fish.rarity !== 'special') {
@@ -253,9 +255,16 @@ export default function FishingScreen() {
     setPhase('result');
     resultAnim.setValue(0);
     Animated.spring(resultAnim, { toValue: 1, useNativeDriver: true, tension: 130, friction: 9 }).start();
+    if (fish.rarity === 'legendary') {
+      legendAnim.setValue(0);
+      Animated.loop(Animated.sequence([
+        Animated.timing(legendAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(legendAnim, { toValue: 0.3, duration: 900, useNativeDriver: true }),
+      ])).start();
+    }
   };
 
-  const reset  = () => { setResult(null); setPhase('idle'); };
+  const reset  = () => { legendAnim.stopAnimation(); legendAnim.setValue(0); setResult(null); setPhase('idle'); };
   const cancel = () => { clearTimeout(waitTimer.current); clearInterval(msgTimer.current); stopBobbing(); setPhase('idle'); };
 
   const rippleStyle = (anim) => ({
@@ -406,14 +415,34 @@ export default function FishingScreen() {
           )}
 
           {phase === 'result' && result && (
-            <Animated.View style={[styles.resultCard, { borderColor: RARITY[result.rarity].color + '88', transform: [{ scale: resultAnim }], opacity: resultAnim }]}>
-              <LinearGradient colors={[RARITY[result.rarity].color + '20', 'transparent']} style={styles.resultGrad}>
-                <Text style={styles.resultEmoji}>{result.emoji}</Text>
+            <Animated.View style={[
+              styles.resultCard,
+              { borderColor: RARITY[result.rarity].color + '88', transform: [{ scale: resultAnim }], opacity: resultAnim },
+              result.rarity === 'legendary' && { borderWidth: 2 },
+            ]}>
+              {result.rarity === 'legendary' && (
+                <Animated.View style={[styles.legendaryGlow, { opacity: legendAnim }]} />
+              )}
+              <LinearGradient
+                colors={result.rarity === 'legendary'
+                  ? [RARITY.legendary.color + '30', RARITY.legendary.color + '10', 'transparent']
+                  : [RARITY[result.rarity].color + '20', 'transparent']}
+                style={styles.resultGrad}
+              >
+                {result.rarity === 'legendary' && (
+                  <Text style={styles.legendaryHeader}>Легендарная поимка</Text>
+                )}
+                <Text style={[styles.resultEmoji, result.rarity === 'legendary' && { fontSize: 80 }]}>{result.emoji}</Text>
                 <Text style={[styles.resultName, { color: RARITY[result.rarity].color }]}>{result.name}</Text>
                 {result.weight && <Text style={styles.resultWeight}>{result.weight} кг</Text>}
                 <View style={[styles.rarityPill, { backgroundColor: RARITY[result.rarity].color + '25' }]}>
                   <Text style={[styles.rarityLabel, { color: RARITY[result.rarity].color }]}>{RARITY[result.rarity].label}</Text>
                 </View>
+                {result.isNew && (
+                  <View style={styles.newBadge}>
+                    <Text style={styles.newBadgeText}>новая в коллекции!</Text>
+                  </View>
+                )}
                 {result.rarity !== 'trash' && result.rarity !== 'special' && (
                   <Text style={styles.collectionCount}>
                     коллекция: {collection.length} из {FISH.filter(f => f.rarity !== 'trash' && f.rarity !== 'special').length}
@@ -569,6 +598,19 @@ const styles = StyleSheet.create({
   rarityPill:  { borderRadius: 20, paddingVertical: 5, paddingHorizontal: 16, marginTop: 2 },
   rarityLabel: { fontSize: 13, fontWeight: '600' },
   collectionCount: { fontSize: 11, color: colors.muted, marginTop: 6 },
+  legendaryGlow: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 220,
+    backgroundColor: '#AA7C00', borderRadius: 24,
+  },
+  legendaryHeader: {
+    fontSize: 11, fontWeight: '800', color: '#AA7C00',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4,
+  },
+  newBadge: {
+    backgroundColor: '#AA7C00' + '22', borderRadius: 20,
+    paddingVertical: 4, paddingHorizontal: 14, marginTop: 2,
+  },
+  newBadgeText: { color: '#AA7C00', fontSize: 12, fontWeight: '700' },
   noteBox: { backgroundColor: colors.accent + '15', borderRadius: 14, padding: 14, width: '100%', alignItems: 'center', marginTop: 4 },
   noteText: { color: colors.white, fontSize: 14, lineHeight: 20, textAlign: 'center', fontStyle: 'italic' },
   againBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: colors.accent, marginHorizontal: 20, marginBottom: 16, borderRadius: 16 },

@@ -196,14 +196,15 @@ export default function HomeScreen({ navigation }) {
         }
 
         const word = getTodayWord();
-        if (wordTapCache[today] !== undefined) {
-          setWordTapped(wordTapCache[today]);
+        const cacheKey = `${today}_${user.id}`;
+        if (wordTapCache[cacheKey] !== undefined) {
+          setWordTapped(wordTapCache[cacheKey]);
         } else {
           const { data: taps } = await supabase
             .from('daily_word_taps').select('reaction')
             .eq('user_id', user.id).eq('word_date', today).limit(1);
           const tapVal = taps?.[0]?.reaction || false;
-          wordTapCache[today] = tapVal;
+          wordTapCache[cacheKey] = tapVal;
           setWordTapped(tapVal);
         }
         const { count } = await supabase
@@ -238,10 +239,10 @@ export default function HomeScreen({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const today = getTodayDate();
     setWordTapped(reaction);
-    wordTapCache[today] = reaction;
     if (reaction === 'yes') setWordCount(c => c + 1);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      wordTapCache[`${today}_${user.id}`] = reaction;
       await supabase.from('daily_word_taps').insert({
         user_id: user.id, word: todayWord, word_date: today, reaction,
       });
@@ -467,18 +468,18 @@ export default function HomeScreen({ navigation }) {
             }
             return (
               <TouchableOpacity
-                style={styles.focusCard}
+                style={[styles.focusCard, { borderLeftColor: lvlColor }]}
                 onPress={onPress}
                 activeOpacity={0.75}
               >
                 <View style={[styles.focusIconWrap, { backgroundColor: lvlColor + '18' }]}>
-                  <Ionicons name={icon} size={18} color={lvlColor} />
+                  <Ionicons name={icon} size={22} color={lvlColor} />
                 </View>
                 <View style={styles.focusInfo}>
                   <Text style={[styles.focusTitle, { color: lvlColor }]}>{text}</Text>
-                  <Text style={styles.focusSub} numberOfLines={1}>{sub}</Text>
+                  <Text style={styles.focusSub} numberOfLines={2}>{sub}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={15} color={colors.muted} />
+                <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </TouchableOpacity>
             );
           })()
@@ -844,15 +845,16 @@ const styles = StyleSheet.create({
   content:   { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 },
 
   focusCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.card, borderRadius: 14,
-    marginHorizontal: 16, marginBottom: 12, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: colors.card, borderRadius: 16,
+    marginBottom: 16, padding: 18,
     borderWidth: 1, borderColor: colors.border,
+    borderLeftWidth: 3,
   },
-  focusIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  focusIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   focusInfo: { flex: 1 },
-  focusTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  focusSub: { fontSize: 12, color: colors.muted },
+  focusTitle: { fontSize: 16, fontWeight: '700', marginBottom: 3 },
+  focusSub: { fontSize: 13, color: colors.muted, lineHeight: 18 },
 
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   greeting:  { fontSize: 22, fontWeight: '700', color: colors.white },
