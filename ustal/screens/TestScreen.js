@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -152,7 +152,7 @@ export default function TestScreen({ navigation }) {
         {level === 'red' && (
           <TouchableOpacity
             style={styles.crisisBtn}
-            onPress={() => { const { Linking } = require('react-native'); Linking.openURL('tel:88002000122'); }}
+            onPress={() => Linking.openURL('tel:88002000122')}
           >
             <Text style={styles.crisisBtnText}>Телефон доверия: 8-800-2000-122</Text>
           </TouchableOpacity>

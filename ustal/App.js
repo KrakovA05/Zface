@@ -350,7 +350,8 @@ export default function App() {
         } else {
           setInitialRoute('Login');
         }
-      } catch {
+      } catch (e) {
+        console.warn('App init error:', e?.message);
         setInitialRoute('Login');
       }
     };

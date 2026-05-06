@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -14,7 +14,12 @@ import { sendPushNotification } from '../utils/notifications';
 
 let reviewRequested = false;
 
-const CRISIS_PHRASES = ['хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой', 'нет смысла жить', 'лучше бы меня не было'];
+const CRISIS_PHRASES = [
+  'хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой',
+  'нет смысла жить', 'лучше бы меня не было', 'хочу исчезнуть', 'незачем жить',
+  'не хочу просыпаться', 'нет выхода', 'больше не могу', 'устал от всего',
+  'не вижу смысла', 'никому не нужен', 'никому не нужна', 'зачем всё это',
+];
 function hasCrisis(t) { return CRISIS_PHRASES.some(p => t.toLowerCase().includes(p)); }
 
 function getTodayDate() {
@@ -220,10 +225,11 @@ export default function LetterScreen({ navigation }) {
                     <Text style={styles.charCount}>{text.length}/600</Text>
                   </View>
                   {hasCrisis(text) && (
-                    <View style={styles.crisisBanner}>
+                    <TouchableOpacity style={styles.crisisBanner} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
                       <Ionicons name="heart-outline" size={14} color={colors.accent} />
-                      <Text style={styles.crisisText}>Звучит тяжело. Если совсем плохо — 8-800-2000-122 (бесплатно)</Text>
-                    </View>
+                      <Text style={styles.crisisText}>Звучит тяжело. Позвони прямо сейчас — 8-800-2000-122, это бесплатно</Text>
+                      <Ionicons name="call-outline" size={14} color={colors.accent} />
+                    </TouchableOpacity>
                   )}
                   <TouchableOpacity
                     style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}

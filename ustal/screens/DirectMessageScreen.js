@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  FlatList, Alert, Keyboard, Platform,
+  FlatList, Alert, Keyboard, Platform, Linking,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,12 @@ import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 
-const CRISIS_PHRASES = ['хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой', 'нет смысла жить', 'лучше бы меня не было'];
+const CRISIS_PHRASES = [
+  'хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой',
+  'нет смысла жить', 'лучше бы меня не было', 'хочу исчезнуть', 'незачем жить',
+  'не хочу просыпаться', 'нет выхода', 'больше не могу', 'устал от всего',
+  'не вижу смысла', 'никому не нужен', 'никому не нужна', 'зачем всё это',
+];
 function hasCrisisContent(text) {
   const t = text.toLowerCase();
   return CRISIS_PHRASES.some(p => t.includes(p));
@@ -299,10 +304,11 @@ export default function DirectMessageScreen({ route, navigation }) {
         )}
 
         {hasCrisisContent(text) && (
-          <View style={styles.crisisBanner}>
+          <TouchableOpacity style={styles.crisisBanner} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
             <Ionicons name="heart-outline" size={14} color="#7c3aed" />
-            <Text style={styles.crisisText}>Звучит тяжело. Если совсем плохо — 8-800-2000-122 (бесплатно)</Text>
-          </View>
+            <Text style={styles.crisisText}>Звучит тяжело. Позвони прямо сейчас — 8-800-2000-122, это бесплатно</Text>
+            <Ionicons name="call-outline" size={14} color="#7c3aed" />
+          </TouchableOpacity>
         )}
 
         <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>

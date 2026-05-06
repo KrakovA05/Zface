@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  FlatList, Alert, Keyboard, Platform,
+  FlatList, Alert, Keyboard, Platform, Linking,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +28,12 @@ function groupReactions(list) {
   return Object.entries(g).map(([emoji, d]) => ({ emoji, ...d }));
 }
 
-const CRISIS_PHRASES = ['хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой', 'нет смысла жить', 'лучше бы меня не было'];
+const CRISIS_PHRASES = [
+  'хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой',
+  'нет смысла жить', 'лучше бы меня не было', 'хочу исчезнуть', 'незачем жить',
+  'не хочу просыпаться', 'нет выхода', 'больше не могу', 'устал от всего',
+  'не вижу смысла', 'никому не нужен', 'никому не нужна', 'зачем всё это',
+];
 function hasCrisisContent(text) {
   const t = text.toLowerCase();
   return CRISIS_PHRASES.some(p => t.includes(p));
@@ -53,6 +58,7 @@ function GlobalChat({ navigation }) {
   const [kbHeight, setKbHeight] = useState(0);
   const [menuMsg, setMenuMsg] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
+  const [blockedIds, setBlockedIds] = useState(new Set());
   const [editing, setEditing] = useState(null);
   const [reactions, setReactions] = useState({});
   const fetchedUsers = useRef(new Set());
@@ -64,6 +70,18 @@ function GlobalChat({ navigation }) {
     const show = Keyboard.addListener(showEv, e => setKbHeight(e.endCoordinates.height));
     const hide = Keyboard.addListener(hideEv, () => setKbHeight(0));
     return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (store.userId) {
+      supabase.from('blocks').select('blocker_id, blocked_id')
+        .or(`blocker_id.eq.${store.userId},blocked_id.eq.${store.userId}`)
+        .then(({ data }) => {
+          setBlockedIds(new Set((data || []).map(b =>
+            b.blocker_id === store.userId ? b.blocked_id : b.blocker_id
+          )));
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -178,7 +196,7 @@ function GlobalChat({ navigation }) {
     <View style={[s.flex, { marginBottom: kbHeight }]}>
       <FlatList
         style={s.flex}
-        data={messages}
+        data={messages.filter(m => !blockedIds.has(m.sender_id))}
         inverted
         keyExtractor={item => String(item.id)}
         contentContainerStyle={s.list}
@@ -242,10 +260,11 @@ function GlobalChat({ navigation }) {
       )}
 
       {hasCrisisContent(text) && (
-        <View style={s.crisisBanner}>
+        <TouchableOpacity style={s.crisisBanner} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
           <Ionicons name="heart-outline" size={14} color="#7c3aed" />
-          <Text style={s.crisisText}>Звучит тяжело. Если совсем плохо — 8-800-2000-122 (бесплатно)</Text>
-        </View>
+          <Text style={s.crisisText}>Звучит тяжело. Позвони прямо сейчас — 8-800-2000-122, это бесплатно</Text>
+          <Ionicons name="call-outline" size={14} color="#7c3aed" />
+        </TouchableOpacity>
       )}
 
       <View style={[s.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>

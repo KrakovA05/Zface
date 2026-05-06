@@ -74,9 +74,22 @@ export default function RoomsScreen({ route, navigation }) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [presenceCounts, setPresenceCounts] = useState({ named: 0, anon: 0 });
   const [showHint, setShowHint] = useState(false);
+  const [blockedIds, setBlockedIds] = useState(new Set());
   const flatRef = useRef(null);
   const channelRef = useRef(null);
   const participantsChannelRef = useRef(null);
+
+  useEffect(() => {
+    if (store.userId) {
+      supabase.from('blocks').select('blocker_id, blocked_id')
+        .or(`blocker_id.eq.${store.userId},blocked_id.eq.${store.userId}`)
+        .then(({ data }) => {
+          setBlockedIds(new Set((data || []).map(b =>
+            b.blocker_id === store.userId ? b.blocked_id : b.blocker_id
+          )));
+        });
+    }
+  }, []);
 
   useFocusEffect(useCallback(() => {
     const loadCounts = async () => {
@@ -462,7 +475,7 @@ export default function RoomsScreen({ route, navigation }) {
 
         <FlatList
           ref={flatRef}
-          data={messages}
+          data={messages.filter(m => !blockedIds.has(m.sender_id))}
           keyExtractor={item => item.id?.toString()}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
