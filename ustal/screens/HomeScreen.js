@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -114,6 +114,9 @@ export default function HomeScreen({ navigation }) {
   const [onlineCount,    setOnlineCount]    = useState(0);
   const [showHistory,    setShowHistory]    = useState(false);
   const [hasUnreadLetter, setHasUnreadLetter] = useState(false);
+  const scrollRef    = useRef(null);
+  const [moodCardY,  setMoodCardY]  = useState(0);
+  const [dailyCardY, setDailyCardY] = useState(0);
   const dailyQuestion = getTodayQuestion();
   const todayWord = getTodayWord();
   const todayWordContext = getTodayWordContext();
@@ -418,6 +421,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.safeArea}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         contentInset={{ bottom: 80 }}
@@ -454,19 +458,18 @@ export default function HomeScreen({ navigation }) {
               icon = 'chatbubble-ellipses-outline';
               text = 'вопрос дня ждёт';
               sub = dailyQuestion;
-              onPress = null;
+              onPress = () => scrollRef.current?.scrollTo({ y: dailyCardY, animated: true });
             } else {
               icon = 'heart-outline';
               text = 'как ты сейчас?';
               sub = 'оцени своё состояние';
-              onPress = null;
+              onPress = () => scrollRef.current?.scrollTo({ y: moodCardY, animated: true });
             }
             return (
               <TouchableOpacity
                 style={styles.focusCard}
                 onPress={onPress}
-                activeOpacity={onPress ? 0.75 : 1}
-                disabled={!onPress}
+                activeOpacity={0.75}
               >
                 <View style={[styles.focusIconWrap, { backgroundColor: lvlColor + '18' }]}>
                   <Ionicons name={icon} size={18} color={lvlColor} />
@@ -475,7 +478,7 @@ export default function HomeScreen({ navigation }) {
                   <Text style={[styles.focusTitle, { color: lvlColor }]}>{text}</Text>
                   <Text style={styles.focusSub} numberOfLines={1}>{sub}</Text>
                 </View>
-                {onPress && <Ionicons name="chevron-forward" size={15} color={colors.muted} />}
+                <Ionicons name="chevron-forward" size={15} color={colors.muted} />
               </TouchableOpacity>
             );
           })()
@@ -544,7 +547,7 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {!loading && (
-          <View style={styles.moodCard}>
+          <View style={styles.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
             {moodScore === null ? (
               <>
                 <Text style={styles.moodLabel}>как ты сейчас?</Text>
@@ -630,7 +633,7 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {!loading && (
-          <View style={styles.dailyCard}>
+          <View style={styles.dailyCard} onLayout={e => setDailyCardY(e.nativeEvent.layout.y)}>
             <Text style={styles.sectionLabel}>Вопрос дня</Text>
             <Text style={styles.dailyQuestion}>{dailyQuestion}</Text>
             {dailyAnswered === false ? (
