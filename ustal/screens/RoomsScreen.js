@@ -11,6 +11,7 @@ import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { markRead } from '../utils/unread';
+import { hasSeenHint, markHintSeen } from '../utils/onboarding';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 
@@ -72,6 +73,7 @@ export default function RoomsScreen({ route, navigation }) {
   const [reactions, setReactions] = useState({});
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [presenceCounts, setPresenceCounts] = useState({ named: 0, anon: 0 });
+  const [showHint, setShowHint] = useState(false);
   const flatRef = useRef(null);
   const channelRef = useRef(null);
   const participantsChannelRef = useRef(null);
@@ -143,6 +145,13 @@ export default function RoomsScreen({ route, navigation }) {
     setPresenceCounts({ named: 0, anon: 0 });
     setRoom(roomId);
     await markRead(`room_${roomId}`);
+
+    const seen = await hasSeenHint('rooms');
+    if (!seen) {
+      markHintSeen('rooms');
+      setShowHint(true);
+      setTimeout(() => setShowHint(false), 5000);
+    }
 
     const { data } = await supabase
       .from('messages')
@@ -444,6 +453,13 @@ export default function RoomsScreen({ route, navigation }) {
           </View>
         )}
 
+        {showHint && (
+          <TouchableOpacity style={styles.onboardHint} onPress={() => setShowHint(false)} activeOpacity={0.8}>
+            <Ionicons name="leaf-outline" size={14} color={colors.accent} />
+            <Text style={styles.onboardHintText}>здесь можно просто сидеть молча</Text>
+          </TouchableOpacity>
+        )}
+
         <FlatList
           ref={flatRef}
           data={messages}
@@ -564,6 +580,14 @@ export default function RoomsScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  onboardHint: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.accent + '12',
+    marginHorizontal: 16, marginTop: 8, marginBottom: 4,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  onboardHintText: { fontSize: 13, color: colors.accent, fontStyle: 'italic' },
+
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   lobbyContent: { padding: 24, paddingBottom: 40 },

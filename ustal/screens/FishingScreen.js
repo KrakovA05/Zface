@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+import { hasSeenHint, markHintSeen } from '../utils/onboarding';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -131,11 +132,20 @@ export default function FishingScreen() {
   const [catches, setCatches] = useState([]);
   const [waitMsg, setWaitMsg] = useState('');
   const [collection, setCollection] = useState([]);
+  const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
     if (!store.userId) return;
     supabase.from('caught_fish').select('fish_name').eq('user_id', store.userId)
       .then(({ data }) => setCollection([...new Set((data || []).map(r => r.fish_name))]));
+
+    hasSeenHint('fishing').then(seen => {
+      if (!seen) {
+        markHintSeen('fishing');
+        setShowHint(true);
+        setTimeout(() => setShowHint(false), 5000);
+      }
+    });
   }, []);
 
   const bobAnim    = useRef(new Animated.Value(0)).current;
@@ -357,6 +367,13 @@ export default function FishingScreen() {
         {/* Настроение */}
         <Text style={styles.mood}>{MOODS[period]}</Text>
 
+        {showHint && (
+          <TouchableOpacity style={styles.onboardHint} onPress={() => setShowHint(false)} activeOpacity={0.8}>
+            <Ionicons name="water-outline" size={14} color={colors.accent} />
+            <Text style={styles.onboardHintText}>здесь не надо ничего объяснять</Text>
+          </TouchableOpacity>
+        )}
+
         {/* ── Кнопки ── */}
         <View style={styles.actions}>
           {phase === 'idle' && (
@@ -518,7 +535,14 @@ const styles = StyleSheet.create({
   },
   timeBadgeText: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '500' },
 
-  mood: { fontSize: 14, color: colors.muted, marginHorizontal: 20, marginBottom: 20, lineHeight: 20 },
+  mood: { fontSize: 14, color: colors.muted, marginHorizontal: 20, marginBottom: 12, lineHeight: 20 },
+  onboardHint: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.accent + '12',
+    marginHorizontal: 20, marginBottom: 12,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  onboardHintText: { fontSize: 13, color: colors.accent, fontStyle: 'italic' },
 
   actions:  { alignItems: 'center', marginHorizontal: 20, marginBottom: 20 },
   castBtn:  { width: '100%', borderRadius: 18, overflow: 'hidden' },
