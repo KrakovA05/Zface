@@ -679,7 +679,7 @@ export default function HomeScreen({ navigation }) {
             <Ionicons name="checkmark-circle-outline" size={22} color={colors.accent} />
             <View style={{ flex: 1 }}>
               <Text style={styles.allDoneTitle}>на сегодня всё</Text>
-              <Text style={styles.allDoneSub}>ты был здесь — это уже что-то</Text>
+              <Text style={styles.allDoneSub}>ответил на вопрос дня и отметил настроение</Text>
             </View>
           </View>
         )}
