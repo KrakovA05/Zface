@@ -14,6 +14,20 @@ import Avatar from '../components/Avatar';
 
 const HIDDEN_ACHIEVEMENTS = new Set(['ten_tests', 'daily_7', 'first_post']);
 
+const ALL_FISH = [
+  { name: 'Тихий карась',     emoji: '🐟', rarity: 'common' },
+  { name: 'Задумчивый окунь', emoji: '🐠', rarity: 'common' },
+  { name: 'Мелкий ёрш',       emoji: '🐟', rarity: 'common' },
+  { name: 'Дремлющий лещ',    emoji: '🐡', rarity: 'common' },
+  { name: 'Неспешный судак',  emoji: '🐟', rarity: 'uncommon' },
+  { name: 'Молчаливый линь',  emoji: '🐠', rarity: 'uncommon' },
+  { name: 'Серебряный карп',  emoji: '🐡', rarity: 'rare' },
+  { name: 'Ночная щука',      emoji: '🐟', rarity: 'rare' },
+  { name: 'Глубокий сом',     emoji: '🦈', rarity: 'rare' },
+  { name: 'Золотая рыбка',    emoji: '✨',  rarity: 'legendary' },
+  { name: 'Лунная форель',    emoji: '🌟', rarity: 'legendary' },
+];
+
 const LEVEL_ICONS = {
   green: 'leaf-outline',
   yellow: 'partly-sunny-outline',
@@ -64,6 +78,7 @@ export default function ProfileScreen({ navigation }) {
   const [showHistory, setShowHistory] = useState(false);
   const [presenceStats, setPresenceStats] = useState(null);
   const [moodHistory, setMoodHistory] = useState([]);
+  const [fishCollection, setFishCollection] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -123,6 +138,10 @@ export default function ProfileScreen({ navigation }) {
           days.push({ date: key, label: dayLabel, score: moodMap[key] ?? null });
         }
         setMoodHistory(days);
+
+        const { data: fishData } = await supabase
+          .from('caught_fish').select('fish_name').eq('user_id', store.userId);
+        setFishCollection([...new Set((fishData || []).map(r => r.fish_name))]);
       };
       loadProfile();
       checkAndAwardAchievements();
@@ -508,6 +527,32 @@ export default function ProfileScreen({ navigation }) {
           </Section>
         )}
 
+        {/* Коллекция рыб */}
+        <Section title="Рыбалка">
+          <View style={styles.fishProgress}>
+            <Text style={styles.fishProgressText}>
+              {fishCollection.length} из {ALL_FISH.length} поймано
+            </Text>
+            <View style={styles.fishProgressBar}>
+              <View style={[styles.fishProgressFill, { width: `${(fishCollection.length / ALL_FISH.length) * 100}%` }]} />
+            </View>
+          </View>
+          <View style={styles.fishGrid}>
+            {ALL_FISH.map(fish => {
+              const caught = fishCollection.includes(fish.name);
+              return (
+                <View key={fish.name} style={[styles.fishItem, !caught && styles.fishLocked]}>
+                  <Text style={styles.fishEmoji}>{caught ? fish.emoji : '?'}</Text>
+                  <Text style={[styles.fishName, !caught && { color: colors.muted }]} numberOfLines={2}>
+                    {caught ? fish.name : '???'}
+                  </Text>
+                  <Text style={styles.fishRarity}>{caught ? fish.rarity : ''}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </Section>
+
         {/* Если совсем плохо */}
         <TouchableOpacity
           style={styles.crisisBtn}
@@ -641,6 +686,28 @@ const styles = StyleSheet.create({
   achievementEmoji: { fontSize: 24 },
   achievementLabel: { color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' },
   achievementDesc: { color: colors.muted, fontSize: 9, textAlign: 'center', lineHeight: 13 },
+
+  // Fish collection
+  fishProgress: { paddingHorizontal: 16, paddingBottom: 12, gap: 6 },
+  fishProgressText: { fontSize: 13, color: colors.muted },
+  fishProgressBar: {
+    height: 4, backgroundColor: colors.border, borderRadius: 2,
+  },
+  fishProgressFill: {
+    height: 4, backgroundColor: colors.accent, borderRadius: 2,
+  },
+  fishGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', padding: 8, gap: 8,
+  },
+  fishItem: {
+    width: '29%', flexGrow: 1,
+    backgroundColor: colors.background,
+    borderRadius: 12, padding: 10, alignItems: 'center', gap: 3,
+  },
+  fishLocked: { opacity: 0.3 },
+  fishEmoji: { fontSize: 22 },
+  fishName: { color: colors.white, fontSize: 10, fontWeight: '600', textAlign: 'center' },
+  fishRarity: { color: colors.muted, fontSize: 9, textAlign: 'center' },
 
   // Delete
   crisisBtn: {

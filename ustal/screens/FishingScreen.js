@@ -2,6 +2,8 @@ import { StyleSheet, Text, View, TouchableOpacity, Animated, ScrollView, Dimensi
 import { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../supabase';
+import { store } from '../store';
 import { colors } from '../theme';
 
 const { width: SW } = Dimensions.get('window');
@@ -128,6 +130,13 @@ export default function FishingScreen() {
   const [result, setResult] = useState(null);
   const [catches, setCatches] = useState([]);
   const [waitMsg, setWaitMsg] = useState('');
+  const [collection, setCollection] = useState([]);
+
+  useEffect(() => {
+    if (!store.userId) return;
+    supabase.from('caught_fish').select('fish_name').eq('user_id', store.userId)
+      .then(({ data }) => setCollection([...new Set((data || []).map(r => r.fish_name))]));
+  }, []);
 
   const bobAnim    = useRef(new Animated.Value(0)).current;
   const biteAnim   = useRef(new Animated.Value(1)).current;
@@ -227,6 +236,10 @@ export default function FishingScreen() {
     const r = { ...fish, weight, note, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) };
     setResult(r);
     setCatches(prev => [r, ...prev].slice(0, 20));
+    if (store.userId && fish.rarity !== 'trash' && fish.rarity !== 'special') {
+      supabase.from('caught_fish').insert({ user_id: store.userId, fish_name: fish.name }).then();
+      setCollection(prev => prev.includes(fish.name) ? prev : [...prev, fish.name]);
+    }
     setPhase('result');
     resultAnim.setValue(0);
     Animated.spring(resultAnim, { toValue: 1, useNativeDriver: true, tension: 130, friction: 9 }).start();
@@ -384,6 +397,11 @@ export default function FishingScreen() {
                 <View style={[styles.rarityPill, { backgroundColor: RARITY[result.rarity].color + '25' }]}>
                   <Text style={[styles.rarityLabel, { color: RARITY[result.rarity].color }]}>{RARITY[result.rarity].label}</Text>
                 </View>
+                {result.rarity !== 'trash' && result.rarity !== 'special' && (
+                  <Text style={styles.collectionCount}>
+                    коллекция: {collection.length} из {FISH.filter(f => f.rarity !== 'trash' && f.rarity !== 'special').length}
+                  </Text>
+                )}
                 {result.note && (
                   <View style={styles.noteBox}>
                     <Ionicons name="document-text-outline" size={14} color={colors.accent} style={{ marginBottom: 4 }} />
@@ -526,6 +544,7 @@ const styles = StyleSheet.create({
   resultWeight:{ fontSize: 15, color: colors.muted },
   rarityPill:  { borderRadius: 20, paddingVertical: 5, paddingHorizontal: 16, marginTop: 2 },
   rarityLabel: { fontSize: 13, fontWeight: '600' },
+  collectionCount: { fontSize: 11, color: colors.muted, marginTop: 6 },
   noteBox: { backgroundColor: colors.accent + '15', borderRadius: 14, padding: 14, width: '100%', alignItems: 'center', marginTop: 4 },
   noteText: { color: colors.white, fontSize: 14, lineHeight: 20, textAlign: 'center', fontStyle: 'italic' },
   againBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, backgroundColor: colors.accent, marginHorizontal: 20, marginBottom: 16, borderRadius: 16 },
