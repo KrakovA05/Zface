@@ -100,6 +100,10 @@ export default function UserProfileScreen({ route, navigation }) {
       await supabase.from('user_helps').insert({ helper_id: user.user_id, helped_by_id: store.userId });
       setHasHelped(true);
       setHelpCount(c => c + 1);
+      const { data: target } = await supabase.from('users').select('push_token').eq('user_id', user.user_id).single();
+      if (target?.push_token) {
+        sendPushNotification(target.push_token, 'Кто-то о тебе вспомнил', 'кто-то написал, что ты им помог');
+      }
     }
     setHelpLoading(false);
   };

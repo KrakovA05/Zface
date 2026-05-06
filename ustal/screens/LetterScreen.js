@@ -10,6 +10,7 @@ import * as StoreReview from 'expo-store-review';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+import { sendPushNotification } from '../utils/notifications';
 
 let reviewRequested = false;
 
@@ -50,7 +51,7 @@ export default function LetterScreen({ navigation }) {
     // Входящие письма
     const { data: letters } = await supabase
       .from('anonymous_letters')
-      .select('id, text, opened, created_at, author_level')
+      .select('id, text, opened, created_at, author_level, author_id')
       .eq('recipient_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20);
@@ -119,6 +120,10 @@ export default function LetterScreen({ navigation }) {
       await supabase.from('anonymous_letters').update({ opened: true }).eq('id', letter.id);
       setInbox(prev => prev.map(l => l.id === letter.id ? { ...l, opened: true } : l));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (letter.author_id) {
+        const { data: author } = await supabase.from('users').select('push_token').eq('user_id', letter.author_id).single();
+        if (author?.push_token) sendPushNotification(author.push_token, 'Письмо дошло', 'твоё письмо дошло');
+      }
       if (!reviewRequested) {
         reviewRequested = true;
         setTimeout(async () => {

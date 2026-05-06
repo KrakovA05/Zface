@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
 import { colors } from '../theme';
+import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 
 function formatDate(str) {
@@ -77,6 +78,10 @@ export default function PostScreen({ route, navigation }) {
       setText('');
       await loadComments();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      if (post.author_id && post.author_id !== store.userId) {
+        const { data: author } = await supabase.from('users').select('push_token').eq('user_id', post.author_id).single();
+        if (author?.push_token) sendPushNotification(author.push_token, 'Новый комментарий', `${store.username} прокомментировал твой пост`);
+      }
     }
     setSending(false);
   };
