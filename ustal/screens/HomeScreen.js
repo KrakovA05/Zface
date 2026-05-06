@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Modal, Pressable } from 'react-native';
 import { useState, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -114,6 +114,7 @@ export default function HomeScreen({ navigation }) {
   const [onlineCount,    setOnlineCount]    = useState(0);
   const [showHistory,    setShowHistory]    = useState(false);
   const [hasUnreadLetter, setHasUnreadLetter] = useState(false);
+  const [showStreakInfo, setShowStreakInfo]   = useState(false);
   const scrollRef    = useRef(null);
   const [moodCardY,  setMoodCardY]  = useState(0);
   const [dailyCardY, setDailyCardY] = useState(0);
@@ -433,10 +434,14 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.greeting}>Привет, {store.username || 'друг'}</Text>
           <View style={styles.greetingBadges}>
             {streak > 0 && (
-              <View style={styles.streakBadge}>
+              <TouchableOpacity
+                style={styles.streakBadge}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowStreakInfo(true); }}
+                activeOpacity={0.7}
+              >
                 <Ionicons name="flame-outline" size={12} color={colors.accent} />
                 <Text style={styles.streakText}>{streak}</Text>
-              </View>
+              </TouchableOpacity>
             )}
             {onlineCount > 0 && (
               <View style={styles.onlineBadge}>
@@ -750,6 +755,32 @@ export default function HomeScreen({ navigation }) {
         )}
 
       </ScrollView>
+
+      {/* ── Стрик-попап ── */}
+      <Modal visible={showStreakInfo} transparent animationType="fade" onRequestClose={() => setShowStreakInfo(false)}>
+        <Pressable style={styles.streakOverlay} onPress={() => setShowStreakInfo(false)}>
+          <Pressable style={styles.streakPopup} onPress={() => {}}>
+            <Text style={styles.streakPopupFlame}>🔥</Text>
+            <Text style={[styles.streakPopupCount, { color: colors.accent }]}>{streak}</Text>
+            <Text style={styles.streakPopupLabel}>
+              {streak === 1 ? 'день подряд' : streak < 5 ? 'дня подряд' : 'дней подряд'}
+            </Text>
+            <Text style={styles.streakPopupDesc}>
+              Ты открываешь приложение каждый день. Это не мелочь — привычка заботиться о себе строится именно так.
+            </Text>
+            {streak >= 7 && (
+              <View style={styles.streakMilestone}>
+                <Text style={styles.streakMilestoneText}>
+                  {streak >= 30 ? 'месяц без пропусков' : streak >= 14 ? 'две недели' : 'неделя'} — это уже характер
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity style={styles.streakCloseBtn} onPress={() => setShowStreakInfo(false)} activeOpacity={0.7}>
+              <Text style={styles.streakCloseBtnText}>Закрыть</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -867,6 +898,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4,
   },
   streakText: { fontSize: 12, fontWeight: '700', color: colors.accent },
+
+  // Streak popup
+  streakOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  streakPopup: {
+    backgroundColor: colors.card, borderRadius: 28,
+    paddingVertical: 32, paddingHorizontal: 28,
+    width: '80%', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18, shadowRadius: 24, elevation: 16,
+  },
+  streakPopupFlame: { fontSize: 56, marginBottom: 8 },
+  streakPopupCount: { fontSize: 64, fontWeight: '900', lineHeight: 70 },
+  streakPopupLabel: { fontSize: 18, fontWeight: '600', color: colors.white, marginBottom: 16 },
+  streakPopupDesc: {
+    fontSize: 14, color: colors.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20,
+  },
+  streakMilestone: {
+    backgroundColor: colors.accent + '15', borderRadius: 12,
+    paddingVertical: 8, paddingHorizontal: 16, marginBottom: 20,
+  },
+  streakMilestoneText: { fontSize: 13, color: colors.accent, fontWeight: '600' },
+  streakCloseBtn: {
+    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 28,
+  },
+  streakCloseBtnText: { color: colors.muted, fontSize: 14, fontWeight: '500' },
   onlineBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#4CAF5015', borderRadius: 10,
