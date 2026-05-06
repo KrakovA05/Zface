@@ -130,6 +130,41 @@ export async function scheduleReturnReminder(level) {
   } catch {}
 }
 
+export async function scheduleWeeklyReport(userId) {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const existing = scheduled.filter(n => n.content.data?.type === 'weekly_report');
+    if (existing.length > 0) return;
+
+    const { supabase } = await import('../supabase');
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [{ data: userData }, { count: letters }, { count: helped }, { count: answers }] = await Promise.all([
+      supabase.from('users').select('login_streak').eq('user_id', userId).single(),
+      supabase.from('anonymous_letters').select('*', { count: 'exact', head: true }).eq('author_id', userId).gte('created_at', weekAgo),
+      supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', userId).gte('created_at', weekAgo),
+      supabase.from('daily_answers').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', weekAgo),
+    ]);
+
+    const streak = userData?.login_streak || 0;
+    const parts = [];
+    if (streak > 0) parts.push(`${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'} подряд`);
+    if (letters) parts.push(`${letters} ${letters === 1 ? 'письмо' : 'письма'}`);
+    if (helped) parts.push(`помог ${helped} ${helped === 1 ? 'человеку' : 'людям'}`);
+    if (answers) parts.push(`${answers} ответов на вопрос дня`);
+
+    const body = parts.length > 0 ? parts.join(' · ') : 'ты был здесь на этой неделе. это что-то значит.';
+
+    await Notifications.scheduleNotificationAsync({
+      content: { title: 'Эта неделя', body, sound: true, data: { type: 'weekly_report' } },
+      trigger: { weekday: 1, hour: 19, minute: 0, repeats: true },
+    });
+  } catch {}
+}
+
 export async function scheduleLowMoodPush() {
   try {
     const { status } = await Notifications.getPermissionsAsync();

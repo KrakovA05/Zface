@@ -623,6 +623,16 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+        {!loading && moodScore !== null && wordTapped && dailyAnswered && (
+          <View style={styles.allDoneCard}>
+            <Ionicons name="checkmark-circle-outline" size={22} color={colors.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.allDoneTitle}>на сегодня всё</Text>
+              <Text style={styles.allDoneSub}>ты был здесь — это уже что-то</Text>
+            </View>
+          </View>
+        )}
+
         <Text style={styles.sectionTitle}>Модули</Text>
         <View style={styles.grid}>
           {MODULE_ITEMS.map(m => (
@@ -924,6 +934,15 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: '700', color: colors.muted,
     textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10,
   },
+  allDoneCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.accent + '10', borderRadius: 14,
+    padding: 16, marginBottom: 20,
+    borderWidth: 1, borderColor: colors.accent + '30',
+  },
+  allDoneTitle: { fontSize: 15, fontWeight: '700', color: colors.accent },
+  allDoneSub: { fontSize: 13, color: colors.muted, marginTop: 2 },
+
   sectionTitle: {
     fontSize: 12, fontWeight: '700', color: colors.muted,
     textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14,

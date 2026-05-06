@@ -12,6 +12,8 @@ import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 
+const HIDDEN_ACHIEVEMENTS = new Set(['ten_tests', 'daily_7', 'first_post']);
+
 const LEVEL_ICONS = {
   green: 'leaf-outline',
   yellow: 'partly-sunny-outline',
@@ -479,6 +481,16 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.achievementsGrid}>
               {ACHIEVEMENTS.map(a => {
                 const earned = earnedAchievements.some(e => e.id === a.id);
+                const hidden = !earned && HIDDEN_ACHIEVEMENTS.has(a.id);
+                if (hidden) {
+                  return (
+                    <View key={a.id} style={[styles.achievementItem, styles.achievementLocked]}>
+                      <Text style={styles.achievementEmoji}>🔮</Text>
+                      <Text style={[styles.achievementLabel, { color: colors.muted }]}>???</Text>
+                      <Text style={styles.achievementDesc}>эту получают единицы</Text>
+                    </View>
+                  );
+                }
                 return (
                   <TouchableOpacity
                     key={a.id}

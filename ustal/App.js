@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
 import { store } from './store';
 import { colors } from './theme';
-import { registerForPushNotifications, scheduleQuestNotifications, scheduleReturnReminder } from './utils/notifications';
+import { registerForPushNotifications, scheduleQuestNotifications, scheduleReturnReminder, scheduleWeeklyReport } from './utils/notifications';
 import { getLastRead } from './utils/unread';
 import StreakModal from './components/StreakModal';
 
@@ -295,6 +295,7 @@ export default function App() {
           });
           scheduleQuestNotifications(userData?.level || 'green');
           scheduleReturnReminder(userData?.level || 'green');
+          scheduleWeeklyReport(session.user.id);
         } else {
           setInitialRoute('Login');
         }
