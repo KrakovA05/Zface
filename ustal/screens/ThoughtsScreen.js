@@ -167,6 +167,7 @@ export default function ThoughtsScreen({ navigation }) {
                     </View>
                   </View>
                 ) : (
+                  <>
                   {hasCrisis(text) && (
                     <View style={styles.crisisBanner}>
                       <TouchableOpacity style={styles.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
@@ -204,6 +205,7 @@ export default function ThoughtsScreen({ navigation }) {
                       }
                     </TouchableOpacity>
                   </View>
+                  </>
                 )}
               </View>
 
