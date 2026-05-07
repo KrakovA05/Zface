@@ -260,11 +260,21 @@ function GlobalChat({ navigation }) {
       )}
 
       {hasCrisisContent(text) && (
-        <TouchableOpacity style={s.crisisBanner} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
-          <Ionicons name="heart-outline" size={14} color="#7c3aed" />
-          <Text style={s.crisisText}>Звучит тяжело. Позвони прямо сейчас — 8-800-2000-122, это бесплатно</Text>
-          <Ionicons name="call-outline" size={14} color="#7c3aed" />
-        </TouchableOpacity>
+        <View style={s.crisisBanner}>
+          <TouchableOpacity style={s.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
+            <Ionicons name="heart-outline" size={13} color="#7c3aed" />
+            <Text style={s.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
+            <Ionicons name="call-outline" size={13} color="#7c3aed" />
+          </TouchableOpacity>
+          <View style={s.crisisActionRow}>
+            <TouchableOpacity style={s.crisisActionBtn} onPress={() => navigation.navigate('Breathing')} activeOpacity={0.7}>
+              <Text style={s.crisisActionText}>подышать →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.crisisActionBtn} onPress={() => navigation.navigate('Letter')} activeOpacity={0.7}>
+              <Text style={s.crisisActionText}>написать письмо →</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       <View style={[s.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
@@ -339,8 +349,12 @@ const s = StyleSheet.create({
   contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },
   contextSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
 
-  crisisBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#7c3aed10' },
+  crisisBanner: { backgroundColor: '#7c3aed12', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4 },
+  crisisCallRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   crisisText: { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
+  crisisActionRow: { flexDirection: 'row', gap: 8 },
+  crisisActionBtn: { backgroundColor: '#7c3aed20', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  crisisActionText: { fontSize: 11, color: colors.accent, fontWeight: '600' },
 
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)' },
   input: { flex: 1, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: colors.white, fontSize: 15 },

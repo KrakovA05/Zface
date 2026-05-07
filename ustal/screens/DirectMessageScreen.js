@@ -304,11 +304,21 @@ export default function DirectMessageScreen({ route, navigation }) {
         )}
 
         {hasCrisisContent(text) && (
-          <TouchableOpacity style={styles.crisisBanner} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
-            <Ionicons name="heart-outline" size={14} color="#7c3aed" />
-            <Text style={styles.crisisText}>Звучит тяжело. Позвони прямо сейчас — 8-800-2000-122, это бесплатно</Text>
-            <Ionicons name="call-outline" size={14} color="#7c3aed" />
-          </TouchableOpacity>
+          <View style={styles.crisisBanner}>
+            <TouchableOpacity style={styles.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
+              <Ionicons name="heart-outline" size={13} color="#7c3aed" />
+              <Text style={styles.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
+              <Ionicons name="call-outline" size={13} color="#7c3aed" />
+            </TouchableOpacity>
+            <View style={styles.crisisActionRow}>
+              <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Breathing')} activeOpacity={0.7}>
+                <Text style={styles.crisisActionText}>подышать →</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Rooms', { level: store.level || 'green' })} activeOpacity={0.7}>
+                <Text style={styles.crisisActionText}>в комнату →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
@@ -433,8 +443,12 @@ const styles = StyleSheet.create({
   contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },
   contextSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
 
-  crisisBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#7c3aed10' },
+  crisisBanner: { backgroundColor: '#7c3aed12', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4 },
+  crisisCallRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   crisisText: { flex: 1, fontSize: 12, color: '#7c3aed', lineHeight: 16 },
+  crisisActionRow: { flexDirection: 'row', gap: 8 },
+  crisisActionBtn: { backgroundColor: '#7c3aed20', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  crisisActionText: { fontSize: 11, color: '#7c3aed', fontWeight: '600' },
 
   // Input
   inputRow: {

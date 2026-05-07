@@ -241,11 +241,21 @@ export default function LetterScreen({ navigation }) {
                     <Text style={styles.charCount}>{text.length}/600</Text>
                   </View>
                   {hasCrisis(text) && (
-                    <TouchableOpacity style={styles.crisisBanner} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
-                      <Ionicons name="heart-outline" size={14} color={colors.accent} />
-                      <Text style={styles.crisisText}>Звучит тяжело. Позвони прямо сейчас — 8-800-2000-122, это бесплатно</Text>
-                      <Ionicons name="call-outline" size={14} color={colors.accent} />
-                    </TouchableOpacity>
+                    <View style={styles.crisisBanner}>
+                      <TouchableOpacity style={styles.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
+                        <Ionicons name="heart-outline" size={13} color={colors.accent} />
+                        <Text style={styles.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
+                        <Ionicons name="call-outline" size={13} color={colors.accent} />
+                      </TouchableOpacity>
+                      <View style={styles.crisisActionRow}>
+                        <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Breathing')} activeOpacity={0.7}>
+                          <Text style={styles.crisisActionText}>подышать →</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Rooms', { level: store.level || 'green' })} activeOpacity={0.7}>
+                          <Text style={styles.crisisActionText}>в комнату →</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   )}
                   <TouchableOpacity
                     style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
@@ -349,11 +359,14 @@ const styles = StyleSheet.create({
   charCount: { fontSize: 11, color: colors.muted },
 
   crisisBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: colors.accent + '12', borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12,
   },
+  crisisCallRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   crisisText: { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
+  crisisActionRow: { flexDirection: 'row', gap: 8 },
+  crisisActionBtn: { backgroundColor: colors.accent + '20', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  crisisActionText: { fontSize: 11, color: colors.accent, fontWeight: '600' },
 
   sendBtn: {
     backgroundColor: colors.accent, borderRadius: 14,
