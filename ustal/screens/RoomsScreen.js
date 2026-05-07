@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, ScrollView, Alert, Keyboard, Platform,
+  TextInput, ActivityIndicator, ScrollView, Alert, Keyboard, Platform, Linking,
 } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { markRead } from '../utils/unread';
 import { hasSeenHint, markHintSeen } from '../utils/onboarding';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
+import { hasCrisis } from '../utils/crisis';
 
 function groupReactions(list) {
   const g = {};
@@ -552,6 +553,22 @@ export default function RoomsScreen({ route, navigation }) {
                 </TouchableOpacity>
               </View>
             )}
+            {hasCrisis(text2) && (
+              <View style={styles.crisisBanner}>
+                <TouchableOpacity style={styles.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
+                  <Ionicons name="call-outline" size={14} color={colors.accent} />
+                  <Text style={styles.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
+                </TouchableOpacity>
+                <View style={styles.crisisActionRow}>
+                  <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Breathing')} activeOpacity={0.7}>
+                    <Text style={styles.crisisActionText}>подышать →</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Letter')} activeOpacity={0.7}>
+                    <Text style={styles.crisisActionText}>написать письмо →</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : Math.max(insets.bottom, 12) }]}>
               <TextInput
                 style={styles.input}
@@ -715,4 +732,11 @@ const styles = StyleSheet.create({
   },
   sendBtn: { borderRadius: 22, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
+
+  crisisBanner:    { backgroundColor: colors.accent + '12', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4, marginHorizontal: 8 },
+  crisisCallRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  crisisText:      { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
+  crisisActionRow: { flexDirection: 'row', gap: 8 },
+  crisisActionBtn: { backgroundColor: colors.accent + '20', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  crisisActionText:{ fontSize: 11, color: colors.accent, fontWeight: '600' },
 });

@@ -11,16 +11,10 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
 import { sendPushNotification } from '../utils/notifications';
+import { hasCrisis } from '../utils/crisis';
 
 let reviewRequested = false;
 
-const CRISIS_PHRASES = [
-  'хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой',
-  'нет смысла жить', 'лучше бы меня не было', 'хочу исчезнуть', 'незачем жить',
-  'не хочу просыпаться', 'нет выхода', 'больше не могу', 'устал от всего',
-  'не вижу смысла', 'никому не нужен', 'никому не нужна', 'зачем всё это',
-];
-function hasCrisis(t) { return CRISIS_PHRASES.some(p => t.toLowerCase().includes(p)); }
 
 function getTodayDate() {
   const d = new Date();

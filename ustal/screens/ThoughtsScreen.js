@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TextInput,
-  TouchableOpacity, ActivityIndicator, Keyboard, Platform,
+  TouchableOpacity, ActivityIndicator, Keyboard, Platform, Linking,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
+import { hasCrisis } from '../utils/crisis';
 
 const REACTIONS = [
   { type: 'understand', label: 'я понимаю', icon: 'heart-outline' },
@@ -166,6 +167,22 @@ export default function ThoughtsScreen({ navigation }) {
                     </View>
                   </View>
                 ) : (
+                  {hasCrisis(text) && (
+                    <View style={styles.crisisBanner}>
+                      <TouchableOpacity style={styles.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
+                        <Ionicons name="call-outline" size={14} color={colors.accent} />
+                        <Text style={styles.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
+                      </TouchableOpacity>
+                      <View style={styles.crisisActionRow}>
+                        <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Breathing')} activeOpacity={0.7}>
+                          <Text style={styles.crisisActionText}>подышать →</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Rooms', { level: store.level || 'green' })} activeOpacity={0.7}>
+                          <Text style={styles.crisisActionText}>в комнату →</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
                   <View style={styles.inputWrap}>
                     <TextInput
                       style={styles.input}
@@ -283,4 +300,11 @@ const styles = StyleSheet.create({
 
   empty: { alignItems: 'center', marginTop: 32 },
   emptyText: { color: colors.muted, fontSize: 14, textAlign: 'center' },
+
+  crisisBanner:    { backgroundColor: colors.accent + '12', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 8 },
+  crisisCallRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  crisisText:      { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
+  crisisActionRow: { flexDirection: 'row', gap: 8 },
+  crisisActionBtn: { backgroundColor: colors.accent + '20', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  crisisActionText:{ fontSize: 11, color: colors.accent, fontWeight: '600' },
 });

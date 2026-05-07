@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
+import { hasCrisis } from '../utils/crisis';
 import { colors } from '../theme';
 import { getConversationId } from '../utils';
 import { markRead } from '../utils/unread';
@@ -15,16 +16,6 @@ import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 
-const CRISIS_PHRASES = [
-  'хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой',
-  'нет смысла жить', 'лучше бы меня не было', 'хочу исчезнуть', 'незачем жить',
-  'не хочу просыпаться', 'нет выхода', 'больше не могу', 'устал от всего',
-  'не вижу смысла', 'никому не нужен', 'никому не нужна', 'зачем всё это',
-];
-function hasCrisisContent(text) {
-  const t = text.toLowerCase();
-  return CRISIS_PHRASES.some(p => t.includes(p));
-}
 
 function groupReactions(list) {
   const g = {};
@@ -303,7 +294,7 @@ export default function DirectMessageScreen({ route, navigation }) {
           </View>
         )}
 
-        {hasCrisisContent(text) && (
+        {hasCrisis(text) && (
           <View style={styles.crisisBanner}>
             <TouchableOpacity style={styles.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
               <Ionicons name="heart-outline" size={13} color="#7c3aed" />

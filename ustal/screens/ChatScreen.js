@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
+import { hasCrisis } from '../utils/crisis';
 import { colors } from '../theme';
 import { markRead } from '../utils/unread';
 import Avatar from '../components/Avatar';
@@ -28,16 +29,6 @@ function groupReactions(list) {
   return Object.entries(g).map(([emoji, d]) => ({ emoji, ...d }));
 }
 
-const CRISIS_PHRASES = [
-  'хочу умереть', 'не хочу жить', 'убить себя', 'суицид', 'покончить с собой',
-  'нет смысла жить', 'лучше бы меня не было', 'хочу исчезнуть', 'незачем жить',
-  'не хочу просыпаться', 'нет выхода', 'больше не могу', 'устал от всего',
-  'не вижу смысла', 'никому не нужен', 'никому не нужна', 'зачем всё это',
-];
-function hasCrisisContent(text) {
-  const t = text.toLowerCase();
-  return CRISIS_PHRASES.some(p => t.includes(p));
-}
 
 function ReplyQuote({ username, text }) {
   return (
@@ -259,7 +250,7 @@ function GlobalChat({ navigation }) {
         </View>
       )}
 
-      {hasCrisisContent(text) && (
+      {hasCrisis(text) && (
         <View style={s.crisisBanner}>
           <TouchableOpacity style={s.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
             <Ionicons name="heart-outline" size={13} color="#7c3aed" />
