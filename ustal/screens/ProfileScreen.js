@@ -12,7 +12,7 @@ import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 
-const HIDDEN_ACHIEVEMENTS = new Set(['ten_tests', 'daily_7', 'first_post']);
+const HIDDEN_ACHIEVEMENTS = new Set(['ten_tests', 'daily_7', 'first_post', 'helper_5', 'helper_20']);
 
 const ALL_FISH = [
   { name: 'Тихий карась',     emoji: '🐟', rarity: 'common' },
@@ -221,6 +221,13 @@ export default function ProfileScreen({ navigation }) {
         }
         if (consecutive) toAward.push('daily_7');
       }
+    }
+
+    if (!earned.has('helper_5') || !earned.has('helper_20')) {
+      const { count: hc } = await supabase
+        .from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', store.userId);
+      if ((hc || 0) >= 5  && !earned.has('helper_5'))  toAward.push('helper_5');
+      if ((hc || 0) >= 20 && !earned.has('helper_20')) toAward.push('helper_20');
     }
 
     if (toAward.length > 0) {

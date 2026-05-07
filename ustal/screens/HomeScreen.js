@@ -18,16 +18,25 @@ const LEVEL_TEXTS  = {
   red:    'Сейчас тяжело. Ты это замечаешь — и это важно. Ты не один.',
 };
 
-const MODULE_ITEMS = [
-  { icon: 'newspaper-outline',  label: 'Лента',   route: 'Feed'    },
-  { icon: 'chatbubble-outline', label: 'Чат',     route: 'Chat'    },
-  { icon: 'people-outline',     label: 'Комнаты', route: 'Rooms'   },
-  { icon: 'sync-outline',        label: 'Дыхание', route: 'Breathing' },
-  { icon: 'fish-outline',       label: 'Рыбалка', route: 'Fishing' },
-  { icon: 'pencil-outline',     label: 'Мысли',   route: 'Thoughts' },
-  { icon: 'library-outline',    label: 'Материалы', route: 'Resources' },
-  { icon: 'mail-outline',       label: 'Письмо',   route: 'Letter' },
+const ALL_MODULES = [
+  { icon: 'newspaper-outline',  label: 'Лента',     route: 'Feed',      goals: ['social'] },
+  { icon: 'chatbubble-outline', label: 'Чат',       route: 'Chat',      goals: ['social'] },
+  { icon: 'people-outline',     label: 'Комнаты',   route: 'Rooms',     goals: ['social'] },
+  { icon: 'sync-outline',       label: 'Дыхание',   route: 'Breathing', goals: ['anxiety', 'meditative'] },
+  { icon: 'fish-outline',       label: 'Рыбалка',   route: 'Fishing',   goals: ['meditative'] },
+  { icon: 'pencil-outline',     label: 'Мысли',     route: 'Thoughts',  goals: [] },
+  { icon: 'library-outline',    label: 'Материалы', route: 'Resources', goals: ['anxiety'] },
+  { icon: 'mail-outline',       label: 'Письмо',    route: 'Letter',    goals: ['social', 'meditative'] },
 ];
+
+function getModuleItems(goal) {
+  if (!goal) return ALL_MODULES;
+  return [...ALL_MODULES].sort((a, b) => {
+    const aMatch = a.goals.includes(goal) ? -1 : 0;
+    const bMatch = b.goals.includes(goal) ? -1 : 0;
+    return aMatch - bMatch;
+  });
+}
 
 let testReminderShown = false;
 const wordTapCache = {}; // { 'YYYY-MM-DD': 'yes'|'no' }
@@ -109,11 +118,13 @@ export default function HomeScreen({ navigation }) {
   const [moodScore,      setMoodScore]      = useState(null);
   const [moodCount,      setMoodCount]      = useState(0);
   const [moodSuggested,  setMoodSuggested]  = useState(null);
+  const [moodNote,       setMoodNote]       = useState(null);
   const [similarUser,    setSimilarUser]    = useState(null);
   const [streak,         setStreak]         = useState(0);
   const [onlineCount,    setOnlineCount]    = useState(0);
   const [showHistory,    setShowHistory]    = useState(false);
   const [hasUnreadLetter, setHasUnreadLetter] = useState(false);
+  const [moodHistory,    setMoodHistory]    = useState([]);
   const [showStreakInfo, setShowStreakInfo]   = useState(false);
   const scrollRef    = useRef(null);
   const [moodCardY,  setMoodCardY]  = useState(0);
@@ -185,16 +196,26 @@ export default function HomeScreen({ navigation }) {
         await findSimilarUser(user.id, currentLevel);
 
         const { data: myMood } = await supabase
-          .from('mood_checkins').select('score')
+          .from('mood_checkins').select('score, note')
           .eq('user_id', user.id).eq('checkin_date', today).maybeSingle();
         if (myMood) {
           setMoodScore(myMood.score);
+          setMoodNote(myMood.note ?? '');
           setMoodSuggested(getMoodSuggestion(myMood.score));
           const { count: mc } = await supabase
             .from('mood_checkins').select('*', { count: 'exact', head: true })
             .eq('checkin_date', today).eq('score', myMood.score);
           setMoodCount(mc || 0);
         }
+
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const { data: moodHist } = await supabase
+          .from('mood_checkins').select('score, checkin_date')
+          .eq('user_id', user.id)
+          .gte('checkin_date', sevenDaysAgo.toISOString().split('T')[0])
+          .order('checkin_date', { ascending: true });
+        setMoodHistory(moodHist || []);
 
         const word = getTodayWord();
         const cacheKey = `${today}_${user.id}`;
@@ -350,7 +371,7 @@ export default function HomeScreen({ navigation }) {
     if (moodScore !== null) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMoodScore(score);
-    setMoodSuggested(getMoodSuggestion(score));
+    // moodNote stays null → показывается follow-up шаг
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -360,10 +381,6 @@ export default function HomeScreen({ navigation }) {
       { user_id: user.id, checkin_date: getTodayDate(), score },
       { onConflict: 'user_id,checkin_date' }
     );
-    const { count: mc } = await supabase
-      .from('mood_checkins').select('*', { count: 'exact', head: true })
-      .eq('checkin_date', getTodayDate()).eq('score', score);
-    setMoodCount(mc || 0);
 
     // C) Если 3 дня подряд оценка ≤3 — поддерживающий пуш через 3 часа
     if (score <= 3) {
@@ -380,6 +397,23 @@ export default function HomeScreen({ navigation }) {
         scheduleLowMoodPush();
       }
     }
+  };
+
+  const submitMoodNote = async (note) => {
+    const noteVal = note ?? '';
+    setMoodNote(noteVal);
+    setMoodSuggested(getMoodSuggestion(moodScore));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && noteVal) {
+      await supabase.from('mood_checkins')
+        .update({ note: noteVal })
+        .eq('user_id', user.id)
+        .eq('checkin_date', getTodayDate());
+    }
+    const { count: mc } = await supabase
+      .from('mood_checkins').select('*', { count: 'exact', head: true })
+      .eq('checkin_date', getTodayDate()).eq('score', moodScore);
+    setMoodCount(mc || 0);
   };
 
   const fetchOtherAnswers = async (userId) => {
@@ -416,9 +450,20 @@ export default function HomeScreen({ navigation }) {
     return '#81C784';
   };
 
-  const lvlColor   = LEVEL_COLORS[level];
-  const dynamic    = getDynamic(history);
-  const chartData  = showAllChart ? allHistory : history;
+  const buildDiaryLine = () => {
+    const parts = [];
+    if (moodScore !== null) {
+      parts.push(`настроение ${moodScore}/10${moodNote ? ` · ${moodNote}` : ''}`);
+    }
+    if (dailyAnswered) parts.push('ответил на вопрос дня');
+    if (wordTapped === 'yes') parts.push('слово дня — совпало');
+    return parts.join(' · ');
+  };
+
+  const lvlColor    = LEVEL_COLORS[level];
+  const dynamic     = getDynamic(history);
+  const chartData   = showAllChart ? allHistory : history;
+  const moduleItems = getModuleItems(store.goal);
 
   return (
     <View style={styles.safeArea}>
@@ -508,11 +553,31 @@ export default function HomeScreen({ navigation }) {
                   <Text style={styles.moodHint}>отлично</Text>
                 </View>
               </>
+            ) : moodNote === null ? (
+              <>
+                <Text style={[styles.moodDoneScore, { color: getMoodColor(moodScore), fontSize: 14, opacity: 0.7, marginBottom: 12 }]}>
+                  ты на {moodScore} из 10
+                </Text>
+                <Text style={styles.moodFollowupLabel}>что сейчас тяжелее всего?</Text>
+                <View style={styles.moodFollowupChips}>
+                  {['работа', 'усталость', 'тревога', 'одиночество', 'тело', 'сон'].map(chip => (
+                    <TouchableOpacity key={chip} style={styles.moodChip} onPress={() => submitMoodNote(chip)} activeOpacity={0.7}>
+                      <Text style={styles.moodChipText}>{chip}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={() => submitMoodNote('')} activeOpacity={0.7}>
+                  <Text style={styles.moodChipSkipText}>пропустить</Text>
+                </TouchableOpacity>
+              </>
             ) : (
               <>
                 <Text style={[styles.moodDoneScore, { color: getMoodColor(moodScore) }]}>
                   ты на {moodScore} из 10
                 </Text>
+                {moodNote ? (
+                  <Text style={styles.moodNoteTag}>{moodNote}</Text>
+                ) : null}
                 {moodCount > 1 && (
                   <Text style={styles.moodDoneCount}>
                     ты и ещё {moodCount - 1} {pluralPeople(moodCount - 1)} сегодня чувствуют себя так же
@@ -645,27 +710,33 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.sectionLabel}>Вопрос дня</Text>
             <Text style={styles.dailyQuestion}>{dailyQuestion}</Text>
             {dailyAnswered === false ? (
-              <View style={styles.dailyInputRow}>
-                <TextInput
-                  style={styles.dailyInput}
-                  placeholder="Ответь честно..."
-                  placeholderTextColor={colors.muted}
-                  value={dailyAnswer}
-                  onChangeText={setDailyAnswer}
-                  maxLength={300}
-                  multiline
-                />
-                <TouchableOpacity
-                  style={[styles.dailySendBtn, !dailyAnswer.trim() && { opacity: 0.4 }]}
-                  onPress={submitDailyAnswer}
-                  disabled={!dailyAnswer.trim() || dailySubmitting}
-                >
-                  {dailySubmitting
-                    ? <ActivityIndicator color={colors.onAccent} size="small" />
-                    : <Ionicons name="arrow-forward" size={18} color={colors.onAccent} />
-                  }
-                </TouchableOpacity>
-              </View>
+              <>
+                <View style={styles.dailyInputRow}>
+                  <TextInput
+                    style={styles.dailyInput}
+                    placeholder="Ответь честно..."
+                    placeholderTextColor={colors.muted}
+                    value={dailyAnswer}
+                    onChangeText={setDailyAnswer}
+                    maxLength={300}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={[styles.dailySendBtn, !dailyAnswer.trim() && { opacity: 0.4 }]}
+                    onPress={submitDailyAnswer}
+                    disabled={!dailyAnswer.trim() || dailySubmitting}
+                  >
+                    {dailySubmitting
+                      ? <ActivityIndicator color={colors.onAccent} size="small" />
+                      : <Ionicons name="arrow-forward" size={18} color={colors.onAccent} />
+                    }
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.dailyGateHint}>
+                  <Ionicons name="eye-outline" size={11} color={colors.muted} />
+                  <Text style={styles.dailyGateText}>ответь — увидишь что написали другие</Text>
+                </View>
+              </>
             ) : dailyAnswered ? (
               <View>
                 <Text style={styles.dailyAnswerText}>«{dailyAnswered}»</Text>
@@ -682,19 +753,20 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {!loading && moodScore !== null && wordTapped && dailyAnswered && (
+        {!loading && moodScore !== null && moodNote !== null && wordTapped && dailyAnswered && (
           <View style={styles.allDoneCard}>
             <Ionicons name="checkmark-circle-outline" size={22} color={colors.accent} />
             <View style={{ flex: 1 }}>
               <Text style={styles.allDoneTitle}>на сегодня всё</Text>
-              <Text style={styles.allDoneSub}>ответил на вопрос дня и отметил настроение</Text>
+              <Text style={styles.allDoneSub}>{buildDiaryLine()}</Text>
+              <Text style={[styles.allDoneSub, { marginTop: 3, opacity: 0.5 }]}>ты был здесь — это уже что-то</Text>
             </View>
           </View>
         )}
 
         <Text style={styles.sectionTitle}>Модули</Text>
         <View style={styles.grid}>
-          {MODULE_ITEMS.map(m => (
+          {moduleItems.map(m => (
             <TouchableOpacity
               key={m.route}
               style={styles.moduleButton}
@@ -727,6 +799,12 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
             <TestChart history={chartData} />
+            {moodHistory.length > 0 && (
+              <View style={styles.moodMiniSection}>
+                <Text style={styles.moodMiniTitle}>настроение за 7 дней</Text>
+                <MoodMiniChart history={moodHistory} />
+              </View>
+            )}
           </View>
         )}
 
@@ -783,6 +861,12 @@ export default function HomeScreen({ navigation }) {
       </Modal>
     </View>
   );
+}
+
+function getMoodColorStatic(score) {
+  if (score <= 3) return '#E57373';
+  if (score <= 6) return '#FFB74D';
+  return '#81C784';
 }
 
 const CHART_H = 90;
@@ -868,6 +952,38 @@ function TestChart({ history }) {
           }} />
         ))}
       </View>
+    </View>
+  );
+}
+
+function MoodMiniChart({ history }) {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+    const entry = history.find(h => h.checkin_date === dateStr);
+    days.push({ score: entry?.score ?? null, dayNum: d.getDate() });
+  }
+
+  return (
+    <View style={styles.moodMiniWrap}>
+      {days.map((d, i) => (
+        <View key={i} style={styles.moodMiniItem}>
+          <View style={[
+            styles.moodMiniBar,
+            {
+              backgroundColor: d.score !== null ? getMoodColorStatic(d.score) : colors.border,
+              height: d.score !== null ? Math.max(4, (d.score / 10) * 36) : 4,
+              opacity: d.score !== null ? 1 : 0.3,
+            }
+          ]} />
+          {d.score !== null && (
+            <Text style={[styles.moodMiniScore, { color: getMoodColorStatic(d.score) }]}>{d.score}</Text>
+          )}
+          <Text style={styles.moodMiniDay}>{d.dayNum}</Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -1008,6 +1124,16 @@ const styles = StyleSheet.create({
   },
   moodSuggestionText: { fontSize: 13, fontWeight: '600', color: colors.accent },
 
+  moodFollowupLabel:  { fontSize: 13, color: colors.muted, marginBottom: 10 },
+  moodFollowupChips:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  moodChip: {
+    borderWidth: 1, borderColor: colors.border, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  moodChipText:     { fontSize: 13, color: colors.white },
+  moodChipSkipText: { fontSize: 12, color: colors.muted, paddingVertical: 4 },
+  moodNoteTag:      { fontSize: 12, color: colors.muted, fontStyle: 'italic', marginBottom: 6 },
+
   // CTA row
   ctaRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   ctaPrimary: {
@@ -1057,6 +1183,9 @@ const styles = StyleSheet.create({
   dailyOthersLabel: { fontSize: 11, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 4 },
   dailyOtherAnswer: { fontSize: 14, color: colors.white, fontStyle: 'italic', lineHeight: 20, opacity: 0.7 },
 
+  dailyGateHint: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
+  dailyGateText: { fontSize: 12, color: colors.muted, fontStyle: 'italic' },
+
   // Section headers
   sectionLabel: {
     fontSize: 11, fontWeight: '700', color: colors.muted,
@@ -1090,6 +1219,17 @@ const styles = StyleSheet.create({
 
   // Chart
   chartCard: { backgroundColor: colors.card, borderRadius: 14, padding: 14 },
+
+  moodMiniSection: { marginTop: 12 },
+  moodMiniTitle: {
+    fontSize: 10, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8,
+  },
+  moodMiniWrap: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 4 },
+  moodMiniItem: { alignItems: 'center', gap: 3, flex: 1 },
+  moodMiniBar:  { width: 6, borderRadius: 3 },
+  moodMiniScore:{ fontSize: 9, fontWeight: '700' },
+  moodMiniDay:  { fontSize: 9, color: colors.muted },
 
   // History
   historyBlock: { backgroundColor: colors.card, borderRadius: 14, overflow: 'hidden' },

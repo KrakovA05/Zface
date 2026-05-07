@@ -312,7 +312,7 @@ export default function App() {
         if (session?.user) {
           const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('username, level, email, avatar_url, status, login_streak, last_login_date')
+            .select('username, level, email, avatar_url, status, login_streak, last_login_date, goal')
             .eq('user_id', session.user.id)
             .single();
           if (userError) throw userError;
@@ -323,6 +323,7 @@ export default function App() {
             store.email = userData.email || session.user.email;
             store.avatarUrl = userData.avatar_url || '';
             store.status = userData.status || '';
+            store.goal = userData.goal || '';
           }
 
           // Стрик по дням входа

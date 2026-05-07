@@ -26,6 +26,14 @@ export default function OnboardingMomentScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [sameCount, setSameCount] = useState(0);
   const [randomAnswer, setRandomAnswer] = useState(null);
+  const [step, setStep] = useState(1);
+  const [savingGoal, setSavingGoal] = useState(false);
+
+  const GOALS = [
+    { id: 'social',      icon: 'people-outline',  label: 'просто быть рядом с людьми' },
+    { id: 'anxiety',     icon: 'sync-outline',     label: 'справиться с тревогой' },
+    { id: 'meditative',  icon: 'fish-outline',     label: 'найти что-то тихое и медитативное' },
+  ];
 
   useEffect(() => {
     const load = async () => {
@@ -63,6 +71,34 @@ export default function OnboardingMomentScreen({ route, navigation }) {
     <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
       {loading ? (
         <ActivityIndicator color={lvlColor} size="large" />
+      ) : step === 2 ? (
+        <View style={styles.content}>
+          <Text style={styles.headline}>Что тебе{'\n'}сейчас важнее?</Text>
+          <Text style={styles.goalSub}>это не навсегда — просто чтобы понять с чего начать</Text>
+          <View style={styles.goalList}>
+            {GOALS.map(g => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.goalBtn, { borderColor: lvlColor + '66' }]}
+                activeOpacity={0.7}
+                disabled={savingGoal}
+                onPress={async () => {
+                  setSavingGoal(true);
+                  store.goal = g.id;
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) await supabase.from('users').update({ goal: g.id }).eq('user_id', user.id);
+                  navigation.replace('Recommendations', { level });
+                }}
+              >
+                <Ionicons name={g.icon} size={20} color={lvlColor} />
+                <Text style={[styles.goalBtnText, { color: colors.white }]}>{g.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity onPress={() => navigation.replace('Recommendations', { level })} activeOpacity={0.6}>
+            <Text style={styles.goalSkip}>пропустить</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <View style={styles.content}>
           <View style={[styles.iconWrap, { backgroundColor: lvlColor + '22' }]}>
@@ -88,7 +124,7 @@ export default function OnboardingMomentScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={[styles.btn, { backgroundColor: lvlColor }]}
-            onPress={() => navigation.replace('Recommendations', { level })}
+            onPress={() => setStep(2)}
           >
             <Text style={styles.btnText}>Дальше</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
@@ -133,4 +169,18 @@ const styles = StyleSheet.create({
     gap: 8, width: '100%', paddingVertical: 16, borderRadius: 16,
   },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  goalSub: {
+    fontSize: 14, color: colors.muted, textAlign: 'center',
+    lineHeight: 20, marginBottom: 36, marginTop: 12,
+  },
+  goalList: { width: '100%', gap: 12, marginBottom: 28 },
+  goalBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: colors.card, borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 20,
+    borderWidth: 1,
+  },
+  goalBtnText: { fontSize: 15, fontWeight: '500', flex: 1 },
+  goalSkip:    { fontSize: 13, color: colors.muted, paddingVertical: 8 },
 });

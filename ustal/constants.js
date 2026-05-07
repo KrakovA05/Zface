@@ -297,4 +297,6 @@ export const ACHIEVEMENTS = [
   { id: 'profile_done',  emoji: '👤', label: 'Личность',        desc: 'Ты заполнил статус. Тебя теперь видно' },
   { id: 'daily_7',       emoji: '📅', label: 'Неделя',          desc: 'Семь дней подряд. Ты здесь — и это важно' },
   { id: 'first_post',    emoji: '✍️', label: 'Голос',           desc: 'Написал пост. Кто-то прочитал и почувствовал' },
+  { id: 'helper_5',     emoji: '🕯️', label: 'Рядом',           desc: 'Пять людей сказали что ты им помог' },
+  { id: 'helper_20',    emoji: '🔦', label: 'Маяк',            desc: 'Двадцать. Ты стал чем-то важным для кого-то' },
 ];
