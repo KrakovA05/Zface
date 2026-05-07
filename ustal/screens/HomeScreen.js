@@ -308,14 +308,25 @@ export default function HomeScreen({ navigation }) {
       .limit(200);
     if (!others || others.length === 0) return;
 
-    // Фильтруем по уровню
+    // Фильтруем по уровню, исключаем тех кто отказался от рекомендаций
     const { data: sameLevelUsers } = await supabase
       .from('users')
       .select('user_id, username, avatar_url')
       .eq('level', level)
+      .eq('show_similar', true)
       .neq('user_id', userId);
     if (!sameLevelUsers || sameLevelUsers.length === 0) return;
     const sameLevelSet = new Set(sameLevelUsers.map(u => u.user_id));
+
+    // Исключаем уже существующих друзей
+    const { data: friendships } = await supabase
+      .from('friendships')
+      .select('requester_id, receiver_id')
+      .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+      .eq('status', 'accepted');
+    const friendIds = new Set((friendships || []).map(f =>
+      f.requester_id === userId ? f.receiver_id : f.requester_id
+    ));
 
     // Исключаем уже показанных
     const { data: shownBefore } = await supabase
@@ -327,7 +338,7 @@ export default function HomeScreen({ navigation }) {
     // Считаем совпадения слов по пользователям
     const scoreMap = {};
     others.forEach(({ user_id, answer }) => {
-      if (!sameLevelSet.has(user_id) || shownSet.has(user_id)) return;
+      if (!sameLevelSet.has(user_id) || shownSet.has(user_id) || friendIds.has(user_id)) return;
       const words = answer.toLowerCase().split(/\s+/).filter(w => w.length > 3);
       const matches = words.filter(w => myWords.has(w)).length;
       if (matches > 0) scoreMap[user_id] = (scoreMap[user_id] || 0) + matches;

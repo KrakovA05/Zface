@@ -76,6 +76,7 @@ export default function ProfileScreen({ navigation }) {
   );
   const [earnedAchievements, setEarnedAchievements] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSimilar, setShowSimilar] = useState(true);
   const [presenceStats, setPresenceStats] = useState(null);
   const [moodHistory, setMoodHistory] = useState([]);
   const [fishCollection, setFishCollection] = useState([]);
@@ -87,7 +88,7 @@ export default function ProfileScreen({ navigation }) {
         try {
           const { data, error } = await supabase
             .from('users')
-            .select('status, avatar_url, show_history')
+            .select('status, avatar_url, show_history, show_similar')
             .eq('user_id', store.userId)
             .single();
           if (error) throw error;
@@ -97,6 +98,7 @@ export default function ProfileScreen({ navigation }) {
             setStatus(data.status || '');
             setAvatarUri(data.avatar_url || null);
             setShowHistory(!!data.show_history);
+            setShowSimilar(data.show_similar !== false);
           }
         } catch {
           // тихий fallback
@@ -244,6 +246,11 @@ export default function ProfileScreen({ navigation }) {
   const toggleShowHistory = async (value) => {
     setShowHistory(value);
     await supabase.from('users').update({ show_history: value }).eq('user_id', store.userId);
+  };
+
+  const toggleShowSimilar = async (value) => {
+    setShowSimilar(value);
+    await supabase.from('users').update({ show_similar: value }).eq('user_id', store.userId);
   };
 
   const saveStatus = async () => {
@@ -492,16 +499,46 @@ export default function ProfileScreen({ navigation }) {
             valueColor={level.color}
             last={false}
           />
-          <View style={[styles.row, styles.rowLast]}>
+          <View style={styles.row}>
             <View style={[styles.rowIconWrap, { backgroundColor: colors.accent + '22' }]}>
               <Ionicons name="stats-chart-outline" size={18} color={colors.accent} />
             </View>
             <Text style={styles.rowLabel}>Показывать мою динамику</Text>
+            <TouchableOpacity
+              onPress={() => Alert.alert(
+                'Динамика уровня',
+                'Когда включено — другие пользователи видят твой график изменения уровней на странице твоего профиля.\n\nЕсли хочешь оставить это только для себя — выключи.'
+              )}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="help-circle-outline" size={18} color={colors.muted} />
+            </TouchableOpacity>
             <Switch
               value={showHistory}
               onValueChange={toggleShowHistory}
               trackColor={{ false: colors.border, true: colors.accent + '88' }}
               thumbColor={showHistory ? colors.accent : colors.muted}
+            />
+          </View>
+          <View style={[styles.row, styles.rowLast]}>
+            <View style={[styles.rowIconWrap, { backgroundColor: colors.accent + '22' }]}>
+              <Ionicons name="people-circle-outline" size={18} color={colors.accent} />
+            </View>
+            <Text style={styles.rowLabel}>Участвовать в «похожих людях»</Text>
+            <TouchableOpacity
+              onPress={() => Alert.alert(
+                'Похожие люди',
+                'Когда включено — алгоритм может предложить тебя другим пользователям как «похожего человека» на основе ответов на вопрос дня.\n\nЕсли хочешь, чтобы тебя не рекомендовали — выключи.'
+              )}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="help-circle-outline" size={18} color={colors.muted} />
+            </TouchableOpacity>
+            <Switch
+              value={showSimilar}
+              onValueChange={toggleShowSimilar}
+              trackColor={{ false: colors.border, true: colors.accent + '88' }}
+              thumbColor={showSimilar ? colors.accent : colors.muted}
             />
           </View>
         </Section>
