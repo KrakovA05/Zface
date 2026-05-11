@@ -15,20 +15,23 @@ import { hasCrisis } from '../utils/crisis';
 
 let reviewRequested = false;
 
-
 function getTodayDate() {
   const d = new Date();
   return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
 }
 
-export default function LetterScreen({ navigation }) {
+export default function LetterScreen({ navigation, route }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [inbox, setInbox] = useState([]);
+  const [sentLetters, setSentLetters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sentToday, setSentToday] = useState(false);
-  const [tab, setTab] = useState('write');
+  const [tab, setTab] = useState(route?.params?.tab || 'write');
+  const [expandedId, setExpandedId] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySending, setReplySending] = useState(false);
 
   useFocusEffect(useCallback(() => {
     loadData();
@@ -41,19 +44,25 @@ export default function LetterScreen({ navigation }) {
 
     const today = getTodayDate();
 
-    // Проверяем отправляли ли сегодня
-    const { data: myLetter } = await supabase
+    const { data: myTodayLetter } = await supabase
       .from('anonymous_letters')
       .select('id')
       .eq('author_id', user.id)
       .eq('sent_date', today)
       .maybeSingle();
-    setSentToday(!!myLetter);
+    setSentToday(!!myTodayLetter);
 
-    // Входящие письма
+    const { data: myLetters } = await supabase
+      .from('anonymous_letters')
+      .select('id, text, created_at, reply_text, replied_at')
+      .eq('author_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    setSentLetters(myLetters || []);
+
     const { data: letters } = await supabase
       .from('anonymous_letters')
-      .select('id, text, opened, created_at, author_level, author_id')
+      .select('id, text, opened, created_at, author_level, author_id, reply_text, replied_at')
       .eq('recipient_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20);
@@ -72,7 +81,6 @@ export default function LetterScreen({ navigation }) {
     const level = store.level || 'green';
     const today = getTodayDate();
 
-    // Находим случайного пользователя с тем же уровнем, которому сегодня ещё не писали
     const { data: recipients } = await supabase
       .from('users')
       .select('user_id')
@@ -86,7 +94,6 @@ export default function LetterScreen({ navigation }) {
       return;
     }
 
-    // Исключаем тех кто уже получил от нас письмо
     const { data: sentAlready } = await supabase
       .from('anonymous_letters')
       .select('recipient_id')
@@ -115,16 +122,25 @@ export default function LetterScreen({ navigation }) {
     setText('');
     setSentToday(true);
     setSent(true);
+    loadData();
   };
 
-  const openLetter = async (letter) => {
+  const expandLetter = async (letter) => {
+    if (expandedId === letter.id) {
+      setExpandedId(null);
+      setReplyText('');
+      return;
+    }
+    setExpandedId(letter.id);
+    setReplyText('');
+
     if (!letter.opened) {
       await supabase.from('anonymous_letters').update({ opened: true }).eq('id', letter.id);
       setInbox(prev => prev.map(l => l.id === letter.id ? { ...l, opened: true } : l));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (letter.author_id) {
-        const { data: author } = await supabase.from('users').select('push_token').eq('user_id', letter.author_id).single();
-        if (author?.push_token) sendPushNotification(author.push_token, 'Письмо дошло', 'твоё письмо дошло', { screen: 'Letter' });
+        const { data: author } = await supabase.from('users').select('push_token').eq('user_id', letter.author_id).maybeSingle();
+        if (author?.push_token) sendPushNotification(author.push_token, 'Письмо дошло', 'твоё письмо открыли', { screen: 'Letter' });
       }
       if (!reviewRequested) {
         reviewRequested = true;
@@ -133,27 +149,32 @@ export default function LetterScreen({ navigation }) {
         }, 1500);
       }
     }
-    const crisis = hasCrisis(letter.text);
-    Alert.alert(
-      'Письмо для тебя',
-      letter.text,
-      [{
-        text: 'Закрыть',
-        style: 'cancel',
-        onPress: () => {
-          if (crisis) {
-            Alert.alert(
-              'Это звучит тяжело',
-              'В этом письме есть слова, которые бывают, когда очень плохо. Если тебе сейчас тоже непросто — ты не один. Телефон доверия работает бесплатно.',
-              [
-                { text: 'Позвонить 8-800-2000-122', onPress: () => Linking.openURL('tel:88002000122') },
-                { text: 'Закрыть', style: 'cancel' },
-              ]
-            );
-          }
-        },
-      }]
-    );
+  };
+
+  const sendReply = async (letter) => {
+    if (!replyText.trim() || replySending || letter.reply_text) return;
+    setReplySending(true);
+
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('anonymous_letters')
+      .update({ reply_text: replyText.trim(), replied_at: now })
+      .eq('id', letter.id)
+      .is('reply_text', null);
+
+    if (!error) {
+      setInbox(prev => prev.map(l =>
+        l.id === letter.id ? { ...l, reply_text: replyText.trim(), replied_at: now } : l
+      ));
+      setReplyText('');
+      setExpandedId(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (letter.author_id) {
+        const { data: author } = await supabase.from('users').select('push_token').eq('user_id', letter.author_id).maybeSingle();
+        if (author?.push_token) sendPushNotification(author.push_token, 'Тебе ответили на письмо', 'кто-то ответил на твоё анонимное письмо', { screen: 'Letter' });
+      }
+    }
+    setReplySending(false);
   };
 
   const levelColor = { green: '#4CAF50', yellow: '#AA7C00', red: '#F44336' };
@@ -171,7 +192,6 @@ export default function LetterScreen({ navigation }) {
         <Text style={styles.headerTitle}>Анонимные письма</Text>
       </View>
 
-      {/* Таб-свитч */}
       <View style={styles.switchRow}>
         <TouchableOpacity
           style={[styles.switchBtn, tab === 'write' && styles.switchActive]}
@@ -203,7 +223,7 @@ export default function LetterScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoTitle}>Письмо в никуда</Text>
                   <Text style={styles.infoDesc}>
-                    Напиши что угодно — случайный человек с твоим уровнем получит это завтра. Анонимно, без ответа.
+                    Напиши что угодно — случайный человек с твоим уровнем получит это. Анонимно. Он сможет написать одно слово в ответ.
                   </Text>
                 </View>
               </View>
@@ -213,7 +233,7 @@ export default function LetterScreen({ navigation }) {
                   <Ionicons name="checkmark-circle-outline" size={40} color={colors.accent} />
                   <Text style={styles.sentTitle}>Письмо отправлено</Text>
                   <Text style={styles.sentDesc}>
-                    Кто-то с твоим уровнем получит его завтра. Ты можешь проверить входящие — может, и тебе пришло что-то.
+                    Кто-то с твоим уровнем получит его. Ты можешь проверить входящие — может, и тебе пришло что-то.
                   </Text>
                   <TouchableOpacity onPress={() => setTab('inbox')} style={styles.inboxBtn}>
                     <Text style={styles.inboxBtnText}>Посмотреть входящие</Text>
@@ -267,6 +287,28 @@ export default function LetterScreen({ navigation }) {
                   </TouchableOpacity>
                 </>
               )}
+
+              {sentLetters.length > 0 && (
+                <>
+                  <Text style={styles.sectionLabel}>Мои письма</Text>
+                  {sentLetters.map(letter => (
+                    <View key={letter.id} style={styles.sentLetterCard}>
+                      <Text style={styles.sentLetterText} numberOfLines={2}>{letter.text}</Text>
+                      <Text style={styles.sentLetterDate}>
+                        {new Date(letter.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                      </Text>
+                      {letter.reply_text ? (
+                        <View style={styles.replyReceived}>
+                          <Ionicons name="return-down-forward-outline" size={13} color={colors.accent} />
+                          <Text style={styles.replyReceivedText}>{letter.reply_text}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.noReplyText}>ответа пока нет</Text>
+                      )}
+                    </View>
+                  ))}
+                </>
+              )}
             </>
           ) : (
             <>
@@ -277,24 +319,74 @@ export default function LetterScreen({ navigation }) {
                   <Text style={styles.emptyDesc}>Напиши кому-нибудь сам — иногда начать первым и есть поддержка</Text>
                 </View>
               ) : (
-                inbox.map(letter => (
-                  <TouchableOpacity
-                    key={letter.id}
-                    style={[styles.letterCard, !letter.opened && styles.letterCardUnread]}
-                    onPress={() => openLetter(letter)}
-                    activeOpacity={0.75}
-                  >
-                    <View style={[styles.letterDot, { backgroundColor: levelColor[letter.author_level] || colors.accent }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.letterPreview} numberOfLines={2}>{letter.text}</Text>
-                      <Text style={styles.letterDate}>
-                        {new Date(letter.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                        {!letter.opened && <Text style={styles.letterNew}> · новое</Text>}
-                      </Text>
+                inbox.map(letter => {
+                  const expanded = expandedId === letter.id;
+                  return (
+                    <View key={letter.id} style={[styles.letterCard, !letter.opened && styles.letterCardUnread]}>
+                      <TouchableOpacity
+                        style={styles.letterHeader}
+                        onPress={() => expandLetter(letter)}
+                        activeOpacity={0.75}
+                      >
+                        <View style={[styles.letterDot, { backgroundColor: levelColor[letter.author_level] || colors.accent }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.letterPreview} numberOfLines={expanded ? undefined : 2}>{letter.text}</Text>
+                          <Text style={styles.letterDate}>
+                            {new Date(letter.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                            {!letter.opened && <Text style={styles.letterNew}> · новое</Text>}
+                            {letter.reply_text && <Text style={styles.letterReplied}> · ответил</Text>}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name={expanded ? 'chevron-up' : (letter.opened ? 'mail-open-outline' : 'mail-outline')}
+                          size={18}
+                          color={letter.opened ? colors.muted : colors.accent}
+                        />
+                      </TouchableOpacity>
+
+                      {expanded && (
+                        <View style={styles.letterExpanded}>
+                          {hasCrisis(letter.text) && (
+                            <TouchableOpacity style={styles.crisisBannerInline} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
+                              <Ionicons name="call-outline" size={13} color={colors.accent} />
+                              <Text style={styles.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
+                            </TouchableOpacity>
+                          )}
+                          <View style={styles.replySection}>
+                            {letter.reply_text ? (
+                              <View style={styles.replySent}>
+                                <Text style={styles.replySentLabel}>Твой ответ</Text>
+                                <Text style={styles.replySentText}>{letter.reply_text}</Text>
+                              </View>
+                            ) : (
+                              <View style={styles.replyInputRow}>
+                                <TextInput
+                                  style={styles.replyInput}
+                                  placeholder="одно слово в ответ..."
+                                  placeholderTextColor={colors.muted}
+                                  value={replyText}
+                                  onChangeText={setReplyText}
+                                  maxLength={200}
+                                  multiline
+                                />
+                                <TouchableOpacity
+                                  style={[styles.replyBtn, (!replyText.trim() || replySending) && styles.replyBtnOff]}
+                                  onPress={() => sendReply(letter)}
+                                  disabled={!replyText.trim() || replySending}
+                                >
+                                  {replySending
+                                    ? <ActivityIndicator color={colors.onAccent} size="small" />
+                                    : <Ionicons name="arrow-up" size={16} color={colors.onAccent} />
+                                  }
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      )}
                     </View>
-                    <Ionicons name={letter.opened ? 'mail-open-outline' : 'mail-outline'} size={18} color={letter.opened ? colors.muted : colors.accent} />
-                  </TouchableOpacity>
-                ))
+                  );
+                })
               )}
             </>
           )}
@@ -356,6 +448,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent + '12', borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12,
   },
+  crisisBannerInline: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.accent + '12', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 8, marginBottom: 10,
+  },
   crisisCallRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   crisisText: { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
   crisisActionRow: { flexDirection: 'row', gap: 8 },
@@ -382,16 +479,61 @@ const styles = StyleSheet.create({
   },
   inboxBtnText: { color: colors.accent, fontWeight: '600' },
 
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.7,
+    marginTop: 20, marginBottom: 10,
+  },
+  sentLetterCard: {
+    backgroundColor: colors.card, borderRadius: 14,
+    padding: 14, marginBottom: 8, gap: 6,
+  },
+  sentLetterText: { fontSize: 14, color: colors.white, lineHeight: 19 },
+  sentLetterDate: { fontSize: 11, color: colors.muted },
+  replyReceived: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+    backgroundColor: colors.accent + '12', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 7, marginTop: 2,
+  },
+  replyReceivedText: { flex: 1, fontSize: 13, color: colors.accent, lineHeight: 18 },
+  noReplyText: { fontSize: 12, color: colors.muted, fontStyle: 'italic' },
+
   letterCard: {
     backgroundColor: colors.card, borderRadius: 14,
-    padding: 14, marginBottom: 8,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginBottom: 8, overflow: 'hidden',
   },
   letterCardUnread: { borderLeftWidth: 3, borderLeftColor: colors.accent },
+  letterHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 14, gap: 12,
+  },
   letterDot: { width: 8, height: 8, borderRadius: 4, marginTop: 2 },
   letterPreview: { fontSize: 14, color: colors.white, lineHeight: 19, marginBottom: 4 },
   letterDate: { fontSize: 11, color: colors.muted },
   letterNew: { color: colors.accent, fontWeight: '600' },
+  letterReplied: { color: colors.muted, fontStyle: 'italic' },
+
+  letterExpanded: {
+    borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14,
+  },
+
+  replySection: { gap: 8 },
+  replyInputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+  replyInput: {
+    flex: 1, backgroundColor: colors.background, borderRadius: 12,
+    padding: 10, color: colors.white, fontSize: 14, maxHeight: 80,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  replyBtn: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  replyBtnOff: { opacity: 0.35 },
+  replySent: { gap: 4 },
+  replySentLabel: { fontSize: 11, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  replySentText: { fontSize: 14, color: colors.accent, lineHeight: 19 },
 
   emptyBlock: { alignItems: 'center', paddingVertical: 60, gap: 12 },
   emptyText: { fontSize: 16, color: colors.muted, fontWeight: '600' },

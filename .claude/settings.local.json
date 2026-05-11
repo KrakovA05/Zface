@@ -1,7 +1,25 @@
 {
   "permissions": {
     "allow": [
-      "mcp__supabase__list_tables"
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__list_edge_functions",
+      "mcp__supabase__deploy_edge_function",
+      "mcp__supabase__get_logs",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npx expo *)",
+      "WebSearch",
+      "WebFetch(domain:www.youtube.com)",
+      "WebFetch(domain:www.b17.ru)",
+      "WebFetch(domain:www.psychologies.ru)",
+      "WebFetch(domain:podcasts.apple.com)",
+      "Bash(python3 -c \"import pptx; print\\('ok'\\)\")",
+      "Bash(python3)",
+      "Bash(python3 -)",
+      "Bash(python3 /Users/user/Desktop/ТЗ_Визажист/generate_tz.py)",
+      "Bash(open \"/Users/user/Desktop/ТЗ_Визажист/ТЗ_Сайт_Визажиста.pdf\")"
     ]
   }
 }

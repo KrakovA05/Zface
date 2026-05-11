@@ -124,6 +124,7 @@ export default function HomeScreen({ navigation }) {
   const [onlineCount,    setOnlineCount]    = useState(0);
   const [showHistory,    setShowHistory]    = useState(false);
   const [hasUnreadLetter, setHasUnreadLetter] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [moodHistory,    setMoodHistory]    = useState([]);
   const [showStreakInfo, setShowStreakInfo]   = useState(false);
   const scrollRef    = useRef(null);
@@ -186,6 +187,11 @@ export default function HomeScreen({ navigation }) {
           .from('anonymous_letters').select('*', { count: 'exact', head: true })
           .eq('recipient_id', user.id).eq('opened', false);
         setHasUnreadLetter((letterCount || 0) > 0);
+
+        const { count: notifCount } = await supabase
+          .from('notifications').select('*', { count: 'exact', head: true })
+          .eq('read', false);
+        setUnreadNotifCount(notifCount || 0);
 
         const { data: ans } = await supabase
           .from('daily_answers').select('answer')
@@ -489,6 +495,20 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.greetingRow}>
           <Text style={styles.greeting}>Привет, {store.username || 'друг'}</Text>
           <View style={styles.greetingBadges}>
+            <TouchableOpacity
+              style={styles.bellBtn}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={20} color={colors.white} />
+              {unreadNotifCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             {streak > 0 && (
               <TouchableOpacity
                 style={styles.streakBadge}
@@ -1019,6 +1039,14 @@ const styles = StyleSheet.create({
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   greeting:  { fontSize: 22, fontWeight: '700', color: colors.white },
   greetingBadges: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  bellBtn: { position: 'relative', padding: 4 },
+  bellBadge: {
+    position: 'absolute', top: 0, right: 0,
+    backgroundColor: '#E57373', borderRadius: 8,
+    minWidth: 16, height: 16, paddingHorizontal: 3,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bellBadgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
   streakBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: colors.accent + '15', borderRadius: 10,
