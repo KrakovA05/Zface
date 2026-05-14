@@ -236,7 +236,7 @@ export default function HomeScreen({ navigation }) {
 
         const { count: notifCount } = await supabase
           .from('notifications').select('*', { count: 'exact', head: true })
-          .eq('read', false);
+          .eq('user_id', user.id).eq('read', false);
         setUnreadNotifCount(notifCount || 0);
 
         const { data: ans } = await supabase

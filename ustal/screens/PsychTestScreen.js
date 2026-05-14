@@ -7,6 +7,17 @@ import { PSYCH_TESTS } from '../utils/psychTests';
 export default function PsychTestScreen({ route, navigation }) {
   const { testId, onComplete } = route.params;
   const test = PSYCH_TESTS[testId];
+
+  if (!test) {
+    return (
+      <View style={styles.container}>
+        <Text style={[styles.doneTitle, { marginTop: 80 }]}>Тест не найден</Text>
+        <TouchableOpacity style={[shared.button, { marginTop: 32 }]} onPress={() => navigation.goBack()}>
+          <Text style={shared.buttonText}>Назад</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -107,7 +118,7 @@ function computeRaw(test, answers) {
     const maxVal = test.scale.max;
     const minVal = test.scale.min;
     return answers.reduce((s, v, i) => {
-      const val = test.reverseItems?.includes(i) ? (maxVal + minVal - v) : v;
+      const val = test.reverseItems?.includes(i + 1) ? (maxVal + minVal - v) : v;
       return s + val;
     }, 0);
   }

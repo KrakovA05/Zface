@@ -44,9 +44,13 @@ export default function NotificationsScreen({ navigation }) {
 
   const load = async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
     const { data } = await supabase
       .from('notifications')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(60);
 
@@ -58,6 +62,7 @@ export default function NotificationsScreen({ navigation }) {
       await supabase
         .from('notifications')
         .update({ read: true })
+        .eq('user_id', user.id)
         .eq('read', false);
     }
   };

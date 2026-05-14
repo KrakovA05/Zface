@@ -37,17 +37,23 @@ export default function OnboardingMomentScreen({ route, navigation }) {
 
   useEffect(() => {
     const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentUserId = user?.id || store.userId;
+
       const { count } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
-        .eq('level', level);
+        .eq('level', level)
+        .neq('user_id', currentUserId);
       setSameCount(count || 0);
+
+      if (!currentUserId) { setLoading(false); return; }
 
       const { data: sameLevel } = await supabase
         .from('users')
         .select('user_id')
         .eq('level', level)
-        .neq('user_id', store.userId);
+        .neq('user_id', currentUserId);
 
       const ids = (sameLevel || []).map(u => u.user_id);
       if (ids.length > 0) {

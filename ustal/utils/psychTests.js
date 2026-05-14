@@ -107,10 +107,7 @@ export const PSYCH_TESTS = {
     ],
     maxRaw: 20,
     reverseAll: true,
-    normalize: (rawSum) => {
-      const inverted = 20 - rawSum + 5;
-      return Math.round(Math.max(0, Math.min(100, (inverted / 20) * 100)));
-    },
+    normalize: (rawSum) => Math.round(Math.max(0, Math.min(100, ((20 - rawSum) / 15) * 100))),
   },
 
   ucla3: {
