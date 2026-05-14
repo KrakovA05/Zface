@@ -58,14 +58,17 @@ Source: theme.js shared.screen, shared.button; EmailConfirmScreen styles.
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
+| Hint / caption | 13px | 400 (normal) | 1.5 (20px) |
 | Body | 16px | 400 (normal) | 1.5 (24px) |
-| Label / hint | 13–14px | 400 (normal) | 1.5 (20px) |
-| Heading | 24–28px | 700 (bold) | 1.2 |
-| Button text | 16px | 600 (semibold) | 1.0 (single line) |
+| Screen title | 24px | 700 (bold) | 1.2 |
+| Display / main title | 28px | 700 (bold) | 1.2 |
 
 Notes:
 - 28px: shared.title (HomeScreen, main screens)
 - 24px: EmailConfirmScreen title — use for any new screen in this phase
+- 16px: body text, button text, Deep Link screen body (replaces former 15px)
+- 13px: hints, captions, secondary labels (replaces former 14px)
+- Only 2 font weights: 400 and 700 — do NOT use 600 (semibold) anywhere
 - No custom fonts — system defaults only; do NOT introduce new font families in phase 7
 - All text in Russian, no emoji in code strings (emoji appear only in constants.js data)
 
@@ -175,8 +178,8 @@ When the app opens from the deep link URL (scheme `://auth/confirm`):
 | Icon | `checkmark-circle` Ionicons, size 56, color `#4CAF50` (green level color) |
 | Icon circle | 88pt diameter, backgroundColor `#4CAF50` + `18` opacity hex |
 | Title | «Email подтверждён» — fontSize 24, fontWeight 700, color `#2C2420` |
-| Body | «Теперь ты можешь войти» — fontSize 15, color `#9B8E82`, lineHeight 22 |
-| CTA button | «Войти» — full-width, backgroundColor `#8B7355`, borderRadius 14, paddingVertical 15 |
+| Body | «Теперь ты можешь войти» — fontSize 16, fontWeight 400, color `#9B8E82`, lineHeight 24 |
+| CTA button | «Войти в приложение» — full-width, backgroundColor `#8B7355`, borderRadius 14, paddingVertical 15 |
 | Layout | Same centered column as existing EmailConfirmScreen (paddingHorizontal 32) |
 
 ### Deep Link Error Screen
@@ -186,7 +189,7 @@ When the app opens from the deep link URL (scheme `://auth/confirm`):
 | Icon | `alert-circle-outline` Ionicons, size 56, color `#E07060` (colors.pink) |
 | Icon circle | 88pt, backgroundColor `#E07060` + `18` opacity |
 | Title | «Ссылка недействительна» — fontSize 24, fontWeight 700 |
-| Body | «Попробуй войти вручную или запроси новое письмо» — fontSize 15, color muted |
+| Body | «Попробуй войти вручную или запроси новое письмо» — fontSize 16, fontWeight 400, color `#9B8E82`, lineHeight 24 |
 | CTA | «Войти вручную» — full-width accent button |
 
 Source: EmailConfirmScreen.js — all patterns extended, not replaced.
@@ -197,7 +200,7 @@ Source: EmailConfirmScreen.js — all patterns extended, not replaced.
 
 | Element | Copy |
 |---------|------|
-| Primary CTA (deep link success) | «Войти» |
+| Primary CTA (deep link success) | «Войти в приложение» |
 | Primary CTA (email resend) | «Отправить письмо снова» |
 | Empty state heading | N/A — no new list screens in this phase |
 | Email confirm success title | «Email подтверждён» |
