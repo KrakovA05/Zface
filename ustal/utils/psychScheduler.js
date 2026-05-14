@@ -1,6 +1,16 @@
 import { supabase } from '../supabase';
 import { WEEKLY_TEST_ROTATION } from './psychTests';
 
+// Маппинг current_focus → предпочтительный тест
+const FOCUS_TEST_MAP = {
+  anxiety:     'gad7',
+  loneliness:  'ucla3',
+  burnout:     'olbi_short',
+  self_esteem: 'rosenberg',
+  stress:      'pss4',
+  apathy:      'aes_short',
+};
+
 // Возвращает testId следующего теста для пользователя или null если ничего не нужно
 export async function getNextTestId(userId) {
   const now = new Date();
@@ -10,6 +20,14 @@ export async function getNextTestId(userId) {
   startOfWeek.setHours(0, 0, 0, 0);
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Получить current_focus пользователя
+  const { data: userData } = await supabase
+    .from('users')
+    .select('current_focus')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const currentFocus = userData?.current_focus;
 
   const { data: results } = await supabase
     .from('psych_test_results')
@@ -44,7 +62,7 @@ export async function getNextTestId(userId) {
     if (!passedEver.has(tid)) return tid;
   }
 
-  // Еженедельные — один тест в неделю по ротации
+  // Еженедельные — один тест в неделю по ротации с учётом current_focus
   if (passedThisWeek.size < 1) {
     const { data: allWeekly } = await supabase
       .from('psych_test_results')
@@ -58,6 +76,13 @@ export async function getNextTestId(userId) {
       if (!lastPassed[r.test_id]) lastPassed[r.test_id] = new Date(r.created_at);
     }
 
+    // Если есть preferred тест по фокусу и он ещё не пройден на этой неделе
+    const preferredTest = currentFocus ? FOCUS_TEST_MAP[currentFocus] : null;
+    if (preferredTest && WEEKLY_TEST_ROTATION.includes(preferredTest) && !passedThisWeek.has(preferredTest)) {
+      return preferredTest;
+    }
+
+    // Иначе — стандартная ротация по давности
     const sorted = [...WEEKLY_TEST_ROTATION].sort((a, b) => {
       const ta = lastPassed[a] || new Date(0);
       const tb = lastPassed[b] || new Date(0);

@@ -103,6 +103,47 @@ function pluralPeople(n) {
   return 'человек';
 }
 
+const FOCUS_OPTIONS = [
+  { value: 'anxiety',    label: 'тревога и стресс' },
+  { value: 'loneliness', label: 'одиночество' },
+  { value: 'burnout',    label: 'усталость и выгорание' },
+  { value: 'self_esteem',label: 'самооценка' },
+];
+
+function FocusAskCard({ onSelect, onDismiss }) {
+  return (
+    <View style={focusStyles.card}>
+      <Text style={focusStyles.q}>что сейчас важнее всего?</Text>
+      <View style={focusStyles.chips}>
+        {FOCUS_OPTIONS.map(o => (
+          <TouchableOpacity key={o.value} style={focusStyles.chip} onPress={() => onSelect(o.value)} activeOpacity={0.7}>
+            <Text style={focusStyles.chipText}>{o.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <TouchableOpacity onPress={onDismiss} activeOpacity={0.6}>
+        <Text style={focusStyles.skip}>пропустить</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const focusStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.card, borderRadius: 16, padding: 18,
+    marginBottom: 16, borderWidth: 1, borderColor: colors.border,
+  },
+  q: { fontSize: 15, fontWeight: '600', color: colors.white, marginBottom: 14 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  chip: {
+    paddingVertical: 7, paddingHorizontal: 14,
+    backgroundColor: colors.background, borderRadius: 20,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  chipText: { fontSize: 13, color: colors.white },
+  skip: { fontSize: 12, color: colors.muted },
+});
+
 export default function HomeScreen({ navigation }) {
   const [level,        setLevel]        = useState(store.level || 'green');
   const [history,      setHistory]      = useState([]);
@@ -134,6 +175,7 @@ export default function HomeScreen({ navigation }) {
   const [dailyCardY, setDailyCardY] = useState(0);
   const [nextTestId,   setNextTestId]   = useState(null);
   const [weeklyInsight, setWeeklyInsight] = useState(null);
+  const [showFocusAsk,  setShowFocusAsk]  = useState(false);
   const dailyQuestion = getTodayQuestion();
   const todayWord = getTodayWord();
   const todayWordContext = getTodayWordContext();
@@ -259,6 +301,20 @@ export default function HomeScreen({ navigation }) {
           .from('users').select('*', { count: 'exact', head: true })
           .gte('last_seen', tenMinAgo).neq('user_id', user.id);
         setOnlineCount(onlineC || 0);
+
+        // Re-ask про фокус раз в 30 дней
+        const { data: focusData } = await supabase
+          .from('users')
+          .select('focus_updated_at')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (focusData) {
+          const lastSet = focusData.focus_updated_at;
+          const daysSince = lastSet
+            ? Math.floor((Date.now() - new Date(lastSet).getTime()) / 86400000)
+            : 999;
+          if (daysSince >= 30) setShowFocusAsk(true);
+        }
 
         // Следующий психологический тест
         const testId = await getNextTestId(user.id);
@@ -815,6 +871,22 @@ export default function HomeScreen({ navigation }) {
               <Text style={[styles.allDoneSub, { marginTop: 3, opacity: 0.5 }]}>ты был здесь — это уже что-то</Text>
             </View>
           </View>
+        )}
+
+        {showFocusAsk && (
+          <FocusAskCard
+            onSelect={async (focus) => {
+              setShowFocusAsk(false);
+              const today = new Date().toISOString().split('T')[0];
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                await supabase.from('users')
+                  .update({ current_focus: focus, focus_updated_at: today })
+                  .eq('user_id', user.id);
+              }
+            }}
+            onDismiss={() => setShowFocusAsk(false)}
+          />
         )}
 
         {weeklyInsight && (
