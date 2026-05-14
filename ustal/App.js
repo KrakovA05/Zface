@@ -41,6 +41,7 @@ import ResourcesScreen from './screens/ResourcesScreen';
 import LetterScreen from './screens/LetterScreen';
 import SupportScreen from './screens/SupportScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
+import PsychTestScreen from './screens/PsychTestScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -438,6 +439,7 @@ export default function App() {
             <Stack.Screen name="Letter"          component={LetterScreen} />
             <Stack.Screen name="Support"         component={SupportScreen} />
             <Stack.Screen name="Notifications"   component={NotificationsScreen} />
+            <Stack.Screen name="PsychTest"        component={PsychTestScreen} options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />
