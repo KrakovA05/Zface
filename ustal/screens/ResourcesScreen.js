@@ -37,12 +37,11 @@ export default function ResourcesScreen() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: resources } = await supabase.from('resources').select('*');
+    const { data: resources } = await supabase.from('resources').select('*').limit(500);
     if (!resources) { setLoading(false); return; }
 
     let userMetrics = null;
     let currentFocus = null;
-    let metricsCount = 0;
     if (user) {
       const { data: m } = await supabase
         .from('user_metrics')
@@ -60,11 +59,6 @@ export default function ResourcesScreen() {
         .maybeSingle();
       currentFocus = focusData?.current_focus || null;
 
-      const { count } = await supabase
-        .from('user_metrics')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-      metricsCount = count || 0;
     }
 
     const dimMap = userMetrics ? {
@@ -78,7 +72,7 @@ export default function ResourcesScreen() {
       attachment:     userMetrics.attachment_score,
     } : {};
 
-    const applyFocusBoost = currentFocus && metricsCount < 4;
+    const applyFocusBoost = !!currentFocus;
     const scored = resources.map(r => {
       let score = 0;
       if (userMetrics && r.dimension_weights) {

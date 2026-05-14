@@ -39,7 +39,8 @@ export default function PsychTestScreen({ route, navigation }) {
     const rawScore = computeRaw(test, newAnswers);
     const normalizedScore = test.normalize(rawScore);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
     if (user) {
       await supabase.from('psych_test_results').insert({
         user_id: user.id,

@@ -443,17 +443,19 @@ export default function HomeScreen({ navigation }) {
     setSimilarUser(bestUser);
   };
 
-  const dismissSimilar = async () => {
+  const dismissSimilar = useCallback(async () => {
+    const captured = similarUser;
     setSimilarUser(null);
-    if (!similarUser) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!captured) return;
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
     if (user) {
       await supabase.from('similar_user_shown')
         .update({ dismissed: true })
         .eq('user_id', user.id)
-        .eq('matched_user_id', similarUser.user_id);
+        .eq('matched_user_id', captured.user_id);
     }
-  };
+  }, [similarUser]);
 
   const getMoodSuggestion = (score) => {
     if (score <= 3) return { icon: 'sync-outline',       label: 'Может, подышать?',          route: 'Breathing' };
@@ -478,18 +480,19 @@ export default function HomeScreen({ navigation }) {
 
     // C) Если 3 дня подряд оценка ≤3 — поддерживающий пуш через 3 часа
     if (score <= 3) {
-      const threeDaysAgo = new Date();
-      threeDaysAgo.setDate(threeDaysAgo.getDate() - 2);
+      const requiredDates = [0, 1, 2].map(d => {
+        const dt = new Date();
+        dt.setDate(dt.getDate() - d);
+        return dt.toISOString().split('T')[0];
+      });
       const { data: recentMoods } = await supabase
         .from('mood_checkins')
         .select('score, checkin_date')
         .eq('user_id', user.id)
-        .gte('checkin_date', threeDaysAgo.toISOString().split('T')[0])
-        .order('checkin_date', { ascending: false })
-        .limit(3);
-      if (recentMoods && recentMoods.length >= 3 && recentMoods.every(m => m.score <= 3)) {
-        scheduleLowMoodPush();
-      }
+        .in('checkin_date', requiredDates);
+      const moodMap = Object.fromEntries((recentMoods || []).map(m => [m.checkin_date, m.score]));
+      const allThreeBad = requiredDates.every(d => moodMap[d] !== undefined && moodMap[d] <= 3);
+      if (allThreeBad) scheduleLowMoodPush();
     }
   };
 

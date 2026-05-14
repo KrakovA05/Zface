@@ -15,8 +15,9 @@ const FOCUS_TEST_MAP = {
 export async function getNextTestId(userId) {
   const now = new Date();
   const dayOfWeek = now.getDay();
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - dayOfWeek);
+  startOfWeek.setDate(now.getDate() - mondayOffset);
   startOfWeek.setHours(0, 0, 0, 0);
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -43,14 +44,7 @@ export async function getNextTestId(userId) {
       .map(r => r.test_id)
   );
 
-  // Ежемесячные — в первые 3 дня месяца
-  if (now.getDate() <= 3) {
-    for (const tid of ['olbi_short', 'rosenberg']) {
-      if (!passedThisMonth.has(tid)) return tid;
-    }
-  }
-
-  // Профильные — если ни разу не проходил
+  // Профильные — если ни разу не проходил (приоритет выше ежемесячных)
   const { data: allResults } = await supabase
     .from('psych_test_results')
     .select('test_id')
@@ -60,6 +54,13 @@ export async function getNextTestId(userId) {
   const passedEver = new Set((allResults || []).map(r => r.test_id));
   for (const tid of ['ecr_short', 'mini_spin']) {
     if (!passedEver.has(tid)) return tid;
+  }
+
+  // Ежемесячные — в первые 3 дня месяца
+  if (now.getDate() <= 3) {
+    for (const tid of ['olbi_short', 'rosenberg']) {
+      if (!passedThisMonth.has(tid)) return tid;
+    }
   }
 
   // Еженедельные — один тест в неделю по ротации с учётом current_focus
