@@ -1,0 +1,70 @@
+import { supabase } from '../supabase';
+import { WEEKLY_TEST_ROTATION } from './psychTests';
+
+// Возвращает testId следующего теста для пользователя или null если ничего не нужно
+export async function getNextTestId(userId) {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - dayOfWeek);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const { data: results } = await supabase
+    .from('psych_test_results')
+    .select('test_id, created_at')
+    .eq('user_id', userId)
+    .gte('created_at', startOfMonth.toISOString())
+    .order('created_at', { ascending: false });
+
+  const passedThisMonth = new Set((results || []).map(r => r.test_id));
+  const passedThisWeek = new Set(
+    (results || [])
+      .filter(r => new Date(r.created_at) >= startOfWeek)
+      .map(r => r.test_id)
+  );
+
+  // Ежемесячные — в первые 3 дня месяца
+  if (now.getDate() <= 3) {
+    for (const tid of ['olbi_short', 'rosenberg']) {
+      if (!passedThisMonth.has(tid)) return tid;
+    }
+  }
+
+  // Профильные — если ни разу не проходил
+  const { data: allResults } = await supabase
+    .from('psych_test_results')
+    .select('test_id')
+    .eq('user_id', userId)
+    .in('test_id', ['ecr_short', 'mini_spin']);
+
+  const passedEver = new Set((allResults || []).map(r => r.test_id));
+  for (const tid of ['ecr_short', 'mini_spin']) {
+    if (!passedEver.has(tid)) return tid;
+  }
+
+  // Еженедельные — один тест в неделю по ротации
+  if (passedThisWeek.size < 1) {
+    const { data: allWeekly } = await supabase
+      .from('psych_test_results')
+      .select('test_id, created_at')
+      .eq('user_id', userId)
+      .in('test_id', WEEKLY_TEST_ROTATION)
+      .order('created_at', { ascending: false });
+
+    const lastPassed = {};
+    for (const r of allWeekly || []) {
+      if (!lastPassed[r.test_id]) lastPassed[r.test_id] = new Date(r.created_at);
+    }
+
+    const sorted = [...WEEKLY_TEST_ROTATION].sort((a, b) => {
+      const ta = lastPassed[a] || new Date(0);
+      const tb = lastPassed[b] || new Date(0);
+      return ta - tb;
+    });
+    return sorted[0];
+  }
+
+  return null;
+}
