@@ -165,6 +165,8 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: colors.card, borderRadius: 16, padding: 14,
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07, shadowRadius: 6, elevation: 2,
   },
   cardUnread: { borderLeftWidth: 3, borderLeftColor: colors.accent },
 

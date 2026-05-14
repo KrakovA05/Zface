@@ -11,6 +11,14 @@ export const colors = {
   pink:       '#c0392b',
 };
 
+export const cardShadow = {
+  shadowColor: '#8B7B6B',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 3,
+};
+
 export const shared = StyleSheet.create({
   screen: {
     flex: 1,
