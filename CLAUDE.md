@@ -24,7 +24,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **ThoughtsScreen** — анонимная мысль дня (1 раз в сутки), реакции «я понимаю / я тоже / держись», счётчики реакций других
 - **NotificationsScreen** — центр уведомлений: лайки, комментарии, заявки в друзья, письма, реакции на мысль, «ты помог». Тап → глубокий переход на конкретный пост/профиль/вкладку. Колокольчик с бейджем в шапке HomeScreen.
 - **SupportScreen** — форма обращения в поддержку (категория + тема + текст). Суpabase Edge Function `send-support-email` → Resend → корпоративная почта + запись в `support_requests`.
-- **ResourcesScreen** — психологические материалы: 5 тем (тревога, депрессия, выгорание, одиночество, самооценка), аккордеон с анимацией, реальные ссылки на YouTube и b17.ru/psychologies.ru через `Linking.openURL()`
+- **ResourcesScreen** — психологические материалы из Supabase (`resources`): секция «Для тебя сейчас» (топ-5 по релевантности к текущим метрикам пользователя), аккордеон «Другие темы» по 8 категориям; ссылки через `Linking.openURL()`
+- **PsychTestScreen** — прохождение валидированных психологических тестов; принимает `{ testId, onComplete }` через route.params; поддерживает scoring: sum / mean / sum_with_reverse; сохраняет в `psych_test_results`
 - **UserProfileScreen** — профиль другого пользователя: добавить в друзья / принять / отклонить / удалить, DM, блокировка, жалоба, динамика уровня (если `show_history = true`), кнопка «Он мне помог» с каунтером (`user_helps`)
 - **BreathingScreen** — коробочное дыхание 4-4-4-4, Animated-анимация круга, фазы вдох/задержка/выдох/пауза
 - **FishingScreen** — мини-игра «рыбалка» как медитативная активность; математически прорисованная удочка (seg-helper через atan2), float с анимацией, 14 рыб с временно́й привязкой, «Записка в бутылке»
@@ -38,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Люди 16–30 лет, которым бывает плохо и которые хотят найти других таких же — без лишних слов и фальши.
 
 ### Текущий статус
-MVP+. Функционал: авторизация с подтверждением email, тест (1 раз в 24ч), лента с комментариями, чаты (глобальный/комнаты), DM, друзья, блокировки, жалобы, достижения, вопрос дня, слово дня, анонимные мысли + реакции, дыхание, рыбалка, рекомендации, онбординг, психологические материалы, проактивные пуши, push-уведомления по DM и заявкам, анонимные письма с ответами, центр уведомлений, форма поддержки.
+MVP+. Функционал: авторизация с подтверждением email, тест (1 раз в 24ч), лента с комментариями, чаты (глобальный/комнаты), DM, друзья, блокировки, жалобы, достижения, вопрос дня, слово дня, анонимные мысли + реакции, дыхание, рыбалка, рекомендации, онбординг, психологические материалы, проактивные пуши, push-уведомления по DM и заявкам, анонимные письма с ответами, центр уведомлений, форма поддержки, **психометрический движок** (8 валидированных тестов, еженедельные метрики, персональные рекомендации).
 
 ### Роадмап
 - **[ROADMAP.md](ROADMAP.md)** — что ещё не сделано (блокеры релиза + опциональное)
@@ -105,7 +106,8 @@ Stack.Navigator
   ├── Thoughts           (анонимные мысли, поверх табов)
   ├── Resources          (психологические материалы, поверх табов)
   ├── Breathing          (дыхательные упражнения, поверх табов)
-  └── Fishing            (мини-игра рыбалка, поверх табов)
+  ├── Fishing            (мини-игра рыбалка, поверх табов)
+  └── PsychTest          (прохождение валидированного теста, поверх табов, headerShown: false)
 ```
 
 `App.js` при старте вызывает `supabase.auth.getSession()` — если сессия активна, грузит профиль и идёт сразу на `Main`, иначе на `Login`.
@@ -147,6 +149,9 @@ store = { username, email, level, userId, avatarUrl, status }
 | `blocks` | `id`, `blocker_id UUID`, `blocked_id UUID` | ✅ |
 | `reports` | `id`, `reporter_id UUID`, `reported_user_id UUID`, `reason TEXT` | ✅ |
 | `user_helps` | `id`, `helper_id UUID`, `helped_id UUID`, `created_at` — кнопка «Он мне помог» в UserProfileScreen | ✅ |
+| `psych_test_results` | `id`, `user_id UUID`, `test_id TEXT`, `dimension TEXT`, `raw_score INT`, `normalized_score INT`, `answers JSONB`, `created_at` — результаты психологических тестов | ✅ |
+| `user_metrics` | `id`, `user_id UUID`, `week_start DATE`, `anxiety/stress/apathy/loneliness/burnout/self_esteem/social_anxiety/attachment _score INT`, `composite_score INT`, `dominant_dimension TEXT`, `level TEXT` — еженедельные снапшоты психометрики, UNIQUE(user_id, week_start) | ✅ |
+| `resources` | `id`, `title TEXT`, `type TEXT ('video'\|'article')`, `url TEXT`, `topic TEXT`, `dimension_weights JSONB` — база материалов с весами по измерениям | ✅ |
 
 #### Использование таблицы `messages` для разных чатов
 - Глобальный чат: `level = 'global'`
@@ -173,6 +178,12 @@ store = { username, email, level, userId, avatarUrl, status }
 
 ### Уровни пользователей
 `green` / `yellow` / `red` — определяются тестом (TestScreen), хранятся в `users.level` и `test_results`. Везде используются через `LEVEL_COLORS` и `LEVEL_DATA` из `constants.js`.
+
+### Психометрический движок
+- `utils/psychTests.js` — 8 валидированных тестов (`PSYCH_TESTS`), `WEEKLY_PHRASES`, `DIMENSION_WEIGHTS`, `scoreToLevel()`
+- `utils/psychScheduler.js` — `getNextTestId(userId)` выбирает следующий тест: профильные (ecr_short, mini_spin) → ежемесячные (olbi_short, rosenberg) → еженедельная ротация (gad7, pss4, aes_short, ucla3)
+- Edge Function `compute-weekly-profile` — запуск каждое воскресенье 03:00 (pg_cron), собирает тестовые баллы + поведенческие метрики → пишет в `user_metrics` → обновляет `users.level`
+- Формула: `Балл(dim) = тест×0.6 + поведение×0.4`, если теста нет — поведение 100%; композитный скор — взвешенное среднее по 8 измерениям
 
 ### Тест и рекомендации
 - `TestScreen` — 10 вопросов, считает pessimistic ответы, определяет level, сохраняет в `users.level` и `test_results`
