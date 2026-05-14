@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
 
@@ -11,6 +12,7 @@ const PHASES = [
 ];
 
 export default function BreathingScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [running, setRunning]   = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
   const [secs, setSecs]         = useState(PHASES[0].duration / 1000);
@@ -52,7 +54,7 @@ export default function BreathingScreen({ navigation }) {
   const phase = PHASES[phaseIdx];
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => { stop(); navigation.goBack(); }} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.white} />

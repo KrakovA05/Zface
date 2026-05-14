@@ -15,18 +15,25 @@ import Avatar from '../components/Avatar';
 const HIDDEN_ACHIEVEMENTS = new Set(['ten_tests', 'daily_7', 'first_post', 'helper_5', 'helper_20']);
 
 const ALL_FISH = [
-  { name: 'Тихий карась',     emoji: '🐟', rarity: 'common' },
-  { name: 'Задумчивый окунь', emoji: '🐠', rarity: 'common' },
-  { name: 'Мелкий ёрш',       emoji: '🐟', rarity: 'common' },
-  { name: 'Дремлющий лещ',    emoji: '🐡', rarity: 'common' },
-  { name: 'Неспешный судак',  emoji: '🐟', rarity: 'uncommon' },
-  { name: 'Молчаливый линь',  emoji: '🐠', rarity: 'uncommon' },
-  { name: 'Серебряный карп',  emoji: '🐡', rarity: 'rare' },
-  { name: 'Ночная щука',      emoji: '🐟', rarity: 'rare' },
-  { name: 'Глубокий сом',     emoji: '🦈', rarity: 'rare' },
-  { name: 'Золотая рыбка',    emoji: '✨',  rarity: 'legendary' },
-  { name: 'Лунная форель',    emoji: '🌟', rarity: 'legendary' },
+  { name: 'Тихий карась',     rarity: 'common' },
+  { name: 'Задумчивый окунь', rarity: 'common' },
+  { name: 'Мелкий ёрш',       rarity: 'common' },
+  { name: 'Дремлющий лещ',    rarity: 'common' },
+  { name: 'Неспешный судак',  rarity: 'uncommon' },
+  { name: 'Молчаливый линь',  rarity: 'uncommon' },
+  { name: 'Серебряный карп',  rarity: 'rare' },
+  { name: 'Ночная щука',      rarity: 'rare' },
+  { name: 'Глубокий сом',     rarity: 'rare' },
+  { name: 'Золотая рыбка',    rarity: 'legendary' },
+  { name: 'Лунная форель',    rarity: 'legendary' },
 ];
+
+const FISH_RARITY_COLORS = {
+  common:    '#888888',
+  uncommon:  '#60B8A0',
+  rare:      '#7B9BD5',
+  legendary: '#AA7C00',
+};
 
 const LEVEL_ICONS = {
   green: 'leaf-outline',
@@ -601,11 +608,16 @@ export default function ProfileScreen({ navigation }) {
               const caught = fishCollection.includes(fish.name);
               return (
                 <View key={fish.name} style={[styles.fishItem, !caught && styles.fishLocked]}>
-                  <Text style={styles.fishEmoji}>{caught ? fish.emoji : '?'}</Text>
+                  {caught
+                    ? <Ionicons name="fish-outline" size={22} color={FISH_RARITY_COLORS[fish.rarity]} />
+                    : <Text style={styles.fishEmoji}>?</Text>
+                  }
                   <Text style={[styles.fishName, !caught && { color: colors.muted }]} numberOfLines={2}>
                     {caught ? fish.name : '???'}
                   </Text>
-                  <Text style={styles.fishRarity}>{caught ? fish.rarity : ''}</Text>
+                  <Text style={[styles.fishRarity, caught && { color: FISH_RARITY_COLORS[fish.rarity] }]}>
+                    {caught ? fish.rarity : ''}
+                  </Text>
                 </View>
               );
             })}

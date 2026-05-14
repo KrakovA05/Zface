@@ -80,8 +80,14 @@ export default function NotificationsScreen({ navigation }) {
       }
       case 'friend_request':
       case 'friend_accepted': {
-        if (notif.data?.user_id)
-          navigation.navigate('UserProfile', { userId: notif.data.user_id });
+        if (notif.data?.user_id) {
+          const { data: user } = await supabase
+            .from('users')
+            .select('user_id, username, level, avatar_url, status')
+            .eq('user_id', notif.data.user_id)
+            .maybeSingle();
+          if (user) navigation.navigate('UserProfile', { user });
+        }
         break;
       }
       // входящее письмо → открываем вкладку «Входящие»

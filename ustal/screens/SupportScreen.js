@@ -1,8 +1,9 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../supabase';
@@ -17,6 +18,7 @@ const CATEGORIES = [
 ];
 
 export default function SupportScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [category, setCategory] = useState('question');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -38,7 +40,8 @@ export default function SupportScreen({ navigation }) {
 
     setSending(false);
     if (error) {
-      // Всё равно считаем успехом — в БД сохранилось
+      Alert.alert('Ошибка', 'Не удалось отправить обращение. Попробуй ещё раз.');
+      return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setDone(true);
@@ -49,7 +52,7 @@ export default function SupportScreen({ navigation }) {
       style={styles.wrap}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.white} />
         </TouchableOpacity>
@@ -141,7 +144,7 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 8, paddingTop: 56, paddingBottom: 12, gap: 4,
+    paddingHorizontal: 8, paddingBottom: 12, gap: 4,
   },
   backBtn: { padding: 8 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.white },

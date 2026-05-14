@@ -187,6 +187,7 @@ export default function FeedScreen({ navigation }) {
   };
 
   const toggleLike = async (postId) => {
+    if (!store.userId) return;
     const isLiked = !!likedPosts[postId];
     setLikedPosts(prev => ({ ...prev, [postId]: !isLiked }));
     setPosts(prev => prev.map(p => p.id === postId

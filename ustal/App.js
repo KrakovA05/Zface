@@ -87,7 +87,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
                 <Ionicons
                   name={focused ? icons.focused : icons.blur}
                   size={24}
-                  color={focused ? '#7c3aed' : 'rgba(44,36,32,0.35)'}
+                  color={focused ? '#8B7355' : 'rgba(44,36,32,0.35)'}
                 />
                 {!!badge && (
                   <View style={tabStyles.badge}>

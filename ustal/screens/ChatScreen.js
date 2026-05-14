@@ -151,7 +151,7 @@ function GlobalChat({ navigation }) {
   };
 
   const deleteMessage = async (item) => {
-    await supabase.from('messages').delete().eq('id', item.id);
+    await supabase.from('messages').delete().eq('id', item.id).eq('sender_id', store.userId);
     setMessages(prev => prev.filter(m => m.id !== item.id));
   };
 
@@ -253,9 +253,9 @@ function GlobalChat({ navigation }) {
       {hasCrisis(text) && (
         <View style={s.crisisBanner}>
           <TouchableOpacity style={s.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
-            <Ionicons name="heart-outline" size={13} color="#7c3aed" />
+            <Ionicons name="heart-outline" size={13} color="#8B7355" />
             <Text style={s.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
-            <Ionicons name="call-outline" size={13} color="#7c3aed" />
+            <Ionicons name="call-outline" size={13} color="#8B7355" />
           </TouchableOpacity>
           <View style={s.crisisActionRow}>
             <TouchableOpacity style={s.crisisActionBtn} onPress={() => navigation.navigate('Breathing')} activeOpacity={0.7}>
@@ -340,11 +340,11 @@ const s = StyleSheet.create({
   contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },
   contextSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
 
-  crisisBanner: { backgroundColor: '#7c3aed12', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4 },
+  crisisBanner: { backgroundColor: '#8B735512', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4 },
   crisisCallRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   crisisText: { flex: 1, fontSize: 12, color: colors.accent, lineHeight: 16 },
   crisisActionRow: { flexDirection: 'row', gap: 8 },
-  crisisActionBtn: { backgroundColor: '#7c3aed20', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  crisisActionBtn: { backgroundColor: '#8B735520', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
   crisisActionText: { fontSize: 11, color: colors.accent, fontWeight: '600' },
 
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)' },

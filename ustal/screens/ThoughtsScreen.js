@@ -25,7 +25,7 @@ function getTodayDate() {
 
 function groupReactions(list) {
   const g = { understand: 0, same: 0, hold_on: 0 };
-  (list || []).forEach(r => { if (g[r.reaction_type] !== undefined) g[r.reaction_type]++; });
+  (list || []).forEach(r => { if (g[r.reaction] !== undefined) g[r.reaction]++; });
   return g;
 }
 
@@ -69,7 +69,7 @@ export default function ThoughtsScreen({ navigation }) {
     if (mine) {
       const { data: rxs } = await supabase
         .from('thought_reactions')
-        .select('reaction_type')
+        .select('reaction')
         .eq('thought_id', mine.id);
       setMyReactions(groupReactions(rxs));
     }
@@ -88,11 +88,11 @@ export default function ThoughtsScreen({ navigation }) {
       const ids = othersData.map(t => t.id);
       const { data: myRxs } = await supabase
         .from('thought_reactions')
-        .select('thought_id, reaction_type')
+        .select('thought_id, reaction')
         .eq('user_id', store.userId)
         .in('thought_id', ids);
       const reacted = {};
-      (myRxs || []).forEach(r => { reacted[r.thought_id] = r.reaction_type; });
+      (myRxs || []).forEach(r => { reacted[r.thought_id] = r.reaction; });
       setMyReacted(reacted);
     }
 
@@ -125,7 +125,7 @@ export default function ThoughtsScreen({ navigation }) {
     } else {
       setMyReacted(r => ({ ...r, [thoughtId]: type }));
       await supabase.from('thought_reactions')
-        .upsert({ thought_id: thoughtId, user_id: store.userId, reaction_type: type }, { onConflict: 'thought_id,user_id' });
+        .upsert({ thought_id: thoughtId, user_id: store.userId, reaction: type }, { onConflict: 'thought_id,user_id' });
     }
   };
 

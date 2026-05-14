@@ -4,11 +4,11 @@ export const colors = {
   background: '#FAF7F2',
   card:       '#FFFFFF',
   border:     '#E8DFD0',
-  accent:     '#7c3aed',
+  accent:     '#8B7355',
   white:      '#2C2420',
   muted:      '#9B8E82',
   onAccent:   '#FFFFFF',
-  pink:       '#c0392b',
+  pink:       '#E07060',
 };
 
 export const cardShadow = {

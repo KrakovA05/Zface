@@ -41,7 +41,8 @@ function getModuleItems(goal) {
 }
 
 let testReminderShown = false;
-const wordTapCache = {}; // { 'YYYY-MM-DD': 'yes'|'no' }
+const wordTapCache = {};
+let wordTapCacheDate = '';
 
 function getDynamic(history) {
   if (history.length < 2) return null;
@@ -269,6 +270,11 @@ export default function HomeScreen({ navigation }) {
           .order('checkin_date', { ascending: true });
         setMoodHistory(moodHist || []);
 
+        if (wordTapCacheDate !== today) {
+          Object.keys(wordTapCache).forEach(k => delete wordTapCache[k]);
+          wordTapCacheDate = today;
+        }
+
         const word = getTodayWord();
         const cacheKey = `${today}_${user.id}`;
         if (wordTapCache[cacheKey] !== undefined) {
@@ -333,7 +339,9 @@ export default function HomeScreen({ navigation }) {
           setWeeklyInsight(WEEKLY_PHRASES[dim] || WEEKLY_PHRASES.ok);
         }
       }
-      } catch {}
+      } catch (e) {
+        console.error('HomeScreen load error', e);
+      }
       setLoading(false);
     };
     load();

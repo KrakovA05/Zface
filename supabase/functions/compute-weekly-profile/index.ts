@@ -27,7 +27,14 @@ function norm(value: number, min: number, max: number): number {
   return Math.round(Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100)));
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  if (cronSecret) {
+    const auth = req.headers.get('Authorization');
+    if (auth !== `Bearer ${cronSecret}`) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+  }
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { colors, shared } from '../theme';
 import { PSYCH_TESTS } from '../utils/psychTests';
@@ -70,13 +71,27 @@ export default function PsychTestScreen({ route, navigation }) {
     );
   }
 
-  if (saving) return <ActivityIndicator style={{ flex: 1 }} color={colors.accent} />;
+  if (saving) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={colors.accent} />
+        <Text style={[styles.doneSub, { marginTop: 12 }]}>Сохраняем результат…</Text>
+      </View>
+    );
+  }
 
   const q = test.questions[current];
   const progress = (current + 1) / test.questions.length;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <TouchableOpacity
+        style={styles.backBtn}
+        onPress={() => navigation.goBack()}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="close" size={22} color={colors.muted} />
+      </TouchableOpacity>
       <Text style={styles.testTitle}>{test.title}</Text>
       <Text style={styles.testSubtitle}>{test.subtitle}</Text>
 
@@ -129,6 +144,7 @@ function computeRaw(test, answers) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, paddingBottom: 48 },
+  backBtn: { alignSelf: 'flex-end', marginBottom: 8, padding: 4 },
   testTitle: { fontSize: 22, fontWeight: '700', color: colors.white, marginBottom: 4 },
   testSubtitle: { fontSize: 14, color: colors.muted, marginBottom: 16 },
   intro: { fontSize: 15, color: colors.white, opacity: 0.75, marginBottom: 20, lineHeight: 22 },

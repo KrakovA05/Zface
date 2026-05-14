@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
@@ -188,6 +188,20 @@ export default function RecommendationsScreen({ navigation, route }) {
           </View>
         </View>
 
+        {level === 'red' && (
+          <TouchableOpacity
+            style={styles.crisisCard}
+            onPress={() => Linking.openURL('tel:88002000122')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="call-outline" size={20} color="#E07060" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.crisisTitle}>Если совсем тяжело — позвони</Text>
+              <Text style={styles.crisisSub}>8-800-2000-122 · бесплатно · круглосуточно</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={[styles.homeBtn, { backgroundColor: lvlColor }]}
           onPress={() => navigation.navigate('Main')}
@@ -236,6 +250,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
   },
   activityText: { fontSize: 13, fontWeight: '500' },
+
+  crisisCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#E0706011', borderWidth: 1, borderColor: '#E0706044',
+    borderRadius: 14, padding: 16, marginBottom: 12,
+  },
+  crisisTitle: { fontSize: 14, fontWeight: '600', color: '#E07060', marginBottom: 2 },
+  crisisSub: { fontSize: 12, color: colors.muted },
 
   homeBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

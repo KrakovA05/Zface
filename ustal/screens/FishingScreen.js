@@ -387,7 +387,7 @@ export default function FishingScreen() {
         <View style={styles.actions}>
           {phase === 'idle' && (
             <TouchableOpacity style={styles.castBtn} onPress={cast} activeOpacity={0.85}>
-              <LinearGradient colors={[colors.accent, '#7A4A9A']} style={styles.castGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <LinearGradient colors={[colors.accent, '#6B5540']} style={styles.castGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 <Ionicons name="fish-outline" size={22} color="#fff" />
                 <Text style={styles.castText}>Забросить удочку</Text>
               </LinearGradient>

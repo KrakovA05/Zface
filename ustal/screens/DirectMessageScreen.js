@@ -20,9 +20,9 @@ import ChatActionMenu from '../components/ChatActionMenu';
 function groupReactions(list) {
   const g = {};
   (list || []).forEach(r => {
-    if (!g[r.emoji]) g[r.emoji] = { count: 0, hasMe: false };
-    g[r.emoji].count++;
-    if (r.user_id === store.userId) g[r.emoji].hasMe = true;
+    if (!g[r.reaction]) g[r.reaction] = { count: 0, hasMe: false };
+    g[r.reaction].count++;
+    if (r.user_id === store.userId) g[r.reaction].hasMe = true;
   });
   return Object.entries(g).map(([emoji, d]) => ({ emoji, ...d }));
 }
@@ -116,7 +116,7 @@ export default function DirectMessageScreen({ route, navigation }) {
   const loadReactions = async (msgs) => {
     if (!msgs?.length) return;
     const { data } = await supabase.from('message_reactions')
-      .select('message_id, emoji, user_id')
+      .select('message_id, reaction, user_id')
       .in('message_id', msgs.map(m => m.id))
       .eq('message_table', 'direct_messages');
     if (data) {
@@ -129,12 +129,12 @@ export default function DirectMessageScreen({ route, navigation }) {
   const toggleReaction = async (messageId, emoji) => {
     const list = reactions[messageId] || [];
     const myReaction = list.find(r => r.user_id === store.userId);
-    if (myReaction?.emoji === emoji) {
+    if (myReaction?.reaction === emoji) {
       setReactions(prev => ({ ...prev, [messageId]: (prev[messageId] || []).filter(r => r.user_id !== store.userId) }));
       await supabase.from('message_reactions').delete()
         .eq('message_id', messageId).eq('message_table', 'direct_messages').eq('user_id', store.userId);
     } else {
-      const r = { message_id: messageId, message_table: 'direct_messages', user_id: store.userId, emoji };
+      const r = { message_id: messageId, message_table: 'direct_messages', user_id: store.userId, reaction: emoji };
       setReactions(prev => ({ ...prev, [messageId]: [...(prev[messageId] || []).filter(x => x.user_id !== store.userId), r] }));
       await supabase.from('message_reactions').upsert(r, { onConflict: 'message_id,message_table,user_id' });
     }
@@ -297,9 +297,9 @@ export default function DirectMessageScreen({ route, navigation }) {
         {hasCrisis(text) && (
           <View style={styles.crisisBanner}>
             <TouchableOpacity style={styles.crisisCallRow} onPress={() => Linking.openURL('tel:88002000122')} activeOpacity={0.8}>
-              <Ionicons name="heart-outline" size={13} color="#7c3aed" />
+              <Ionicons name="heart-outline" size={13} color="#8B7355" />
               <Text style={styles.crisisText}>Звучит тяжело. 8-800-2000-122 — бесплатно</Text>
-              <Ionicons name="call-outline" size={13} color="#7c3aed" />
+              <Ionicons name="call-outline" size={13} color="#8B7355" />
             </TouchableOpacity>
             <View style={styles.crisisActionRow}>
               <TouchableOpacity style={styles.crisisActionBtn} onPress={() => navigation.navigate('Breathing')} activeOpacity={0.7}>
@@ -434,12 +434,12 @@ const styles = StyleSheet.create({
   contextLabel: { fontSize: 12, fontWeight: '700', color: colors.accent },
   contextSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
 
-  crisisBanner: { backgroundColor: '#7c3aed12', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4 },
+  crisisBanner: { backgroundColor: '#8B735512', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4 },
   crisisCallRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  crisisText: { flex: 1, fontSize: 12, color: '#7c3aed', lineHeight: 16 },
+  crisisText: { flex: 1, fontSize: 12, color: '#8B7355', lineHeight: 16 },
   crisisActionRow: { flexDirection: 'row', gap: 8 },
-  crisisActionBtn: { backgroundColor: '#7c3aed20', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
-  crisisActionText: { fontSize: 11, color: '#7c3aed', fontWeight: '600' },
+  crisisActionBtn: { backgroundColor: '#8B735520', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10 },
+  crisisActionText: { fontSize: 11, color: '#8B7355', fontWeight: '600' },
 
   // Input
   inputRow: {
