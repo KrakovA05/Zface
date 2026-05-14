@@ -9,6 +9,8 @@ import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_WORDS, DAILY_WORDS_CONTEXT } from 
 import { colors } from '../theme';
 import { scheduleLowMoodPush } from '../utils/notifications';
 import { logEvent } from '../utils/analytics';
+import { getNextTestId } from '../utils/psychScheduler';
+import { PSYCH_TESTS, WEEKLY_PHRASES } from '../utils/psychTests';
 
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
 const LEVEL_ICONS  = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'thunderstorm-outline' };
@@ -130,6 +132,8 @@ export default function HomeScreen({ navigation }) {
   const scrollRef    = useRef(null);
   const [moodCardY,  setMoodCardY]  = useState(0);
   const [dailyCardY, setDailyCardY] = useState(0);
+  const [nextTestId,   setNextTestId]   = useState(null);
+  const [weeklyInsight, setWeeklyInsight] = useState(null);
   const dailyQuestion = getTodayQuestion();
   const todayWord = getTodayWord();
   const todayWordContext = getTodayWordContext();
@@ -255,6 +259,23 @@ export default function HomeScreen({ navigation }) {
           .from('users').select('*', { count: 'exact', head: true })
           .gte('last_seen', tenMinAgo).neq('user_id', user.id);
         setOnlineCount(onlineC || 0);
+
+        // Следующий психологический тест
+        const testId = await getNextTestId(user.id);
+        setNextTestId(testId);
+
+        // Еженедельная карточка состояния
+        const { data: metrics } = await supabase
+          .from('user_metrics')
+          .select('dominant_dimension, composite_score')
+          .eq('user_id', user.id)
+          .order('week_start', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (metrics) {
+          const dim = metrics.dominant_dimension;
+          setWeeklyInsight(WEEKLY_PHRASES[dim] || WEEKLY_PHRASES.ok);
+        }
       }
       } catch {}
       setLoading(false);
@@ -499,6 +520,7 @@ export default function HomeScreen({ navigation }) {
               style={styles.bellBtn}
               onPress={() => navigation.navigate('Notifications')}
               activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="notifications-outline" size={20} color={colors.white} />
               {unreadNotifCount > 0 && (
@@ -574,7 +596,7 @@ export default function HomeScreen({ navigation }) {
                 <Text style={styles.moodLabel}>как ты сейчас?</Text>
                 <View style={styles.moodRow}>
                   {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                    <TouchableOpacity key={n} style={[styles.moodBtn, { borderColor: getMoodColor(n) }]} onPress={() => tapMood(n)} activeOpacity={0.7}>
+                    <TouchableOpacity key={n} style={[styles.moodBtn, { borderColor: getMoodColor(n) }]} onPress={() => tapMood(n)} activeOpacity={0.7} hitSlop={{ top: 6, bottom: 6, left: 1, right: 1 }}>
                       <Text style={[styles.moodBtnText, { color: getMoodColor(n) }]}>{n}</Text>
                     </TouchableOpacity>
                   ))}
@@ -795,6 +817,37 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+        {weeklyInsight && (
+          <View style={styles.weeklyInsightCard}>
+            <Text style={styles.weeklyInsightText}>{weeklyInsight}</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Resources')}
+              style={styles.weeklyInsightBtn}
+            >
+              <Text style={styles.weeklyInsightBtnText}>Материалы для тебя</Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.accent} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {nextTestId && PSYCH_TESTS[nextTestId] && (
+          <TouchableOpacity
+            style={styles.testPromptCard}
+            onPress={() => navigation.navigate('PsychTest', {
+              testId: nextTestId,
+              onComplete: () => setNextTestId(null),
+            })}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="flask-outline" size={20} color={colors.accent} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.testPromptTitle}>{PSYCH_TESTS[nextTestId].title}</Text>
+              <Text style={styles.testPromptSub}>{PSYCH_TESTS[nextTestId].subtitle} · займёт пару минут</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.sectionTitle}>Модули</Text>
         <View style={styles.grid}>
           {moduleItems.map(m => (
@@ -804,7 +857,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => navigation.navigate(m.route)}
               activeOpacity={0.7}
             >
-              <Ionicons name={m.icon} size={22} color={colors.accent} />
+              <Ionicons name={m.icon} size={24} color={colors.accent} />
               <Text style={styles.moduleLabel}>{m.label}</Text>
             </TouchableOpacity>
           ))}
@@ -1030,6 +1083,8 @@ const styles = StyleSheet.create({
     marginBottom: 16, padding: 18,
     borderWidth: 1, borderColor: colors.border,
     borderLeftWidth: 3,
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   focusIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   focusInfo: { flex: 1 },
@@ -1119,6 +1174,8 @@ const styles = StyleSheet.create({
   similarCard: {
     backgroundColor: colors.card, borderRadius: 16,
     padding: 16, marginBottom: 16, borderLeftWidth: 3, position: 'relative',
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   similarDismiss: { position: 'absolute', top: 12, right: 12 },
   similarLabel: {
@@ -1140,6 +1197,8 @@ const styles = StyleSheet.create({
   moodCard: {
     backgroundColor: colors.card, borderRadius: 16,
     padding: 16, marginBottom: 16,
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   moodLabel: {
     fontSize: 11, fontWeight: '700', color: colors.muted,
@@ -1147,12 +1206,12 @@ const styles = StyleSheet.create({
   },
   moodRow: { flexDirection: 'row', justifyContent: 'space-between' },
   moodBtn: {
-    width: 28, height: 28, borderRadius: 8, borderWidth: 1.5,
+    width: 28, height: 36, borderRadius: 8, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
   moodBtnText: { fontSize: 11, fontWeight: '700' },
   moodHints: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  moodHint: { fontSize: 10, color: colors.muted },
+  moodHint: { fontSize: 11, color: colors.muted },
   moodDoneScore: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
   moodDoneCount: { fontSize: 13, color: colors.muted, fontStyle: 'italic', marginBottom: 12 },
   moodSuggestion: {
@@ -1167,7 +1226,7 @@ const styles = StyleSheet.create({
   moodFollowupChips:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   moodChip: {
     borderWidth: 1, borderColor: colors.border, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 6,
+    paddingHorizontal: 14, paddingVertical: 9,
   },
   moodChipText:     { fontSize: 13, color: colors.white },
   moodChipSkipText: { fontSize: 12, color: colors.muted, paddingVertical: 4 },
@@ -1191,6 +1250,8 @@ const styles = StyleSheet.create({
   wordCard: {
     backgroundColor: colors.card, borderRadius: 16,
     padding: 18, marginBottom: 16, alignItems: 'flex-start',
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   wordLabel: { fontSize: 11, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
   wordText: { fontSize: 32, fontWeight: 'bold', marginBottom: 14 },
@@ -1206,6 +1267,8 @@ const styles = StyleSheet.create({
   dailyCard: {
     backgroundColor: colors.card, borderRadius: 16,
     padding: 16, marginBottom: 28, borderLeftWidth: 3, borderLeftColor: colors.accent,
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   dailyQuestion:   { color: colors.white, fontSize: 15, fontWeight: '600', lineHeight: 22, marginBottom: 12 },
   dailyInputRow:   { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
@@ -1250,11 +1313,30 @@ const styles = StyleSheet.create({
   // Modules grid
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
   moduleButton: {
-    backgroundColor: colors.card, borderRadius: 12,
-    padding: 12, alignItems: 'center', justifyContent: 'center',
-    width: '30%', flexGrow: 1, gap: 6,
+    backgroundColor: colors.card, borderRadius: 14,
+    paddingVertical: 16, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center',
+    width: '30%', flexGrow: 1, gap: 8,
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07, shadowRadius: 4, elevation: 2,
   },
-  moduleLabel: { color: colors.muted, fontSize: 11, fontWeight: '500', textAlign: 'center' },
+  moduleLabel: { color: colors.muted, fontSize: 12, fontWeight: '500', textAlign: 'center' },
+
+  weeklyInsightCard: {
+    backgroundColor: colors.card, borderRadius: 16,
+    padding: 18, marginBottom: 16,
+    borderLeftWidth: 3, borderLeftColor: colors.accent,
+  },
+  weeklyInsightText: { fontSize: 15, color: colors.white, lineHeight: 22, marginBottom: 12 },
+  weeklyInsightBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  weeklyInsightBtnText: { fontSize: 13, color: colors.accent, fontWeight: '600' },
+
+  testPromptCard: {
+    backgroundColor: colors.card, borderRadius: 16, padding: 16,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 16,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  testPromptTitle: { fontSize: 15, fontWeight: '600', color: colors.white },
+  testPromptSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
 
   // Chart
   chartCard: { backgroundColor: colors.card, borderRadius: 14, padding: 14 },
@@ -1266,9 +1348,9 @@ const styles = StyleSheet.create({
   },
   moodMiniWrap: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 4 },
   moodMiniItem: { alignItems: 'center', gap: 3, flex: 1 },
-  moodMiniBar:  { width: 6, borderRadius: 3 },
-  moodMiniScore:{ fontSize: 9, fontWeight: '700' },
-  moodMiniDay:  { fontSize: 9, color: colors.muted },
+  moodMiniBar:  { width: 8, borderRadius: 4 },
+  moodMiniScore:{ fontSize: 11, fontWeight: '700' },
+  moodMiniDay:  { fontSize: 11, color: colors.muted },
 
   // History
   historyBlock: { backgroundColor: colors.card, borderRadius: 14, overflow: 'hidden' },
