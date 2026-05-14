@@ -173,17 +173,20 @@ Plans:
   4. Политика конфиденциальности не содержит личных данных разработчика
   5. ASO-метадата заполнена: название, подзаголовок, ключевые слова, 5 скриншотов
   6. Новая жалоба в таблице reports → email-алерт разработчику в течение минуты
-**Plans**: TBD
-**UI hint**: yes
+  7. Критические баги (CR-01..CR-05) исправлены — реакции в DM/мыслях работают
+  8. Дизайн-система исправлена — accent=#8B7355, нет emoji в UI
+**Plans**: 9 планов
 
 Plans:
-- [ ] 07-01: Финальное название + иконка + сплэш (assets/icon.png, adaptive-icon.png, splash-icon.png)
-- [ ] 07-02: Firebase FCM для Android (google-services.json, eas credentials)
-- [ ] 07-03: Deep link для подтверждения email (EMAIL_CONFIRM_ENABLED=true + Supabase + схема)
-- [ ] 07-04: Скрыть личные данные (GitHub Organization, отдельный email поддержки)
-- [ ] 07-05: ASO-метадата + скриншоты (название 30 симв, ключевые слова 100 симв, 5 экранов)
-- [ ] 07-06: Email-алерт при жалобе (RESEND_API_KEY → Supabase Secrets → webhook на reports)
-- [ ] 07-07: Возрастная категория 17+ в App Store и Google Play
+- [ ] 07-01-PLAN.md — Финальное название + app.json (scheme, bundleIdentifier, package)
+- [ ] 07-02-PLAN.md — Firebase FCM: eas.json + .gitignore + google-services.json
+- [ ] 07-03-PLAN.md — Deep link: expo-auth-session + EmailConfirmScreen + config.js
+- [ ] 07-04-PLAN.md — Скрыть личные данные: docs/index.html → support@noy.app
+- [ ] 07-05-PLAN.md — ASO-метадата + 5 скриншотов (зависит от 07-01)
+- [ ] 07-06-PLAN.md — Email-алерт при жалобе (Edge Function + RESEND_API_KEY + webhook)
+- [ ] 07-07-PLAN.md — Возрастная категория 16+ в App Store и Google Play (зависит от 07-01)
+- [ ] 07-08-PLAN.md — Критические баги: CR-01 DM реакции, CR-03 like null guard, CR-04 nav params, CR-05 мысли реакции
+- [ ] 07-09-PLAN.md — UI-фиксы: theme.js accent #8B7355, FishingScreen без emoji, safe-area insets
 
 ---
 
@@ -229,6 +232,6 @@ Plans:
 | 4. Profiles & Push | MVP+ | Complete | Complete | 06.05.26 |
 | 5. Engagement & Safety | MVP+ | Complete | Complete | 07.05.26 |
 | 6. Psychometric Engine | MVP+ | Complete | Complete | 14.05.26 |
-| 7. Release Prep | v1.0 | 0/7 | In progress | - |
+| 7. Release Prep | v1.0 | 0/9 | In progress | - |
 | 8. Growth & Analytics | v1.1 | 0/3 | Not started | - |
 | 9. Community Features | v1.1 | 0/1 | Not started | - |

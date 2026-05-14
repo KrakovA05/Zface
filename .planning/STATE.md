@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: Release
+status: planning
+stopped_at: Phase 7 UI-SPEC approved
+last_updated: "2026-05-14T21:52:21.108Z"
+last_activity: 14.05.26 — Завершён психометрический движок (Phase 6), инициализирована GSD-структура
+progress:
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 67
+---
+
 # Project State
 
 ## Project Reference
@@ -19,6 +35,7 @@ Progress: [██████████████░░░░░░] 67% (6/
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 6 фаз (планы не считались до GSD)
 - Average duration: N/A (ретроспективная инициализация)
 - Total execution time: ~30 дней (15.04.26 → 14.05.26)
@@ -58,6 +75,6 @@ Progress: [██████████████░░░░░░] 67% (6/
 
 ## Session Continuity
 
-Last session: 2026-05-14
-Stopped at: GSD planning structure инициализирована. Phase 7 готова к планированию.
-Resume file: None
+Last session: 2026-05-14T21:52:21.095Z
+Stopped at: Phase 7 UI-SPEC approved
+Resume file: .planning/phases/phase-07-release-prep/07-UI-SPEC.md
