@@ -77,10 +77,13 @@ export async function getNextTestId(userId) {
       if (!lastPassed[r.test_id]) lastPassed[r.test_id] = new Date(r.created_at);
     }
 
-    // Если есть preferred тест по фокусу и он ещё не пройден на этой неделе
+    // Если есть preferred тест по фокусу — приоритизируем его
     const preferredTest = currentFocus ? FOCUS_TEST_MAP[currentFocus] : null;
-    if (preferredTest && WEEKLY_TEST_ROTATION.includes(preferredTest) && !passedThisWeek.has(preferredTest)) {
-      return preferredTest;
+    if (preferredTest && !passedThisWeek.has(preferredTest)) {
+      const isMonthly = ['olbi_short', 'rosenberg'].includes(preferredTest);
+      if (!isMonthly || !passedThisMonth.has(preferredTest)) {
+        return preferredTest;
+      }
     }
 
     // Иначе — стандартная ротация по давности
