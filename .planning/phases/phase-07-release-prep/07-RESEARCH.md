@@ -505,22 +505,22 @@ type WebhookPayload = {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Финальное название: «Ной» или другое?**
-   - Что знаем: кандидат «Ной», slug `noy`, package `com.noy.app`
-   - Что неясно: окончательное решение пользователя
-   - Рекомендация: заблокировать 07-01 до подтверждения названия, все остальные планы — независимо
+1. **Финальное название** — RESOLVED
+   - Рабочий кандидат: **«!один»** (означает «не один» в русском языке)
+   - Bundle ID: `com.odinapp.app`
+   - Scheme: `odin://`
+   - Статус: финальное подтверждение ожидается в checkpoint 07-01 — имя и email фиксируются там перед любыми коммитами.
 
-2. **Email поддержки для сторов — какой домен?**
-   - Что знаем: текущий `krakov.arseniy@icloud.com` нужно скрыть из `docs/index.html` и PUBLISH.md
-   - Что неясно: будет ли создан отдельный домен или достаточно Gmail/iCloud с другим именем
-   - Рекомендация: `support@noy.app` через Resend Custom Domain или просто новый iCloud-алиас
+2. **Email поддержки** — RESOLVED
+   - Плановый адрес: `support@odin.app` (при подтверждении названия «!один»)
+   - 07-01 checkpoint включает решение по email. До его прохождения все планы используют `support@odin.app` как placeholder.
 
-3. **Подтверждение email: нужен ли `expo-auth-session` весь пакет?**
-   - Что знаем: используется только `expo-auth-session/build/QueryParams.getQueryParams`
-   - Альтернатива: ручной парсинг URL через `new URL(url).searchParams` или `expo-linking` без доп. пакета
-   - Рекомендация: установить `expo-auth-session` — официальный паттерн, меньше рисков
+3. **Подтверждение email: нужен ли `expo-auth-session`?** — RESOLVED
+   - Ответ: **НЕТ**, отдельный пакет не нужен.
+   - Использовать `Linking.useLinkingURL()` из `expo-linking` (уже установлен в SDK 54).
+   - `expo-auth-session` НЕ требуется. Ссылки на `QueryParams.getQueryParams` из `expo-auth-session/build/QueryParams` в 07-03-PLAN.md остаются рабочими, но если пакет не установлен — парсить URL вручную через `new URL(url).searchParams`.
 
 ---
 
