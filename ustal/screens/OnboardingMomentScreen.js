@@ -95,8 +95,22 @@ export default function OnboardingMomentScreen({ route, navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+          <TouchableOpacity
+            style={[styles.goalBtn, { borderColor: lvlColor + '44', marginBottom: 4 }]}
+            onPress={() => navigation.navigate('PsychTest', {
+              testId: 'ecr_short',
+              onComplete: () => navigation.navigate('PsychTest', {
+                testId: 'mini_spin',
+                onComplete: () => navigation.replace('Recommendations', { level }),
+              }),
+            })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="flask-outline" size={20} color={lvlColor} />
+            <Text style={[styles.goalBtnText, { color: colors.white }]}>пройти тест на стиль общения (2 мин)</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.replace('Recommendations', { level })} activeOpacity={0.6}>
-            <Text style={styles.goalSkip}>пропустить</Text>
+            <Text style={styles.goalSkip}>пропустить всё</Text>
           </TouchableOpacity>
         </View>
       ) : (
