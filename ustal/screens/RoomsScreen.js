@@ -179,8 +179,9 @@ export default function RoomsScreen({ route, navigation }) {
 
     if (!anonymous) await loadParticipants(roomId);
 
+    const presenceKey = anonymous ? Math.random().toString(36).slice(2) : store.userId;
     const channel = supabase
-      .channel(`room_${roomId}`, { config: { presence: { key: store.userId } } })
+      .channel(`room_${roomId}`, { config: { presence: { key: presenceKey } } })
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `level=eq.${roomId}`,
@@ -210,7 +211,7 @@ export default function RoomsScreen({ route, navigation }) {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: store.userId, is_anonymous: anonymous });
+          await channel.track({ is_anonymous: anonymous });
         }
       });
     channelRef.current = channel;
@@ -257,8 +258,14 @@ export default function RoomsScreen({ route, navigation }) {
     if (editing) { await saveEdit(); return; }
     if (!text2.trim() || !room) return;
     setSending(true);
-    const username = room === 'night' ? 'Аноним' : (store.username || 'Аноним');
-    const payload = { username, text: text2.trim(), level: room, sender_id: store.userId };
+    const isNightRoom = room === 'night';
+    const username = isNightRoom ? 'Аноним' : (store.username || 'Аноним');
+    const payload = {
+      username,
+      text: text2.trim(),
+      level: room,
+      ...(isNightRoom ? {} : { sender_id: store.userId }),
+    };
     if (replyTo) {
       payload.reply_to_id = replyTo.id;
       payload.reply_to_text = replyTo.text;
@@ -280,7 +287,9 @@ export default function RoomsScreen({ route, navigation }) {
   };
 
   const deleteMessage = async (item) => {
-    await supabase.from('messages').delete().eq('id', item.id);
+    await supabase.from('messages').delete()
+      .eq('id', item.id)
+      .eq('sender_id', store.userId);
     setMessages(prev => prev.filter(m => m.id !== item.id));
   };
 
