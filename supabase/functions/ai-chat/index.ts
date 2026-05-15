@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: fullPrompt }] }],
-        generationConfig: { maxOutputTokens: 300, temperature: 0.85 },
+        generationConfig: { maxOutputTokens: 800, temperature: 0.85 },
       }),
     });
 
