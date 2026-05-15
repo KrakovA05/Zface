@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { SUPABASE_URL } from '@env';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
@@ -125,7 +126,7 @@ export default function AiChatScreen() {
       const token = session?.access_token;
       if (!token) return;
       await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/ai-chat`,
+        `${SUPABASE_URL}/functions/v1/ai-chat`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -153,7 +154,7 @@ export default function AiChatScreen() {
       const token = session?.access_token;
 
       const res = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/ai-chat`,
+        `${SUPABASE_URL}/functions/v1/ai-chat`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -202,6 +203,7 @@ export default function AiChatScreen() {
 
       <FlatList
         ref={flatListRef}
+        style={{ flex: 1 }}
         data={messages}
         keyExtractor={item => item.id}
         renderItem={({ item }) => <MessageBubble item={item} />}
