@@ -107,8 +107,8 @@ export default function PsychTestScreen({ route, navigation }) {
       <Text style={styles.question}>{q}</Text>
 
       <View style={styles.scaleRow}>
-        <Text style={styles.scaleLabel}>{test.scale.labels[0]}</Text>
-        <Text style={styles.scaleLabel}>{test.scale.labels[1]}</Text>
+        <Text style={[styles.scaleLabel, { textAlign: 'left' }]}>{test.scale.labels[0]}</Text>
+        <Text style={[styles.scaleLabel, { textAlign: 'right' }]}>{test.scale.labels[1]}</Text>
       </View>
       <View style={styles.optionsRow}>
         {scaleOptions.map(v => (
