@@ -41,10 +41,12 @@ created: 2026-05-15
 | 07-01 | icons | 1 | assets/icon.png 1024px, splash #FAF7F2 | N/A | manual | `ls ustal/assets/icon.png` | ⬜ pending |
 | 07-02 | fcm | 1 | google-services.json присутствует | FCM Service Account Key не в git | manual+auto | `test -f ustal/google-services.json` | ⬜ pending |
 | 07-03 | deep-link | 1 | EMAIL_CONFIRM_ENABLED=true в config.js | deep link redirect URI не содержит личных данных | manual | Ручная проверка email confirm на устройстве | ⬜ pending |
-| 07-04 | privacy | 1 | docs/index.html не содержит личный email | Нет PII разработчика в public-файлах | auto | `grep -v "@icloud\|@gmail\|Krakova" docs/index.html` | ⬜ pending |
+| 07-04 | privacy | 1 | docs/index.html не содержит личный email | Нет PII разработчика в public-файлах | auto | `grep "krakov.arseniy@icloud.com" docs/index.html && echo "FAIL" \|\| echo "OK"` | ⬜ pending |
 | 07-05 | aso | 2 | Название ≤30 символов, keywords ≤100 | N/A | manual | Проверка в App Store Connect / Google Play Console | ⬜ pending |
 | 07-06 | report-alert | 1 | RESEND_API_KEY в Supabase Secrets, webhook активен | Email уходит только на адрес разработчика | manual | Тест-жалоба → проверить email | ⬜ pending |
 | 07-07 | age-rating | 2 | 16+ в Apple, Content rating "Mature 16+" в Google | N/A | manual | Скриншот рейтинга в обоих сторах | ⬜ pending |
+| 07-08 | eas-build | 2 | EAS build profile настроен, preview build собирается без ошибок | Секреты не в eas.json (в EAS Secrets) | manual+auto | `test -f ustal/eas.json && node -e "const j=require('./ustal/eas.json'); console.log(Object.keys(j.build).join(', '))"` | ⬜ pending |
+| 07-09 | store-assets | 2 | 5 скриншотов подготовлены для App Store и Google Play | N/A | manual | Проверить наличие файлов в docs/screenshots/ или store-assets/ | ⬜ pending |
 
 ---
 
@@ -66,6 +68,8 @@ created: 2026-05-15
 | Deep link открывает приложение | 07-03 | Требует реальное устройство + email | Зарегистрироваться, кликнуть ссылку в письме |
 | Email-алерт при жалобе приходит | 07-06 | Требует реальный Supabase webhook | Создать тест-жалобу, проверить почту в течение 1 мин |
 | Возрастная категория 16+ отображается | 07-07 | Платформенный дашборд | Проверить App Store Connect и Google Play Console |
+| EAS preview build успешно устанавливается | 07-08 | Требует реальное устройство или симулятор | Установить .ipa/.apk из EAS Dashboard, проверить запуск |
+| Скриншоты соответствуют требованиям сторов | 07-09 | Визуальная проверка | Проверить размеры и содержание скриншотов перед загрузкой |
 
 ---
 
