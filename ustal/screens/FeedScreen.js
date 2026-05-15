@@ -22,6 +22,28 @@ function isVideo(url) {
   return url && (url.includes('.mp4') || url.includes('.mov'));
 }
 
+function scorePost(post, userLevel) {
+  let score = 0;
+
+  if (post.author_id === SYSTEM_USER_ID) {
+    score += 10;
+    if (post.link_url) score += 2;
+  }
+
+  const targets = post.target_levels || [];
+  if (targets.length === 0 || targets.includes(userLevel)) {
+    score += 3;
+  }
+
+  if (userLevel === 'red' && targets.includes('red')) score += 2;
+  if (userLevel === 'green' && targets.includes('green')) score += 1;
+
+  const ageHours = (Date.now() - new Date(post.created_at)) / 3600000;
+  if (ageHours < 24) score += 1;
+
+  return score;
+}
+
 export default function FeedScreen({ navigation }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +138,10 @@ export default function FeedScreen({ navigation }) {
     const { data, error } = await query;
     if (error) Alert.alert('Ошибка', 'Не удалось загрузить ленту');
     const newPosts = data || [];
+    if (reset) {
+      const userLvl = store.level || 'yellow';
+      newPosts.sort((a, b) => scorePost(b, userLvl) - scorePost(a, userLvl));
+    }
     if (reset) setPosts(newPosts);
     else setPosts(prev => [...prev, ...newPosts]);
     fetchAuthorAvatars(newPosts);
