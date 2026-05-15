@@ -16,6 +16,7 @@ import Avatar from '../components/Avatar';
 
 const PAGE_SIZE = 20;
 const SUPABASE_URL = 'https://yincycmdsdluueqsxtwn.supabase.co';
+const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 function isVideo(url) {
   return url && (url.includes('.mp4') || url.includes('.mov'));
@@ -244,10 +245,11 @@ export default function FeedScreen({ navigation }) {
     const date = new Date(item.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     const isOwn = item.author_id === store.userId;
     const isLiked = !!likedPosts[item.id];
+    const isSystemPost = item.author_id === SYSTEM_USER_ID;
 
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, isSystemPost && styles.systemPostCard]}
         onLongPress={() => onLongPressPost(item)}
         delayLongPress={400}
         activeOpacity={isOwn ? 0.9 : 1}
@@ -258,7 +260,7 @@ export default function FeedScreen({ navigation }) {
             username={item.author_username} level={currentLevel} size={36}
           />
           <View style={styles.cardMeta}>
-            <Text style={[styles.username, { color: lvlColor }]}>{item.author_username}</Text>
+            <Text style={[styles.username, { color: lvlColor }]}>{item.author_username}{isSystemPost ? ' ✦' : ''}</Text>
             <Text style={styles.date}>{date}</Text>
           </View>
           <View style={[styles.levelBadge, { borderColor: lvlColor }]}>
@@ -436,6 +438,7 @@ const styles = StyleSheet.create({
 
   list: { paddingHorizontal: 16, paddingBottom: 16 },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 12 },
+  systemPostCard: { backgroundColor: '#FAF3E8' },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
   cardMeta: { flex: 1 },
   username: { fontWeight: '600', fontSize: 14 },
