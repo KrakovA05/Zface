@@ -40,3 +40,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# FCM Service Account Key — НИКОГДА не коммитить (содержит приватные ключи)
+*service-account*.json
+*serviceAccount*.json
+firebase-adminsdk*.json
