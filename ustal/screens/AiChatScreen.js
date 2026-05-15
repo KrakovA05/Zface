@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TextInput,
-  TouchableOpacity, KeyboardAvoidingView, Platform,
+  TouchableOpacity, Keyboard, Platform,
   ActivityIndicator, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,6 +60,7 @@ function CrisisCard({ onDismiss }) {
 
 export default function AiChatScreen() {
   const insets = useSafeAreaInsets();
+  const [kbHeight, setKbHeight] = useState(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -69,9 +70,16 @@ export default function AiChatScreen() {
   const sessionIdRef = useRef(null);
   const messagesRef = useRef([]);
 
-  // Высота floating tab bar над safe area (paddingTop:8 + pill:16 + tab:20 + icon:~22)
   const TAB_BAR_ABOVE_INSET = 68;
   const bottomOffset = insets.bottom + TAB_BAR_ABOVE_INSET;
+
+  useEffect(() => {
+    const showEv = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEv = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEv, e => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEv, () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useEffect(() => {
     initSession();
@@ -205,27 +213,24 @@ export default function AiChatScreen() {
         </Text>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        style={{ flex: 1 }}
-        data={messages}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <MessageBubble item={item} />}
-        contentContainerStyle={styles.messageList}
-        ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyText}>напиши что-нибудь — @один ответит</Text>
-          </View>
-        }
-      />
+      <View style={{ flex: 1, marginBottom: kbHeight }}>
+        <FlatList
+          ref={flatListRef}
+          style={{ flex: 1 }}
+          data={messages}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => <MessageBubble item={item} />}
+          contentContainerStyle={styles.messageList}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyText}>напиши что-нибудь — @один ответит</Text>
+            </View>
+          }
+        />
 
-      {showCrisis && <CrisisCard onDismiss={() => setShowCrisis(false)} />}
+        {showCrisis && <CrisisCard onDismiss={() => setShowCrisis(false)} />}
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={bottomOffset + 10}
-      >
-        <View style={[styles.inputRow, { paddingBottom: bottomOffset + 4 }]}>
+        <View style={[styles.inputRow, { paddingBottom: kbHeight > 0 ? 12 : bottomOffset + 4 }]}>
           <TextInput
             style={styles.input}
             value={input}
@@ -247,7 +252,7 @@ export default function AiChatScreen() {
             }
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
