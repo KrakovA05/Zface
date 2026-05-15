@@ -222,6 +222,23 @@ Plans:
 
 ---
 
+#### Phase 10: AI Feed Content
+**Goal**: Лента всегда наполнена живым контентом — Edge Function генерирует 2-3 поста в день через Gemini API от системного пользователя @один для каждого уровня (green/yellow/red).
+**Depends on**: Phase 7
+**Success Criteria** (what must be TRUE):
+  1. Системный пользователь @один существует в таблице users
+  2. Edge Function ai-feed-generator запускается по расписанию (pg_cron, раз в день)
+  3. Функция генерирует 2-3 поста на каждый уровень (green/yellow/red) + 1-2 для всех
+  4. Контент адаптирован под уровень: red — валидация, yellow — 50/50, green — вопросы
+  5. Gemini API ключ хранится в Supabase Secrets, не в коде
+  6. При отсутствии ключа функция gracefully падает с логом (не ломает приложение)
+**Plans**: 1 план
+
+Plans:
+- [ ] 10-01-PLAN.md — Системный пользователь @один + Edge Function ai-feed-generator + pg_cron расписание
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -235,3 +252,4 @@ Plans:
 | 7. Release Prep | v1.0 | 0/9 | In progress | - |
 | 8. Growth & Analytics | v1.1 | 0/3 | Not started | - |
 | 9. Community Features | v1.1 | 0/1 | Not started | - |
+| 10. AI Feed Content | v1.1 | 0/1 | Not started | - |
