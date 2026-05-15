@@ -1,7 +1,7 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput,
   ActivityIndicator, Alert, Keyboard, TouchableWithoutFeedback, Image,
-  Platform, Modal,
+  Platform, Modal, Linking,
 } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -270,6 +270,18 @@ export default function FeedScreen({ navigation }) {
 
         {!!item.text && <Text style={styles.postText}>{item.text}</Text>}
 
+        {isSystemPost && !!item.link_url && (
+          <TouchableOpacity
+            style={styles.linkCard}
+            onPress={() => Linking.openURL(item.link_url)}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="document-text-outline" size={18} color={colors.accent} />
+            <Text style={styles.linkCardTitle} numberOfLines={2}>{item.link_title || item.link_url}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          </TouchableOpacity>
+        )}
+
         {item.media_url && !isVideo(item.media_url) && (
           <TouchableOpacity onPress={() => navigation.navigate('Post', { post: item })} activeOpacity={0.95}>
             <Image source={{ uri: item.media_url }} style={styles.postImage} resizeMode="cover" />
@@ -439,6 +451,22 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 16 },
   card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, marginBottom: 12 },
   systemPostCard: { backgroundColor: '#FAF3E8' },
+  linkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0EBE0',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+    gap: 8,
+  },
+  linkCardTitle: {
+    flex: 1,
+    fontSize: 13,
+    color: '#5C4A38',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
   cardMeta: { flex: 1 },
   username: { fontWeight: '600', fontSize: 14 },

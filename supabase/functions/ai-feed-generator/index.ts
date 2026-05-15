@@ -77,6 +77,35 @@ async function generateCrossLevelPosts(
     .map((i) => ({ text: i.text.slice(0, 500), level: 'all' }));
 }
 
+async function generateResourcePosts(
+  apiKey: string,
+): Promise<{ text: string; level: string; link_url: string; link_title: string }[]> {
+  const { data: articles } = await supabase
+    .from('resources')
+    .select('title, url, topic')
+    .eq('type', 'article')
+    .limit(50);
+
+  if (!articles || articles.length === 0) return [];
+
+  // случайные 2 статьи
+  const shuffled = articles.sort(() => Math.random() - 0.5).slice(0, 2);
+
+  const results: { text: string; level: string; link_url: string; link_title: string }[] = [];
+  for (const article of shuffled) {
+    const prompt = `Напиши 1-2 предложения — почему эта статья может быть полезна кому-то, кому сейчас непросто. Не пересказывай, не советуй. Просто честно, как живой человек. Только текст, без кавычек.
+Статья: "${article.title}", тема: "${article.topic}"`;
+    const intro = await callGemini(prompt, apiKey);
+    results.push({
+      text: intro.trim().slice(0, 300),
+      level: 'all',
+      link_url: article.url,
+      link_title: article.title,
+    });
+  }
+  return results;
+}
+
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get('CRON_SECRET');
   if (cronSecret) {
@@ -116,8 +145,10 @@ Deno.serve(async (req) => {
     const yellowPosts = await generatePostsForLevel('yellow', apiKey);
     const greenPosts = await generatePostsForLevel('green', apiKey);
     const crossPosts = await generateCrossLevelPosts(apiKey);
+    const resourcePosts = await generateResourcePosts(apiKey);
 
-    const allPosts = [...redPosts, ...yellowPosts, ...greenPosts, ...crossPosts];
+    type PostInput = { text: string; level: string; link_url?: string; link_title?: string };
+    const allPosts: PostInput[] = [...redPosts, ...yellowPosts, ...greenPosts, ...crossPosts, ...resourcePosts];
     const rows = allPosts.map((p) => ({
       author_id: SYSTEM_USER_ID,
       author_username: '@один',
@@ -126,6 +157,8 @@ Deno.serve(async (req) => {
       target_levels: p.level === 'all' ? ['green', 'yellow', 'red'] : [p.level],
       likes: 0,
       media_url: null,
+      link_url: p.link_url ?? null,
+      link_title: p.link_title ?? null,
     }));
 
     const { error } = await supabase.from('feed_posts').insert(rows);
