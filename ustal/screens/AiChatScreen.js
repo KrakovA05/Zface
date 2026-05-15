@@ -189,7 +189,7 @@ export default function AiChatScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+      <View style={styles.header}>
         <View style={styles.headerAvatar}>
           <Text style={styles.headerAvatarIcon}>✦</Text>
         </View>
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
