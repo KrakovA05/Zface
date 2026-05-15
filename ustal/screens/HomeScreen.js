@@ -1,11 +1,12 @@
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Modal, Pressable } from 'react-native';
 import { useState, useCallback, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_WORDS, DAILY_WORDS_CONTEXT } from '../constants';
+import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_QUESTIONS_RED, DAILY_QUESTIONS_GREEN, DAILY_WORDS, DAILY_WORDS_CONTEXT } from '../constants';
 import { colors } from '../theme';
 import { scheduleLowMoodPush } from '../utils/notifications';
 import { logEvent } from '../utils/analytics';
@@ -54,11 +55,24 @@ function getDynamic(history) {
   return               { label: 'Стабильно',            color: '#AA7C00', icon: 'remove-outline'        };
 }
 
-function getTodayQuestion() {
-  const now   = new Date();
+function getAdaptiveQuestion(recentHistory) {
+  const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
-  const day   = Math.floor((now - start) / 86400000);
-  return DAILY_QUESTIONS[day % DAILY_QUESTIONS.length];
+  const dayIdx = Math.floor((now - start) / 86400000);
+
+  if (!recentHistory || recentHistory.length < 3) {
+    return DAILY_QUESTIONS[dayIdx % DAILY_QUESTIONS.length];
+  }
+
+  const levelOrder = { green: 2, yellow: 1, red: 0 };
+  const scores = recentHistory.slice(0, 3).map(r => levelOrder[r.level] ?? 1);
+
+  const isWorsening = scores[0] < scores[1] && scores[1] <= scores[2];
+  const isImproving = scores[0] > scores[1] && scores[1] >= scores[2];
+
+  if (isWorsening) return DAILY_QUESTIONS_RED[dayIdx % DAILY_QUESTIONS_RED.length];
+  if (isImproving) return DAILY_QUESTIONS_GREEN[dayIdx % DAILY_QUESTIONS_GREEN.length];
+  return DAILY_QUESTIONS[dayIdx % DAILY_QUESTIONS.length];
 }
 
 function getTodayDate() {
@@ -177,9 +191,37 @@ export default function HomeScreen({ navigation }) {
   const [nextTestId,   setNextTestId]   = useState(null);
   const [weeklyInsight, setWeeklyInsight] = useState(null);
   const [showFocusAsk,  setShowFocusAsk]  = useState(false);
-  const dailyQuestion = getTodayQuestion();
+  const [navHint,       setNavHint]       = useState(null);
+  const dailyQuestion = getAdaptiveQuestion(history);
   const todayWord = getTodayWord();
   const todayWordContext = getTodayWordContext();
+
+  const checkNavHint = async (recentHistory) => {
+    const todayStr = getTodayDate();
+    const lastShown = await AsyncStorage.getItem('nav_hint_last_shown');
+    if (lastShown === todayStr) return;
+
+    if (recentHistory && recentHistory.length >= 3) {
+      const levelOrder = { green: 2, yellow: 1, red: 0 };
+      const scores = recentHistory.slice(0, 3).map(r => levelOrder[r.level] ?? 1);
+      const isWorsening = scores[0] < scores[1] && scores[1] <= scores[2];
+      if (isWorsening) {
+        setNavHint({ text: 'несколько дней подряд нелегко. в ленте есть посты для таких моментов' });
+        await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
+        return;
+      }
+    }
+
+    const lastBreathing = await AsyncStorage.getItem('last_breathing_visit');
+    if (lastBreathing) {
+      const daysSince = (Date.now() - new Date(lastBreathing)) / 86400000;
+      if (daysSince >= 3) {
+        setNavHint({ text: 'ты уже 3 дня не заходил на дыхание — может быть сейчас?' });
+        await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
+        return;
+      }
+    }
+  };
 
   useFocusEffect(useCallback(() => {
     const load = async () => {
@@ -197,6 +239,7 @@ export default function HomeScreen({ navigation }) {
           setLevel(currentLevel);
           store.level = currentLevel;
           setHistory(recent);
+          checkNavHint(recent);
 
           const todayStart = new Date();
           todayStart.setHours(0, 0, 0, 0);
@@ -825,6 +868,18 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
+        {!!navHint && (
+          <View style={hintStyles.card}>
+            <View style={hintStyles.avatarWrap}>
+              <Text style={hintStyles.avatarIcon}>✦</Text>
+            </View>
+            <Text style={hintStyles.text}>{navHint.text}</Text>
+            <TouchableOpacity onPress={() => setNavHint(null)} activeOpacity={0.6} style={hintStyles.dismiss}>
+              <Ionicons name="close" size={14} color={colors.muted} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {!loading && (
           <View style={styles.dailyCard} onLayout={e => setDailyCardY(e.nativeEvent.layout.y)}>
             <Text style={styles.sectionLabel}>Вопрос дня</Text>
@@ -1442,4 +1497,31 @@ const styles = StyleSheet.create({
   historyDot:   { width: 8, height: 8, borderRadius: 4 },
   historyLevel: { fontSize: 14, fontWeight: '600', flex: 1 },
   historyDate:  { fontSize: 12, color: colors.muted },
+});
+
+const hintStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF6EE',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E8D4B0',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    gap: 10,
+  },
+  avatarWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#c9a96e',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  avatarIcon: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  text: { flex: 1, fontSize: 13, color: colors.white, lineHeight: 18 },
+  dismiss: { padding: 4, flexShrink: 0 },
 });
