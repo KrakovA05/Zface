@@ -106,6 +106,42 @@ async function generateResourcePosts(
   return results;
 }
 
+async function detectWorseningGroup(supabase: ReturnType<typeof createClient>): Promise<boolean> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 4);
+
+  const { data: results } = await supabase
+    .from('test_results')
+    .select('user_id, level, created_at')
+    .gte('created_at', cutoff.toISOString())
+    .order('created_at', { ascending: true });
+
+  if (!results || results.length === 0) return false;
+
+  const byUser: Record<string, { level: string; created_at: string }[]> = {};
+  for (const r of results) {
+    if (!byUser[r.user_id]) byUser[r.user_id] = [];
+    byUser[r.user_id].push(r);
+  }
+
+  const levelOrder: Record<string, number> = { green: 2, yellow: 1, red: 0 };
+  let worseningCount = 0;
+
+  for (const uid of Object.keys(byUser)) {
+    const userResults = byUser[uid].sort(
+      (a: { created_at: string }, b: { created_at: string }) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    if (userResults.length < 3) continue;
+
+    const last3 = userResults.slice(-3);
+    const scores = last3.map((r: { level: string }) => levelOrder[r.level] ?? 1);
+    if (scores[0] > scores[1] && scores[1] >= scores[2]) worseningCount++;
+  }
+
+  return worseningCount >= 3;
+}
+
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get('CRON_SECRET');
   if (cronSecret) {
@@ -122,6 +158,34 @@ Deno.serve(async (req) => {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  // Детекция паттернов ухудшения
+  const hasWorseningGroup = await detectWorseningGroup(supabase);
+  if (hasWorseningGroup) {
+    const supportPrompt = `Напиши 1 очень короткий пост (1-2 предложения) для людей, у которых несколько дней подряд ухудшается состояние.
+Тон: тепло, без советов, без позитива. Признание что это тяжело — и всё.
+Формат: JSON-объект {"text": "..."}`;
+
+    try {
+      const raw = await callGemini(supportPrompt, apiKey);
+      const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.text) {
+        await supabase.from('feed_posts').insert({
+          author_id: SYSTEM_USER_ID,
+          author_username: '@один',
+          author_level: 'red',
+          text: parsed.text,
+          target_levels: ['red', 'yellow'],
+          likes: 0,
+          link_url: null,
+          link_title: null,
+        });
+      }
+    } catch {
+      // не критично
+    }
   }
 
   // Пропустить если уже генерировали сегодня
