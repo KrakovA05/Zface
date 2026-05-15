@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
+import { store } from '../store';
 import { colors, shared } from '../theme';
 import { PSYCH_TESTS } from '../utils/psychTests';
 
@@ -40,17 +41,21 @@ export default function PsychTestScreen({ route, navigation }) {
     const rawScore = computeRaw(test, newAnswers);
     const normalizedScore = test.normalize(rawScore);
 
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
-    if (user) {
-      await supabase.from('psych_test_results').insert({
-        user_id: user.id,
+    const userId = store.userId;
+    if (userId) {
+      const { error } = await supabase.from('psych_test_results').insert({
+        user_id: userId,
         test_id: test.id,
         dimension: test.dimension,
         raw_score: rawScore,
         normalized_score: normalizedScore,
         answers: newAnswers,
       });
+      if (error) {
+        setSaving(false);
+        Alert.alert('Ошибка', 'Не удалось сохранить результат. Попробуй ещё раз.');
+        return;
+      }
     }
     setSaving(false);
     setDone(true);
