@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme';
 
 const PHASES = [
@@ -17,6 +18,10 @@ export default function BreathingScreen({ navigation }) {
   const [phaseIdx, setPhaseIdx] = useState(0);
   const [secs, setSecs]         = useState(PHASES[0].duration / 1000);
   const scale = useRef(new Animated.Value(1.0)).current;
+
+  useEffect(() => {
+    AsyncStorage.setItem('last_breathing_visit', new Date().toISOString()).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!running) return;
