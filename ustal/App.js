@@ -42,16 +42,16 @@ import LetterScreen from './screens/LetterScreen';
 import SupportScreen from './screens/SupportScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import PsychTestScreen from './screens/PsychTestScreen';
+import AiChatScreen from './screens/AiChatScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
-  Home:     { focused: 'home',           blur: 'home-outline' },
-  Feed:     { focused: 'newspaper',      blur: 'newspaper-outline' },
-  Messages: { focused: 'chatbubbles',    blur: 'chatbubbles-outline' },
-  Friends:  { focused: 'people',         blur: 'people-outline' },
-  Profile:  { focused: 'person',         blur: 'person-outline' },
+  Home:     { focused: 'home',        blur: 'home-outline' },
+  Feed:     { focused: 'newspaper',   blur: 'newspaper-outline' },
+  Messages: { focused: 'chatbubbles', blur: 'chatbubbles-outline' },
+  Profile:  { focused: 'person',      blur: 'person-outline' },
 };
 
 function CustomTabBar({ state, descriptors, navigation }) {
@@ -75,6 +75,27 @@ function CustomTabBar({ state, descriptors, navigation }) {
               navigation.navigate(route.name);
             }
           };
+
+          // Спецрендер для таба @один
+          if (route.name === 'AiChat') {
+            return (
+              <TouchableOpacity
+                key={route.key}
+                onPress={onPress}
+                style={tabStyles.tab}
+                activeOpacity={0.7}
+              >
+                <View style={tabStyles.iconWrap}>
+                  <View style={[tabStyles.aiTabIcon, focused && tabStyles.aiTabIconFocused]}>
+                    <Text style={tabStyles.aiTabStar}>✦</Text>
+                  </View>
+                  <View style={tabStyles.aiTabBadge}>
+                    <Text style={tabStyles.aiTabBadgeText}>AI</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }
 
           return (
             <TouchableOpacity
@@ -161,21 +182,48 @@ const tabStyles = StyleSheet.create({
     fontSize: 9,
     fontWeight: 'bold',
   },
+  aiTabIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#c9a96e',
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aiTabIconFocused: {
+    shadowColor: '#c9a96e',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  aiTabStar: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  aiTabBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -6,
+    backgroundColor: '#7B61FF',
+    borderRadius: 5,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  aiTabBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 7,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
 });
 
 function MainTabs() {
   const [msgBadge, setMsgBadge] = useState(null);
-  const [friendBadge, setFriendBadge] = useState(null);
 
   const refreshBadges = useCallback(async () => {
     if (!store.userId) return;
-
-    const { count: reqCount } = await supabase
-      .from('friendships')
-      .select('*', { count: 'exact', head: true })
-      .eq('receiver_id', store.userId)
-      .eq('status', 'pending');
-    setFriendBadge(reqCount || null);
 
     const { data: dms } = await supabase
       .from('direct_messages')
@@ -243,7 +291,7 @@ function MainTabs() {
       <Tab.Screen name="Home"     component={HomeScreen} />
       <Tab.Screen name="Feed"     component={FeedScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} options={{ tabBarBadge: msgBadge }} />
-      <Tab.Screen name="Friends"  component={FriendsScreen} options={{ tabBarBadge: friendBadge }} />
+      <Tab.Screen name="AiChat"   component={AiChatScreen} />
       <Tab.Screen name="Profile"  component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -265,7 +313,7 @@ function navigateFromNotification(navigationRef, data) {
       nav.navigate('Letter');
       break;
     case 'Friends':
-      nav.navigate('Main', { screen: 'Friends' });
+      nav.navigate('Friends');
       break;
     case 'Feed':
       nav.navigate('Main', { screen: 'Feed' });
@@ -439,6 +487,7 @@ export default function App() {
             <Stack.Screen name="Letter"          component={LetterScreen} />
             <Stack.Screen name="Support"         component={SupportScreen} />
             <Stack.Screen name="Notifications"   component={NotificationsScreen} />
+            <Stack.Screen name="Friends"       component={FriendsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PsychTest"        component={PsychTestScreen} options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>

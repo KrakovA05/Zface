@@ -87,6 +87,7 @@ export default function ProfileScreen({ navigation }) {
   const [presenceStats, setPresenceStats] = useState(null);
   const [moodHistory, setMoodHistory] = useState([]);
   const [fishCollection, setFishCollection] = useState([]);
+  const [friendBadge, setFriendBadge] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -151,6 +152,13 @@ export default function ProfileScreen({ navigation }) {
         const { data: fishData } = await supabase
           .from('caught_fish').select('fish_name').eq('user_id', store.userId);
         setFishCollection([...new Set((fishData || []).map(r => r.fish_name))]);
+
+        const { count: reqCount } = await supabase
+          .from('friendships')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', store.userId)
+          .eq('status', 'pending');
+        setFriendBadge(reqCount || null);
       };
       loadProfile();
       checkAndAwardAchievements();
@@ -390,6 +398,22 @@ export default function ProfileScreen({ navigation }) {
         contentContainerStyle={styles.content}
         contentInset={{ bottom: 80 }}
       >
+        {/* Кнопка Друзья в шапке */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.topBarBtn}
+            onPress={() => navigation.navigate('Friends')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="people-outline" size={22} color={colors.accent} />
+            {!!friendBadge && (
+              <View style={styles.topBarBadge}>
+                <Text style={styles.topBarBadgeText}>{friendBadge > 99 ? '99+' : String(friendBadge)}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* Hero */}
         <View style={styles.hero}>
           <TouchableOpacity style={styles.avatarWrap} onPress={pickAvatar} activeOpacity={0.8}>
@@ -657,6 +681,36 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
   content: { paddingBottom: 32 },
+
+  // TopBar (кнопка Друзья)
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 4,
+  },
+  topBarBtn: {
+    position: 'relative',
+    padding: 6,
+  },
+  topBarBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#e74c3c',
+    borderRadius: 7,
+    minWidth: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  topBarBadgeText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
 
   // Hero
   hero: {
