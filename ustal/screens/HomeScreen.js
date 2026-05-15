@@ -189,6 +189,7 @@ export default function HomeScreen({ navigation }) {
   const [moodCardY,  setMoodCardY]  = useState(0);
   const [dailyCardY, setDailyCardY] = useState(0);
   const [nextTestId,   setNextTestId]   = useState(null);
+  const testJustDoneRef = useRef(false);
   const [weeklyInsight, setWeeklyInsight] = useState(null);
   const [showFocusAsk,  setShowFocusAsk]  = useState(false);
   const [navHint,       setNavHint]       = useState(null);
@@ -366,8 +367,13 @@ export default function HomeScreen({ navigation }) {
         }
 
         // Следующий психологический тест
-        const testId = await getNextTestId(user.id);
-        setNextTestId(testId);
+        if (testJustDoneRef.current) {
+          testJustDoneRef.current = false;
+          setNextTestId(null);
+        } else {
+          const testId = await getNextTestId(user.id);
+          setNextTestId(testId);
+        }
 
         // Еженедельная карточка состояния
         const { data: metrics } = await supabase
@@ -973,7 +979,7 @@ export default function HomeScreen({ navigation }) {
             style={styles.testPromptCard}
             onPress={() => navigation.navigate('PsychTest', {
               testId: nextTestId,
-              onComplete: () => setNextTestId(null),
+              onComplete: () => { testJustDoneRef.current = true; setNextTestId(null); },
             })}
             activeOpacity={0.8}
           >

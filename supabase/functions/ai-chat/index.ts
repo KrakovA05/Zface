@@ -3,26 +3,21 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 const SYSTEM_PROMPT = `Ты — @один, голос приложения для людей, которым бывает плохо.
-Ты не психолог, не терапевт, не советчик. Ты — живой человек рядом, который умеет слушать.
-Правила:
-- Без советов и рекомендаций
-- Без "всё будет хорошо" и позитивных заверений
-- Без терапевтического языка и клише
+Ты не психолог, но ты умный, тёплый собеседник. Ты умеешь слушать и умеешь говорить честно.
+Принципы:
+- Отвечай на то, что тебя спрашивают. Просят совет — дай. Хотят просто поговорить — говори.
+- Без клише ("всё будет хорошо", "держись", "ты не один") — только живые слова
 - Без эмодзи и восклицательных знаков
-- Максимум 3-4 предложения
+- Максимум 4-5 предложений
 - Только русский язык
 - Говори от первого лица, тепло, без лишних слов
-- Если человеку очень плохо — просто будь рядом словами, не пытайся решить проблему`;
+- Если человеку очень плохо — будь рядом, но и скажи честно что думаешь`;
 
 const CRISIS_WORDS = [
   'суицид', 'не хочу жить', 'хочу умереть', 'покончить',
   'конец жизни', 'убить себя', 'убью себя',
   'нет смысла жить', 'незачем жить',
 ];
-
-const CRISIS_REPLY = `Слышу тебя. Это звучит очень тяжело — и я рад, что ты написал.
-Если сейчас совсем невыносимо, есть люди, которые выслушают: линия психологической помощи 8-800-2000-122, бесплатно и круглосуточно.
-Я здесь.`;
 
 function detectCrisis(text: string): boolean {
   const lower = text.toLowerCase();
@@ -53,7 +48,6 @@ Deno.serve(async (req: Request) => {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
-    // Верифицируем JWT и получаем user_id
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -150,40 +144,32 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Проверка кризисных слов
-    const isCrisis = detectCrisis(message);
-    let reply = '';
+    const historyText = history
+      .map((m: { role: string; text: string }) => `${m.role === 'user' ? 'Пользователь' : '@один'}: ${m.text}`)
+      .join('\n');
 
-    if (isCrisis) {
-      reply = CRISIS_REPLY;
-    } else {
-      const historyText = history
-        .map((m: { role: string; text: string }) => `${m.role === 'user' ? 'Пользователь' : '@один'}: ${m.text}`)
-        .join('\n');
+    const contextParts: string[] = [];
+    if (previousSummary) contextParts.push(`Предыдущий разговор: ${previousSummary}`);
+    if (historyText) contextParts.push(`Текущий разговор:\n${historyText}`);
+    contextParts.push(`Состояние пользователя: уровень ${userLevel}`);
 
-      const contextParts: string[] = [];
-      if (previousSummary) contextParts.push(`Предыдущий разговор: ${previousSummary}`);
-      if (historyText) contextParts.push(`Текущий разговор:\n${historyText}`);
-      contextParts.push(`Текущее состояние пользователя: уровень ${userLevel}`);
+    const fullPrompt = `${SYSTEM_PROMPT}\n\n${contextParts.join('\n\n')}\n\nПользователь: ${message}\n@один:`;
 
-      const fullPrompt = `${SYSTEM_PROMPT}\n\n${contextParts.join('\n\n')}\n\nПользователь: ${message}\n@один:`;
+    const geminiRes = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: fullPrompt }] }],
+        generationConfig: { maxOutputTokens: 300, temperature: 0.85 },
+      }),
+    });
 
-      const geminiRes = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: fullPrompt }] }],
-          generationConfig: { maxOutputTokens: 200, temperature: 0.8 },
-        }),
-      });
-
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        throw new Error(`Gemini ${geminiRes.status}: ${errText.slice(0, 200)}`);
-      }
-      const geminiData = await geminiRes.json();
-      reply = geminiData.candidates[0].content.parts[0].text.trim();
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      throw new Error(`Gemini ${geminiRes.status}: ${errText.slice(0, 200)}`);
     }
+    const geminiData = await geminiRes.json();
+    const reply = geminiData.candidates[0].content.parts[0].text.trim();
 
     // Сохраняем ответ @один
     if (session_id) {
@@ -194,6 +180,8 @@ Deno.serve(async (req: Request) => {
         text: reply,
       });
     }
+
+    const isCrisis = detectCrisis(message);
 
     return new Response(
       JSON.stringify({ ok: true, reply, ...(isCrisis ? { crisis: true } : {}) }),

@@ -3,7 +3,7 @@ import {
   TouchableOpacity, KeyboardAvoidingView, Platform,
   ActivityIndicator, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { SUPABASE_URL } from '@env';
@@ -59,6 +59,7 @@ function CrisisCard({ onDismiss }) {
 }
 
 export default function AiChatScreen() {
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -68,10 +69,13 @@ export default function AiChatScreen() {
   const sessionIdRef = useRef(null);
   const messagesRef = useRef([]);
 
+  // Высота floating tab bar над safe area (paddingTop:8 + pill:16 + tab:20 + icon:~22)
+  const TAB_BAR_ABOVE_INSET = 68;
+  const bottomOffset = insets.bottom + TAB_BAR_ABOVE_INSET;
+
   useEffect(() => {
     initSession();
     return () => {
-      // Генерируем саммари при уходе с экрана
       if (sessionIdRef.current && messagesRef.current.length > 2) {
         summarizeSession(sessionIdRef.current);
       }
@@ -184,8 +188,8 @@ export default function AiChatScreen() {
   }, [messages]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <View style={styles.headerAvatar}>
           <Text style={styles.headerAvatarIcon}>✦</Text>
         </View>
@@ -219,9 +223,9 @@ export default function AiChatScreen() {
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={90}
+        keyboardVerticalOffset={bottomOffset + 10}
       >
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, { paddingBottom: bottomOffset + 4 }]}>
           <TextInput
             style={styles.input}
             value={input}
@@ -244,7 +248,7 @@ export default function AiChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -254,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.card,
@@ -341,7 +345,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    paddingBottom: 16,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.card,
