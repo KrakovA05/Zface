@@ -24,6 +24,14 @@ function hasCrisisWord(text) {
 
 function MessageBubble({ item }) {
   const isUser = item.role === 'user';
+  const isError = item.role === 'error';
+  if (isError) {
+    return (
+      <View style={styles.bubbleWrapCenter}>
+        <Text style={styles.errorText}>{item.text}</Text>
+      </View>
+    );
+  }
   return (
     <View style={[styles.bubbleWrap, isUser ? styles.bubbleWrapUser : styles.bubbleWrapAi]}>
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAi]}>
@@ -181,9 +189,11 @@ export default function AiChatScreen() {
 
       const aiMsg = { id: `ai_${Date.now()}`, role: 'assistant', text: json.reply, created_at: new Date().toISOString() };
       setMessages(prev => [...prev, aiMsg]);
-    } catch {
+    } catch (e) {
       setMessages(prev => prev.filter(m => m.id !== tempId));
       setInput(text);
+      const errMsg = { id: `err_${Date.now()}`, role: 'error', text: `ошибка: ${e?.message || String(e)}`, created_at: new Date().toISOString() };
+      setMessages(prev => [...prev, errMsg]);
     } finally {
       setSending(false);
     }
@@ -241,9 +251,9 @@ export default function AiChatScreen() {
             maxLength={500}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, (!input.trim() || sending || !sessionId) && styles.sendBtnDisabled]}
             onPress={sendMessage}
-            disabled={!input.trim() || sending}
+            disabled={!input.trim() || sending || !sessionId}
             activeOpacity={0.7}
           >
             {sending
@@ -295,6 +305,8 @@ const styles = StyleSheet.create({
   bubbleWrap: { marginBottom: 10 },
   bubbleWrapUser: { alignItems: 'flex-end' },
   bubbleWrapAi: { alignItems: 'flex-start' },
+  bubbleWrapCenter: { alignItems: 'center', marginBottom: 8 },
+  errorText: { fontSize: 12, color: '#C0392B', opacity: 0.7 },
   bubble: {
     maxWidth: '82%',
     paddingVertical: 10,

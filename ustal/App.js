@@ -1,4 +1,7 @@
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, useRef, useCallback } from 'react';
+
+SplashScreen.preventAutoHideAsync();
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -434,13 +437,11 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
-  if (!initialRoute) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.accent} />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (initialRoute) SplashScreen.hideAsync();
+  }, [initialRoute]);
+
+  if (!initialRoute) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

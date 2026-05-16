@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const SYSTEM_PROMPT = `Ты — @один, голос приложения для людей, которым бывает плохо.
 Ты не психолог, но ты умный, тёплый собеседник. Ты умеешь слушать и умеешь говорить честно.
@@ -46,7 +47,7 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
+    const groqKey = Deno.env.get('GROQ_API_KEY')!;
 
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -73,20 +74,22 @@ Deno.serve(async (req: Request) => {
           .map((m: { role: string; text: string }) => `${m.role === 'user' ? 'Пользователь' : '@один'}: ${m.text}`)
           .join('\n');
 
-        const summaryPrompt = `Сделай краткое саммари этого разговора (2-3 предложения) для контекста следующей беседы. Только факты о состоянии и темах, без оценок:\n\n${transcript}`;
-
-        const geminiRes = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
+        const groqRes = await fetch(GROQ_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: summaryPrompt }] }],
-            generationConfig: { maxOutputTokens: 150 },
+            model: GROQ_MODEL,
+            messages: [
+              { role: 'user', content: `Сделай краткое саммари этого разговора (2-3 предложения) для контекста следующей беседы. Только факты о состоянии и темах, без оценок:\n\n${transcript}` },
+            ],
+            max_tokens: 200,
+            temperature: 0.5,
           }),
         });
 
-        if (geminiRes.ok) {
-          const data = await geminiRes.json();
-          const summary = data.candidates[0].content.parts[0].text.trim();
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          const summary = data.choices[0].message.content.trim();
           await supabase.from('ai_chat_sessions')
             .update({ summary, ended_at: new Date().toISOString() })
             .eq('id', session_id);
@@ -144,32 +147,44 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const historyText = history
-      .map((m: { role: string; text: string }) => `${m.role === 'user' ? 'Пользователь' : '@один'}: ${m.text}`)
-      .join('\n');
+    // Строим историю для Groq (messages array)
+    const messages: { role: string; content: string }[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+    ];
 
-    const contextParts: string[] = [];
-    if (previousSummary) contextParts.push(`Предыдущий разговор: ${previousSummary}`);
-    if (historyText) contextParts.push(`Текущий разговор:\n${historyText}`);
-    contextParts.push(`Состояние пользователя: уровень ${userLevel}`);
+    if (previousSummary) {
+      messages.push({ role: 'system', content: `Предыдущий разговор: ${previousSummary}` });
+    }
 
-    const fullPrompt = `${SYSTEM_PROMPT}\n\n${contextParts.join('\n\n')}\n\nПользователь: ${message}\n@один:`;
+    messages.push({ role: 'system', content: `Состояние пользователя: уровень ${userLevel}` });
 
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${geminiKey}`, {
+    for (const m of history) {
+      messages.push({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.text,
+      });
+    }
+
+    messages.push({ role: 'user', content: message });
+
+    const groqRes = await fetch(GROQ_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: fullPrompt }] }],
-        generationConfig: { maxOutputTokens: 800, temperature: 0.85 },
+        model: GROQ_MODEL,
+        messages,
+        max_tokens: 1024,
+        temperature: 0.85,
       }),
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      throw new Error(`Gemini ${geminiRes.status}: ${errText.slice(0, 200)}`);
+    if (!groqRes.ok) {
+      const errText = await groqRes.text();
+      throw new Error(`Groq ${groqRes.status}: ${errText.slice(0, 200)}`);
     }
-    const geminiData = await geminiRes.json();
-    const reply = geminiData.candidates[0].content.parts[0].text.trim();
+
+    const groqData = await groqRes.json();
+    const reply = groqData.choices?.[0]?.message?.content?.trim() || 'не удалось получить ответ';
 
     // Сохраняем ответ @один
     if (session_id) {
