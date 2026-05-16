@@ -500,6 +500,7 @@ export default function ProfileScreen({ navigation }) {
         <Section title="Аккаунт">
           <Row icon="person-outline" label="Ник" value={store.username} valueColor={level.color} onPress={() => navigation.navigate('AccountSettings')} last={false} />
           <Row icon="mail-outline" label="Email" value={store.email} last={false} />
+          <Row icon="stats-chart-outline" label="Моя аналитика" onPress={() => navigation.navigate('Analytics')} last={false} />
           <Row
             icon={LEVEL_ICONS[store.level] || 'ellipse-outline'}
             label="Уровень"
