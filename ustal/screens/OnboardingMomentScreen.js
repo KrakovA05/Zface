@@ -93,7 +93,7 @@ export default function OnboardingMomentScreen({ route, navigation }) {
                   store.goal = g.id;
                   const { data: { user } } = await supabase.auth.getUser();
                   if (user) await supabase.from('users').update({ goal: g.id }).eq('user_id', user.id);
-                  navigation.replace('Recommendations', { level });
+                  navigation.replace('OnboardingCarousel');
                 }}
               >
                 <Ionicons name={g.icon} size={20} color={lvlColor} />
@@ -107,7 +107,7 @@ export default function OnboardingMomentScreen({ route, navigation }) {
               testId: 'ecr_short',
               onComplete: () => navigation.navigate('PsychTest', {
                 testId: 'mini_spin',
-                onComplete: () => navigation.replace('Recommendations', { level }),
+                onComplete: () => navigation.replace('OnboardingCarousel'),
               }),
             })}
             activeOpacity={0.7}
@@ -115,7 +115,7 @@ export default function OnboardingMomentScreen({ route, navigation }) {
             <Ionicons name="flask-outline" size={20} color={lvlColor} />
             <Text style={[styles.goalBtnText, { color: colors.white }]}>пройти тест на стиль общения (2 мин)</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.replace('Recommendations', { level })} activeOpacity={0.6}>
+          <TouchableOpacity onPress={() => navigation.replace('OnboardingCarousel')} activeOpacity={0.6}>
             <Text style={styles.goalSkip}>пропустить всё</Text>
           </TouchableOpacity>
         </View>
