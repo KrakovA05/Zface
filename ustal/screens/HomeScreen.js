@@ -435,7 +435,7 @@ export default function HomeScreen({ navigation }) {
     if (!myAnswers || myAnswers.length < 3) return;
 
     const myWords = new Set(
-      myAnswers.flatMap(a => a.answer.toLowerCase().split(/\s+/).filter(w => w.length > 3))
+      myAnswers.flatMap(a => (a.answer || '').toLowerCase().split(/\s+/).filter(w => w.length > 3))
     );
     if (myWords.size < 5) return;
 
@@ -479,7 +479,7 @@ export default function HomeScreen({ navigation }) {
     const scoreMap = {};
     others.forEach(({ user_id, answer }) => {
       if (!sameLevelSet.has(user_id) || shownSet.has(user_id) || friendIds.has(user_id)) return;
-      const words = answer.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const words = (answer || '').toLowerCase().split(/\s+/).filter(w => w.length > 3);
       const matches = words.filter(w => myWords.has(w)).length;
       if (matches > 0) scoreMap[user_id] = (scoreMap[user_id] || 0) + matches;
     });
