@@ -5,4 +5,6 @@ export const store = {
   userId: '',
   avatarUrl: '',
   status: '',
+  goal: '',
+  isAdmin: false,
 };

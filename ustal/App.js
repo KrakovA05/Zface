@@ -48,6 +48,7 @@ import NotificationsScreen from './screens/NotificationsScreen';
 import PsychTestScreen from './screens/PsychTestScreen';
 import AiChatScreen from './screens/AiChatScreen'
 import AccountSettingsScreen from './screens/AccountSettingsScreen';
+import AdminScreen from './screens/AdminScreen';
 import AnalyticsScreen from './screens/AnalyticsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -361,7 +362,7 @@ export default function App() {
         if (session?.user) {
           const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('username, level, email, avatar_url, status, login_streak, last_login_date, goal')
+            .select('username, level, email, avatar_url, status, login_streak, last_login_date, goal, is_admin')
             .eq('user_id', session.user.id)
             .single();
           if (userError) throw userError;
@@ -373,6 +374,7 @@ export default function App() {
             store.avatarUrl = userData.avatar_url || '';
             store.status = userData.status || '';
             store.goal = userData.goal || '';
+            store.isAdmin = userData.is_admin || false;
           }
 
           // Стрик по дням входа
@@ -488,6 +490,7 @@ export default function App() {
             <Stack.Screen name="PsychTest"        component={PsychTestScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AccountSettings"  component={AccountSettingsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Analytics"        component={AnalyticsScreen}       options={{ headerShown: false }} />
+            <Stack.Screen name="Admin"            component={AdminScreen}           options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />

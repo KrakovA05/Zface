@@ -642,6 +642,9 @@ export default function ProfileScreen({ navigation }) {
 
         {/* Действия */}
         <Section title="Действия">
+          {store.isAdmin && (
+            <Row icon="shield-checkmark-outline" label="Панель модератора" onPress={() => navigation.navigate('Admin')} last={false} />
+          )}
           <Row icon="help-circle-outline" label="Как пользоваться приложением" onPress={() => navigation.navigate('OnboardingCarousel')} last={false} />
           <Row icon="mail-outline" label="Написать в поддержку" onPress={() => navigation.navigate('Support')} last={false} />
           <Row icon="share-outline" label="Пригласить друга" onPress={inviteFriend} last={false} />
