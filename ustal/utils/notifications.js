@@ -251,7 +251,7 @@ export async function scheduleRoomDigestPush(level) {
 export async function sendPushNotification(token, title, body, data = {}) {
   if (!token) return;
   try {
-    await fetch('https://exp.host/--/exponent-push-token/v2/push/send', {
+    await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: token, title, body, sound: 'default', data }),

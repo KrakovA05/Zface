@@ -172,6 +172,11 @@ export default function AiChatScreen() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      if (!token) {
+        setMessages(prev => [...prev, { id: `err_${Date.now()}`, role: 'error', text: 'Сессия истекла. Перезайди в приложение.', timestamp: new Date().toISOString() }]);
+        setSending(false);
+        return;
+      }
 
       const res = await fetch(
         `${SUPABASE_URL}/functions/v1/ai-chat`,

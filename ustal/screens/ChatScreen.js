@@ -192,7 +192,7 @@ function GlobalChat({ navigation }) {
         keyExtractor={item => String(item.id)}
         contentContainerStyle={s.list}
         renderItem={({ item }) => {
-          const isMe = item.sender_id === store.userId || item.username === store.username;
+          const isMe = item.sender_id === store.userId;
           const avatarUri = isMe ? store.avatarUrl : avatarMap[item.username];
           const rxs = groupReactions(reactions[item.id]);
           return (
@@ -284,7 +284,7 @@ function GlobalChat({ navigation }) {
 
       <ChatActionMenu
         message={menuMsg}
-        isOwn={menuMsg ? (menuMsg.sender_id === store.userId || menuMsg.username === store.username) : false}
+        isOwn={menuMsg ? menuMsg.sender_id === store.userId : false}
         onClose={() => setMenuMsg(null)}
         onReply={() => startReply(menuMsg)}
         onEdit={() => startEdit(menuMsg)}

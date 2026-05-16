@@ -61,13 +61,15 @@ export default function TestScreen({ navigation }) {
   }, []);
 
   const saveResult = async (lvl, score) => {
-    store.level = lvl;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await Promise.all([
+      const [r1, r2] = await Promise.all([
         supabase.from('users').update({ level: lvl }).eq('user_id', user.id),
         supabase.from('test_results').insert({ user_id: user.id, level: lvl, score, pack_id: packId }),
       ]);
+      if (!r1.error && !r2.error) {
+        store.level = lvl;
+      }
     }
     scheduleQuestNotifications(lvl);
   };
