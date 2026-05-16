@@ -53,6 +53,17 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
 }
 
 Deno.serve(async (req) => {
+  // Проверка webhook secret
+  const webhookSecret = Deno.env.get('WEBHOOK_SECRET');
+  if (webhookSecret) {
+    const incoming = req.headers.get('x-webhook-secret') || req.headers.get('authorization');
+    if (incoming !== webhookSecret && incoming !== `Bearer ${webhookSecret}`) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
   try {
     const payload: WebhookPayload = await req.json();
     const { record } = payload;

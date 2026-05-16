@@ -67,6 +67,7 @@ Deno.serve(async (req: Request) => {
         .from('ai_chat_messages')
         .select('role, text')
         .eq('session_id', session_id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
       if (allMsgs && allMsgs.length > 2) {
@@ -92,7 +93,8 @@ Deno.serve(async (req: Request) => {
           const summary = data.choices[0].message.content.trim();
           await supabase.from('ai_chat_sessions')
             .update({ summary, ended_at: new Date().toISOString() })
-            .eq('id', session_id);
+            .eq('id', session_id)
+            .eq('user_id', userId);
         }
       }
 
@@ -132,6 +134,7 @@ Deno.serve(async (req: Request) => {
         .from('ai_chat_messages')
         .select('role, text')
         .eq('session_id', session_id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: true })
         .limit(20);
       history = msgs || [];

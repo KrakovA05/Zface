@@ -144,11 +144,16 @@ async function detectWorseningGroup(supabase: ReturnType<typeof createClient>): 
 
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get('CRON_SECRET');
-  if (cronSecret) {
-    const auth = req.headers.get('Authorization');
-    if (auth !== `Bearer ${cronSecret}`) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
+  if (!cronSecret) {
+    return new Response(JSON.stringify({ error: 'CRON_SECRET not configured' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const auth = req.headers.get('Authorization');
+  if (auth !== `Bearer ${cronSecret}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const apiKey = Deno.env.get('GEMINI_API_KEY');

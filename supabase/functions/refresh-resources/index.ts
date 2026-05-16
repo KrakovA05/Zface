@@ -65,11 +65,16 @@ function isPsychologyRelated(title: string, desc: string): boolean {
 
 Deno.serve(async (req) => {
   const cronSecret = Deno.env.get('CRON_SECRET');
-  if (cronSecret) {
-    const auth = req.headers.get('Authorization');
-    if (auth !== `Bearer ${cronSecret}`) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
+  if (!cronSecret) {
+    return new Response(JSON.stringify({ error: 'CRON_SECRET not configured' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const auth = req.headers.get('Authorization');
+  if (auth !== `Bearer ${cronSecret}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   let totalAdded = 0;
