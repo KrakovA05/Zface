@@ -46,7 +46,8 @@ import LetterScreen from './screens/LetterScreen';
 import SupportScreen from './screens/SupportScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import PsychTestScreen from './screens/PsychTestScreen';
-import AiChatScreen from './screens/AiChatScreen';
+import AiChatScreen from './screens/AiChatScreen'
+import AccountSettingsScreen from './screens/AccountSettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -484,6 +485,7 @@ export default function App() {
             <Stack.Screen name="Notifications"   component={NotificationsScreen} />
             <Stack.Screen name="Friends"       component={FriendsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PsychTest"        component={PsychTestScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AccountSettings"  component={AccountSettingsScreen} options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />
