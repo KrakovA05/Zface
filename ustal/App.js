@@ -27,6 +27,7 @@ import EmailConfirmScreen from './screens/EmailConfirmScreen';
 import TestScreen from './screens/TestScreen';
 import RecommendationsScreen from './screens/RecommendationsScreen';
 import OnboardingMomentScreen from './screens/OnboardingMomentScreen';
+import OnboardingCarouselScreen from './screens/OnboardingCarouselScreen';
 import ThoughtsScreen from './screens/ThoughtsScreen';
 import HomeScreen from './screens/HomeScreen';
 import MessagesScreen from './screens/MessagesScreen';
@@ -467,6 +468,7 @@ export default function App() {
             <Stack.Screen name="Test"            component={TestScreen} />
             <Stack.Screen name="Recommendations"     component={RecommendationsScreen} />
             <Stack.Screen name="OnboardingMoment"    component={OnboardingMomentScreen} />
+            <Stack.Screen name="OnboardingCarousel" component={OnboardingCarouselScreen} />
             <Stack.Screen name="Main"            component={MainTabs} options={{ gestureEnabled: false }} />
             <Stack.Screen name="DirectMessage"   component={DirectMessageScreen} />
             <Stack.Screen name="UserProfile"     component={UserProfileScreen} />
