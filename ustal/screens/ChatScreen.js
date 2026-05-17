@@ -164,6 +164,7 @@ function GlobalChat({ navigation }) {
         {
           text: 'Удалить', style: 'destructive',
           onPress: async () => {
+            setMessages(prev => prev.filter(m => m.id !== msg.id));
             await supabase.from('messages').delete().eq('id', msg.id);
             const authorId = msg.sender_id || msg.user_id;
             if (authorId && authorId !== store.userId) {
