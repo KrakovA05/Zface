@@ -45,6 +45,7 @@ export default function DirectMessageScreen({ route, navigation }) {
   const [replyTo, setReplyTo] = useState(null);
   const [editing, setEditing] = useState(null);
   const [reactions, setReactions] = useState({});
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -155,9 +156,11 @@ export default function DirectMessageScreen({ route, navigation }) {
   };
 
   const sendMessage = async () => {
+    if (sending) return;
     if (editing) { await saveEdit(); return; }
     const trimmed = text.trim();
     if (!trimmed) return;
+    setSending(true);
 
     const { data: block } = await supabase
       .from('blocks').select('id')
@@ -173,6 +176,7 @@ export default function DirectMessageScreen({ route, navigation }) {
       setReplyTo(null);
     }
     const { error } = await supabase.from('direct_messages').insert(payload);
+    setSending(false);
     if (error) { setText(trimmed); Alert.alert('Ошибка', 'Не удалось отправить сообщение'); return; }
     const { data: friendData } = await supabase.from('users').select('push_token').eq('user_id', friend.userId).maybeSingle();
     if (friendData?.push_token) sendPushNotification(friendData.push_token, store.username, trimmed, {
@@ -321,7 +325,7 @@ export default function DirectMessageScreen({ route, navigation }) {
             onChangeText={setText}
             maxLength={500}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          <TouchableOpacity style={[styles.sendButton, sending && { opacity: 0.5 }]} onPress={sendMessage} disabled={sending}>
             <Ionicons name={editing ? 'checkmark' : 'arrow-up'} size={20} color="#fff" />
           </TouchableOpacity>
         </View>
