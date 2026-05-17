@@ -36,7 +36,7 @@ export default function AdminScreen({ navigation }) {
         ))}
       </View>
 
-      {tab === 0 && <ReportsTab />}
+      {tab === 0 && <ReportsTab navigation={navigation} />}
       {tab === 1 && <UsersTab navigation={navigation} />}
       {tab === 2 && <StatsTab />}
     </SafeAreaView>
@@ -44,7 +44,7 @@ export default function AdminScreen({ navigation }) {
 }
 
 // ── REPORTS TAB ──────────────────────────────────────────────────
-function ReportsTab() {
+function ReportsTab({ navigation }) {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending')
@@ -120,9 +120,11 @@ function ReportsTab() {
                 <View style={s.reportHeader}>
                   <Text style={s.reportUser}>
                     <Text style={s.reportLabel}>Жалоба на: </Text>
-                    <Text style={{ color: LEVEL_COLORS[item.reported?.level] || colors.accent }}>
-                      @{item.reported?.username || '?'}
-                    </Text>
+                    <TouchableOpacity onPress={() => item.reported_user_id && navigation.navigate('AdminUserProfile', { userId: item.reported_user_id })}>
+                      <Text style={{ color: LEVEL_COLORS[item.reported?.level] || colors.accent }}>
+                        @{item.reported?.username || '?'}
+                      </Text>
+                    </TouchableOpacity>
                   </Text>
                   {item.resolved && <View style={s.resolvedBadge}><Text style={s.resolvedText}>решено</Text></View>}
                 </View>
@@ -233,7 +235,7 @@ function UsersTab({ navigation }) {
                 <View style={s.userActions}>
                   <TouchableOpacity
                     style={s.actionBtn}
-                    onPress={() => navigation.navigate('UserProfile', { user: { user_id: item.user_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}
+                    onPress={() => navigation.navigate('AdminUserProfile', { userId: item.user_id })}
                   >
                     <Text style={s.actionBtnText}>Профиль</Text>
                   </TouchableOpacity>
