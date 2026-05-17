@@ -107,9 +107,11 @@ export default function FriendsScreen({ navigation }) {
 
     const { data: blockedData } = await supabase
       .from('blocks')
-      .select('blocked_id')
-      .eq('blocker_id', store.userId);
-    const blockedIds = (blockedData || []).map(b => b.blocked_id);
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${store.userId},blocked_id.eq.${store.userId}`);
+    const blockedIds = (blockedData || []).map(b =>
+      b.blocker_id === store.userId ? b.blocked_id : b.blocker_id
+    );
 
     let query = supabase.from('users')
       .select('user_id, username, level, avatar_url, status, labels')

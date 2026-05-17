@@ -253,12 +253,14 @@ export default function ProfileScreen({ navigation }) {
 
   const toggleShowHistory = async (value) => {
     setShowHistory(value);
-    await supabase.from('users').update({ show_history: value }).eq('user_id', store.userId);
+    const { error } = await supabase.from('users').update({ show_history: value }).eq('user_id', store.userId);
+    if (error) setShowHistory(!value);
   };
 
   const toggleShowSimilar = async (value) => {
     setShowSimilar(value);
-    await supabase.from('users').update({ show_similar: value }).eq('user_id', store.userId);
+    const { error } = await supabase.from('users').update({ show_similar: value }).eq('user_id', store.userId);
+    if (error) setShowSimilar(!value);
   };
 
   const saveStatus = async () => {

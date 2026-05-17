@@ -174,7 +174,7 @@ export default function DirectMessageScreen({ route, navigation }) {
     const { data: block } = await supabase
       .from('blocks').select('id')
       .eq('blocker_id', store.userId).eq('blocked_id', friend.userId).maybeSingle();
-    if (block) { Alert.alert('Недоступно', 'Вы заблокировали этого пользователя'); return; }
+    if (block) { setSending(false); Alert.alert('Недоступно', 'Вы заблокировали этого пользователя'); return; }
 
     setText('');
     const payload = { conversation_id: conversationId, sender_id: store.userId, sender_username: store.username, text: trimmed };

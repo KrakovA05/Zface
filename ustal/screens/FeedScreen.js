@@ -161,7 +161,7 @@ export default function FeedScreen({ navigation }) {
     fetchAuthorAvatars(newPosts);
     fetchCommentCounts(newPosts);
     fetchLikedPosts(newPosts.map(p => p.id));
-    setHasMore(newPosts.length === PAGE_SIZE);
+    setHasMore(rawPosts.length === PAGE_SIZE);
     if (reset) setLoading(false);
     else setLoadingMore(false);
   }, [filter]);
@@ -215,10 +215,11 @@ export default function FeedScreen({ navigation }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const targetLevels = filter === 'mine' ? [level] : ['green', 'yellow', 'red'];
-      await supabase.from('feed_posts').insert({
+      const { error } = await supabase.from('feed_posts').insert({
         author_id: user.id, author_username: store.username || 'Аноним',
         author_level: level, text: text.trim(), target_levels: targetLevels, media_url: mediaUrl,
       });
+      if (error) { Alert.alert('Ошибка', 'Не удалось опубликовать пост'); setPosting(false); return; }
       setText(''); setMediaUri(null); setMediaType(null); setMediaUrl(null); setMediaUploading(false);
       fetchedAuthors.current.delete(store.userId);
       await loadPosts(true);
@@ -297,8 +298,9 @@ export default function FeedScreen({ navigation }) {
 
   const saveEdit = async () => {
     if (!editPost || !editText.trim()) return;
-    await supabase.from('feed_posts').update({ text: editText.trim() })
+    const { error } = await supabase.from('feed_posts').update({ text: editText.trim() })
       .eq('id', editPost.id).eq('author_id', store.userId);
+    if (error) { Alert.alert('Ошибка', 'Не удалось сохранить изменения'); return; }
     setPosts(prev => prev.map(p => p.id === editPost.id ? { ...p, text: editText.trim() } : p));
     setEditPost(null);
   };

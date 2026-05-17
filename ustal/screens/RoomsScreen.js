@@ -220,8 +220,8 @@ export default function RoomsScreen({ route, navigation }) {
     if (!anonymous) {
       const pChannel = supabase
         .channel(`participants_${roomId}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users' }, () => loadParticipants(roomId))
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, () => loadParticipants(roomId))
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users', filter: `level=eq.${roomId}` }, () => loadParticipants(roomId))
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users', filter: `level=eq.${roomId}` }, () => loadParticipants(roomId))
         .subscribe();
       participantsChannelRef.current = pChannel;
     }

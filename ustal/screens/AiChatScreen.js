@@ -198,6 +198,7 @@ export default function AiChatScreen({ route }) {
         }
       );
 
+      if (!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
       const json = await res.json();
       if (!json.ok) throw new Error(json.error || 'Ошибка сервера');
 
@@ -207,7 +208,7 @@ export default function AiChatScreen({ route }) {
       setMessages(prev => [...prev, aiMsg]);
     } catch (e) {
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      setInput(text);
+      setInput(prev => prev || text);
       const errMsg = { id: `err_${Date.now()}`, role: 'error', text: `ошибка: ${e?.message || String(e)}`, created_at: new Date().toISOString() };
       setMessages(prev => [...prev, errMsg]);
     } finally {
