@@ -138,6 +138,7 @@ export default function FeedScreen({ navigation }) {
     const { data, error } = await query;
     if (error) Alert.alert('Ошибка', 'Не удалось загрузить ленту');
     const newPosts = data || [];
+    if (newPosts.length > 0) cursorRef.current = newPosts[newPosts.length - 1].created_at;
     if (reset) {
       const userLvl = store.level || 'yellow';
       newPosts.sort((a, b) => scorePost(b, userLvl) - scorePost(a, userLvl));
@@ -148,7 +149,6 @@ export default function FeedScreen({ navigation }) {
     fetchCommentCounts(newPosts);
     fetchLikedPosts(newPosts.map(p => p.id));
     setHasMore(newPosts.length === PAGE_SIZE);
-    if (newPosts.length > 0) cursorRef.current = newPosts[newPosts.length - 1].created_at;
     if (reset) setLoading(false);
     else setLoadingMore(false);
   }, [filter]);
@@ -221,10 +221,18 @@ export default function FeedScreen({ navigation }) {
       ? { ...p, likes: Math.max(0, (p.likes || 0) + (isLiked ? -1 : 1)) }
       : p
     ));
+    let err;
     if (isLiked) {
-      await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', store.userId);
+      ({ error: err } = await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', store.userId));
     } else {
-      await supabase.from('post_likes').insert({ post_id: postId, user_id: store.userId });
+      ({ error: err } = await supabase.from('post_likes').insert({ post_id: postId, user_id: store.userId }));
+    }
+    if (err) {
+      setLikedPosts(prev => ({ ...prev, [postId]: isLiked }));
+      setPosts(prev => prev.map(p => p.id === postId
+        ? { ...p, likes: Math.max(0, (p.likes || 0) + (isLiked ? 1 : -1)) }
+        : p
+      ));
     }
     // DB trigger update_post_likes_count() maintains feed_posts.likes automatically
   };

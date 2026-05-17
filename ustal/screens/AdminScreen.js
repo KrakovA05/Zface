@@ -190,13 +190,13 @@ function UsersTab({ navigation }) {
   async function toggleAdmin(userId, currentAdmin, username) {
     const newVal = !currentAdmin
     await supabase.from('users').update({ is_admin: newVal }).eq('user_id', userId)
-    setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_admin: newVal } : u))
+    setAllUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_admin: newVal } : u))
     Alert.alert('Готово', `@${username} ${newVal ? 'получил права модератора' : 'лишён прав модератора'}`)
   }
 
   async function applyBan(userId, username, { bannedUntil, reason }) {
     await supabase.from('users').update({ banned_until: bannedUntil, ban_reason: reason || null }).eq('user_id', userId)
-    setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: bannedUntil } : u))
+    setAllUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: bannedUntil } : u))
     const msg = !bannedUntil ? `@${username} разбанен` :
       bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
       `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`

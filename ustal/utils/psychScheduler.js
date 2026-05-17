@@ -90,10 +90,12 @@ export async function getNextTestId(userId) {
     if (!lastPassed[r.test_id]) lastPassed[r.test_id] = new Date(r.created_at);
   }
 
-  const sorted = [...WEEKLY_TEST_ROTATION].sort((a, b) => {
-    const ta = lastPassed[a] || new Date(0);
-    const tb = lastPassed[b] || new Date(0);
-    return ta - tb;
-  });
-  return sorted[0];
+  const sorted = [...WEEKLY_TEST_ROTATION]
+    .filter(tid => !passedThisWeek.has(tid))
+    .sort((a, b) => {
+      const ta = lastPassed[a] || new Date(0);
+      const tb = lastPassed[b] || new Date(0);
+      return ta - tb;
+    });
+  return sorted[0] || null;
 }

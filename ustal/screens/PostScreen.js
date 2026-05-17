@@ -61,6 +61,25 @@ export default function PostScreen({ route, navigation }) {
 
   useEffect(() => { loadComments(); }, []);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel(`post_comments_${post.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'post_comments',
+        filter: `post_id=eq.${post.id}`,
+      }, payload => {
+        setComments(prev => prev.find(c => c.id === payload.new.id) ? prev : [...prev, payload.new]);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'post_comments',
+        filter: `post_id=eq.${post.id}`,
+      }, payload => {
+        setComments(prev => prev.filter(c => c.id !== payload.old.id));
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [post.id]);
+
   const sendComment = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -93,7 +112,7 @@ export default function PostScreen({ route, navigation }) {
       {
         text: 'Удалить', style: 'destructive',
         onPress: async () => {
-          await supabase.from('post_comments').delete().eq('id', comment.id);
+          await supabase.from('post_comments').delete().eq('id', comment.id).eq('author_id', store.userId);
           setComments(prev => prev.filter(c => c.id !== comment.id));
         },
       },

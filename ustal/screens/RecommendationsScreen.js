@@ -110,6 +110,7 @@ function Section({ icon, title, items, dotColor }) {
 
 export default function RecommendationsScreen({ navigation, route }) {
   const level = route.params?.level || store.level || 'green';
+  const isFirstTest = !!route.params?.isFirstTest;
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -204,10 +205,10 @@ export default function RecommendationsScreen({ navigation, route }) {
 
         <TouchableOpacity
           style={[styles.homeBtn, { backgroundColor: lvlColor }]}
-          onPress={() => navigation.navigate('Main')}
+          onPress={() => isFirstTest ? navigation.replace('OnboardingMoment', { level }) : navigation.navigate('Main')}
           activeOpacity={0.8}
         >
-          <Text style={styles.homeBtnText}>Войти в приложение</Text>
+          <Text style={styles.homeBtnText}>{isFirstTest ? 'Далее' : 'Войти в приложение'}</Text>
           <Ionicons name="arrow-forward" size={18} color="#fff" />
         </TouchableOpacity>
 

@@ -164,7 +164,7 @@ export default function TestScreen({ navigation }) {
         ) : (
           <TouchableOpacity
             style={[shared.button, { backgroundColor: lvlData.color }]}
-            onPress={() => navigation.replace(isFirstTest ? 'OnboardingMoment' : 'Recommendations', { level })}
+            onPress={() => navigation.replace('Recommendations', { level, isFirstTest: !!isFirstTest })}
           >
             <Text style={shared.buttonText}>{btnLabels[level]}</Text>
           </TouchableOpacity>
