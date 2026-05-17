@@ -454,19 +454,17 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
     flexShrink: 0,
   },
   scoreNum: {
     fontSize: 32,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 34,
   },
   scoreOf: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#A09080',
-    alignSelf: 'flex-end',
-    marginBottom: 4,
+    lineHeight: 14,
   },
   compositeRight: {
     flex: 1,
