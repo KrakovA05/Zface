@@ -273,7 +273,12 @@ export default function RoomsScreen({ route, navigation }) {
       payload.reply_to_username = replyTo.username;
       setReplyTo(null);
     }
-    await supabase.from('messages').insert(payload);
+    const { error } = await supabase.from('messages').insert(payload);
+    if (error) {
+      setSending(false);
+      Alert.alert('Ошибка', 'Не удалось отправить сообщение');
+      return;
+    }
     setText2('');
     setSending(false);
   };
@@ -517,7 +522,7 @@ export default function RoomsScreen({ route, navigation }) {
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => {
-            const isMe = item.sender_id === store.userId || item.username === store.username;
+            const isMe = !!store.userId && item.sender_id === store.userId;
             const lvlColor = LEVEL_COLORS[item.level] || colors.accent;
             const rxs = groupReactions(reactions[item.id]);
             return (
@@ -638,7 +643,7 @@ export default function RoomsScreen({ route, navigation }) {
 
       <ChatActionMenu
         message={menuMsg}
-        isOwn={menuMsg ? (menuMsg.sender_id === store.userId || menuMsg.username === store.username) : false}
+        isOwn={menuMsg ? (!!store.userId && menuMsg.sender_id === store.userId) : false}
         onClose={() => setMenuMsg(null)}
         onReply={() => startReply(menuMsg)}
         onEdit={() => startEdit(menuMsg)}
