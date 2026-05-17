@@ -1,6 +1,7 @@
 import {
   View, StyleSheet, Text, TouchableOpacity,
   TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
+  Image, Modal,
 } from 'react-native';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +14,30 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportTopic, setSupportTopic] = useState('');
+  const [supportText, setSupportText] = useState('');
+  const [supportLoading, setSupportLoading] = useState(false);
+
+  const openSupport = () => { setSupportEmail(email); setShowSupport(true); };
+
+  const sendSupport = async () => {
+    if (!supportTopic.trim() || !supportText.trim()) return;
+    setSupportLoading(true);
+    try {
+      await supabase.functions.invoke('send-support-email', {
+        body: { category: 'general', topic: supportTopic.trim(), text: supportText.trim(), email: supportEmail.trim() },
+      });
+      setSupportTopic('');
+      setSupportText('');
+      setShowSupport(false);
+      Alert.alert('Отправлено', 'Мы получили твоё сообщение и ответим на почту.');
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось отправить. Попробуй позже.');
+    }
+    setSupportLoading(false);
+  };
 
   const login = async () => {
     if (!email || !password) return;
@@ -72,10 +97,8 @@ export default function LoginScreen({ navigation }) {
       >
         {/* Лого */}
         <View style={styles.logoArea}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="moon" size={30} color={colors.accent} />
-          </View>
-          <Text style={styles.appName}>устал</Text>
+          <Image source={require('../assets/icon.png')} style={styles.appIcon} />
+          <Text style={styles.appName}>!один</Text>
         </View>
 
         <Text style={styles.title}>Всё достало?</Text>
@@ -127,7 +150,57 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.registerLink}> Создать аккаунт</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity style={styles.supportBtn} onPress={openSupport}>
+          <Ionicons name="chatbubble-ellipses-outline" size={15} color={colors.muted} />
+          <Text style={styles.supportBtnText}>Написать в поддержку</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={showSupport} transparent animationType="slide" onRequestClose={() => setShowSupport(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <TouchableOpacity style={styles.supportOverlay} activeOpacity={1} onPress={() => setShowSupport(false)}>
+            <TouchableOpacity activeOpacity={1} style={styles.supportModal}>
+              <View style={styles.supportModalHandle} />
+              <Text style={styles.supportModalTitle}>Написать в поддержку</Text>
+              <Text style={styles.supportModalSub}>Опиши проблему — ответим на почту</Text>
+
+              <TextInput
+                style={styles.supportInput}
+                placeholder="Твой email для ответа"
+                placeholderTextColor={colors.muted}
+                value={supportEmail}
+                onChangeText={setSupportEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={styles.supportInput}
+                placeholder="Тема"
+                placeholderTextColor={colors.muted}
+                value={supportTopic}
+                onChangeText={setSupportTopic}
+              />
+              <TextInput
+                style={[styles.supportInput, { height: 100, textAlignVertical: 'top' }]}
+                placeholder="Сообщение"
+                placeholderTextColor={colors.muted}
+                value={supportText}
+                onChangeText={setSupportText}
+                multiline
+              />
+
+              <TouchableOpacity
+                style={[styles.supportSendBtn, (!supportTopic.trim() || !supportText.trim()) && { opacity: 0.4 }]}
+                onPress={sendSupport}
+                disabled={!supportTopic.trim() || !supportText.trim() || supportLoading}
+              >
+                <Text style={styles.supportSendText}>{supportLoading ? 'Отправляем...' : 'Отправить'}</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -143,16 +216,10 @@ const styles = StyleSheet.create({
   },
 
   logoArea: { alignItems: 'center', marginBottom: 32 },
-  logoCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: colors.accent + '1a',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 10,
-  },
+  appIcon: { width: 72, height: 72, borderRadius: 18, marginBottom: 10 },
   appName: {
-    fontSize: 13, letterSpacing: 3,
-    color: colors.muted, fontWeight: '500',
-    textTransform: 'lowercase',
+    fontSize: 22, fontWeight: '800',
+    color: colors.white, letterSpacing: 0.5,
   },
 
   title: {
@@ -198,4 +265,19 @@ const styles = StyleSheet.create({
   registerRow: { flexDirection: 'row', alignItems: 'center' },
   registerHint: { color: colors.muted, fontSize: 15 },
   registerLink: { color: colors.accent, fontSize: 15, fontWeight: '600' },
+
+  supportBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 28, paddingVertical: 8 },
+  supportBtnText: { color: colors.muted, fontSize: 13 },
+
+  supportOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' },
+  supportModal: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  supportModalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#D0C4B0', alignSelf: 'center', marginBottom: 20 },
+  supportModalTitle: { fontSize: 18, fontWeight: '700', color: colors.white, marginBottom: 6 },
+  supportModalSub: { fontSize: 13, color: colors.muted, marginBottom: 20 },
+  supportInput: {
+    backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: colors.white, borderWidth: 1, borderColor: colors.border, marginBottom: 12,
+  },
+  supportSendBtn: { backgroundColor: colors.accent, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
+  supportSendText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
 });

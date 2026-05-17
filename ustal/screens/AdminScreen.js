@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  TextInput, Alert, ActivityIndicator, ScrollView
+  TextInput, Alert, ActivityIndicator, ScrollView, Modal, KeyboardAvoidingView, Platform
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -12,6 +12,76 @@ import { colors } from '../theme'
 
 const TABS = ['Жалобы', 'Пользователи', 'Статистика']
 const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' }
+
+function BanModal({ visible, username, currentBannedUntil, onClose, onApply }) {
+  const isBanned = currentBannedUntil && new Date(currentBannedUntil) > new Date()
+  const [days, setDays] = useState('')
+  const [reason, setReason] = useState('')
+
+  const handleClose = () => { setDays(''); setReason(''); onClose(); }
+
+  const handleUnban = () => {
+    onApply({ bannedUntil: null, reason: '' })
+    handleClose()
+  }
+
+  const handleBan = () => {
+    const d = parseInt(days, 10)
+    const isPermanent = !days.trim() || isNaN(d) || d <= 0
+    const bannedUntil = isPermanent ? '2099-01-01T00:00:00Z' : new Date(Date.now() + d * 86400000).toISOString()
+    onApply({ bannedUntil, reason: reason.trim() })
+    handleClose()
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={handleClose}>
+          <TouchableOpacity activeOpacity={1} style={s.banModal}>
+            <Text style={s.banModalTitle}>
+              {isBanned ? `Управление баном @${username}` : `Заблокировать @${username}`}
+            </Text>
+
+            {isBanned && (
+              <TouchableOpacity style={s.unbanBtn} onPress={handleUnban}>
+                <Text style={s.unbanBtnText}>Разбанить сейчас</Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={s.banFieldLabel}>Срок (дней, пусто = навсегда)</Text>
+            <TextInput
+              style={s.banInput}
+              placeholder="Например: 30"
+              placeholderTextColor={colors.muted}
+              value={days}
+              onChangeText={setDays}
+              keyboardType="number-pad"
+            />
+
+            <Text style={s.banFieldLabel}>Причина</Text>
+            <TextInput
+              style={[s.banInput, { height: 72, textAlignVertical: 'top' }]}
+              placeholder="Спам, оскорбления, нарушение правил..."
+              placeholderTextColor={colors.muted}
+              value={reason}
+              onChangeText={setReason}
+              multiline
+            />
+
+            <View style={s.banModalBtns}>
+              <TouchableOpacity style={s.banCancelBtn} onPress={handleClose}>
+                <Text style={s.banCancelText}>Отмена</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.banConfirmBtn} onPress={handleBan}>
+                <Text style={s.banConfirmText}>{isBanned ? 'Изменить бан' : 'Заблокировать'}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </Modal>
+  )
+}
 
 export default function AdminScreen({ navigation }) {
   const [tab, setTab] = useState(0)
@@ -46,7 +116,8 @@ export default function AdminScreen({ navigation }) {
 function ReportsTab() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('pending') // 'pending' | 'all'
+  const [filter, setFilter] = useState('pending')
+  const [banTarget, setBanTarget] = useState(null) // { userId, username, bannedUntil }
 
   useFocusEffect(useCallback(() => {
     loadReports()
@@ -86,29 +157,12 @@ function ReportsTab() {
     setReports(prev => prev.filter(r => r.id !== id))
   }
 
-  async function banUser(userId, username) {
-    Alert.alert(
-      `Заблокировать @${username}?`,
-      'Выберите тип блокировки',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'На 7 дней',
-          onPress: async () => {
-            const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-            await supabase.from('users').update({ banned_until: until }).eq('user_id', userId)
-            Alert.alert('Готово', `@${username} заблокирован на 7 дней`)
-          }
-        },
-        {
-          text: 'Навсегда', style: 'destructive',
-          onPress: async () => {
-            await supabase.from('users').update({ banned_until: '2099-01-01T00:00:00Z' }).eq('user_id', userId)
-            Alert.alert('Готово', `@${username} заблокирован перманентно`)
-          }
-        },
-      ]
-    )
+  async function applyBan(userId, username, { bannedUntil, reason }) {
+    await supabase.from('users').update({ banned_until: bannedUntil, ban_reason: reason || null }).eq('user_id', userId)
+    const msg = !bannedUntil ? `@${username} разбанен` :
+      bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
+      `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`
+    Alert.alert('Готово', msg)
   }
 
   if (loading) return <View style={s.center}><ActivityIndicator color={colors.accent} /></View>
@@ -150,7 +204,7 @@ function ReportsTab() {
                     <TouchableOpacity style={s.actionBtn} onPress={() => resolveReport(item.id)}>
                       <Text style={s.actionBtnText}>Отметить решённой</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[s.actionBtn, s.actionBtnDanger]} onPress={() => banUser(item.reported_user_id, item.reported?.username)}>
+                    <TouchableOpacity style={[s.actionBtn, s.actionBtnDanger]} onPress={() => setBanTarget({ userId: item.reported_user_id, username: item.reported?.username, bannedUntil: null })}>
                       <Text style={[s.actionBtnText, { color: '#c0392b' }]}>Заблокировать</Text>
                     </TouchableOpacity>
                   </View>
@@ -160,6 +214,16 @@ function ReportsTab() {
           />
         )
       }
+      <BanModal
+        visible={!!banTarget}
+        username={banTarget?.username || ''}
+        currentBannedUntil={banTarget?.bannedUntil}
+        onClose={() => setBanTarget(null)}
+        onApply={({ bannedUntil, reason }) => {
+          applyBan(banTarget.userId, banTarget.username, { bannedUntil, reason })
+          setBanTarget(null)
+        }}
+      />
     </View>
   )
 }
@@ -169,6 +233,7 @@ function UsersTab({ navigation }) {
   const [query, setQuery] = useState('')
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(false)
+  const [banTarget, setBanTarget] = useState(null)
 
   async function search() {
     if (!query.trim()) return
@@ -189,59 +254,13 @@ function UsersTab({ navigation }) {
     Alert.alert('Готово', `@${username} ${newVal ? 'получил права модератора' : 'лишён прав модератора'}`)
   }
 
-  async function banUser(userId, username, currentBannedUntil) {
-    const isBanned = currentBannedUntil && new Date(currentBannedUntil) > new Date()
-    if (isBanned) {
-      Alert.alert(
-        `Разбанить @${username}?`,
-        '',
-        [
-          { text: 'Отмена', style: 'cancel' },
-          {
-            text: 'Разбанить',
-            onPress: async () => {
-              await supabase.from('users').update({ banned_until: null }).eq('user_id', userId)
-              setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: null } : u))
-              Alert.alert('Готово', `@${username} разбанен`)
-            }
-          }
-        ]
-      )
-      return
-    }
-    Alert.alert(
-      `Заблокировать @${username}?`,
-      'Выберите тип блокировки',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'На 7 дней',
-          onPress: async () => {
-            const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-            await supabase.from('users').update({ banned_until: until }).eq('user_id', userId)
-            setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: until } : u))
-            Alert.alert('Готово', `@${username} заблокирован на 7 дней`)
-          }
-        },
-        {
-          text: 'На 30 дней',
-          onPress: async () => {
-            const until = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            await supabase.from('users').update({ banned_until: until }).eq('user_id', userId)
-            setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: until } : u))
-            Alert.alert('Готово', `@${username} заблокирован на 30 дней`)
-          }
-        },
-        {
-          text: 'Навсегда', style: 'destructive',
-          onPress: async () => {
-            await supabase.from('users').update({ banned_until: '2099-01-01T00:00:00Z' }).eq('user_id', userId)
-            setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: '2099-01-01T00:00:00Z' } : u))
-            Alert.alert('Готово', `@${username} заблокирован перманентно`)
-          }
-        },
-      ]
-    )
+  async function applyBan(userId, username, { bannedUntil, reason }) {
+    await supabase.from('users').update({ banned_until: bannedUntil, ban_reason: reason || null }).eq('user_id', userId)
+    setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: bannedUntil } : u))
+    const msg = !bannedUntil ? `@${username} разбанен` :
+      bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
+      `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`
+    Alert.alert('Готово', msg)
   }
 
   return (
@@ -297,7 +316,7 @@ function UsersTab({ navigation }) {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[s.actionBtn, (item.banned_until && new Date(item.banned_until) > new Date()) ? s.actionBtnSuccess : s.actionBtnDanger]}
-                    onPress={() => banUser(item.user_id, item.username, item.banned_until)}
+                    onPress={() => setBanTarget({ userId: item.user_id, username: item.username, bannedUntil: item.banned_until })}
                   >
                     <Text style={[s.actionBtnText, { color: (item.banned_until && new Date(item.banned_until) > new Date()) ? '#5DAA72' : '#c0392b' }]}>
                       {(item.banned_until && new Date(item.banned_until) > new Date()) ? 'Разбанить' : 'Забанить'}
@@ -309,6 +328,16 @@ function UsersTab({ navigation }) {
           />
         )
       }
+      <BanModal
+        visible={!!banTarget}
+        username={banTarget?.username || ''}
+        currentBannedUntil={banTarget?.bannedUntil}
+        onClose={() => setBanTarget(null)}
+        onApply={({ bannedUntil, reason }) => {
+          applyBan(banTarget.userId, banTarget.username, { bannedUntil, reason })
+          setBanTarget(null)
+        }}
+      />
     </View>
   )
 }
@@ -419,6 +448,18 @@ const s = StyleSheet.create({
   bannedBadgeText: { fontSize: 11, color: '#c0392b', fontWeight: '700' },
   actionBtnSuccess: { backgroundColor: '#e8f5e9' },
   userActions: { flexDirection: 'row', gap: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  banModal: { backgroundColor: 'white', borderRadius: 20, padding: 20, width: '100%' },
+  banModalTitle: { fontSize: 16, fontWeight: '700', color: colors.white, marginBottom: 16 },
+  unbanBtn: { backgroundColor: '#e8f5e9', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginBottom: 16 },
+  unbanBtnText: { color: '#5DAA72', fontWeight: '600', fontSize: 14 },
+  banFieldLabel: { fontSize: 12, fontWeight: '600', color: colors.muted, marginBottom: 4, marginTop: 8 },
+  banInput: { backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.white, borderWidth: 1, borderColor: '#E8DFD0', marginBottom: 4 },
+  banModalBtns: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  banCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F0E8D8', alignItems: 'center' },
+  banCancelText: { fontSize: 14, color: colors.accent, fontWeight: '600' },
+  banConfirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#fdecea', alignItems: 'center' },
+  banConfirmText: { fontSize: 14, color: '#c0392b', fontWeight: '600' },
   statSection: { fontSize: 12, fontWeight: '700', color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 12 },
   statCard: { backgroundColor: 'white', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E8DFD0' },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8' },
