@@ -284,9 +284,13 @@ export default function FeedScreen({ navigation }) {
 
   const openAuthorProfile = (item) => {
     if (item.author_id === store.userId) return;
-    navigation.navigate('UserProfile', {
-      user: { user_id: item.author_id, username: item.author_username, level: levelMap[item.author_id] || item.author_level, avatar_url: null, status: '', labels: [] },
-    });
+    if (store.isAdmin) {
+      navigation.navigate('AdminUserProfile', { userId: item.author_id });
+    } else {
+      navigation.navigate('UserProfile', {
+        user: { user_id: item.author_id, username: item.author_username, level: levelMap[item.author_id] || item.author_level, avatar_url: null, status: '', labels: [] },
+      });
+    }
   };
 
   const renderPost = ({ item }) => {

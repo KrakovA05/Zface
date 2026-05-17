@@ -136,7 +136,18 @@ export default function PostScreen({ route, navigation }) {
         <Avatar uri={null} username={item.author_username} level={item.author_level} size={28} />
         <View style={styles.commentBody}>
           <View style={styles.commentHeader}>
-            <Text style={[styles.commentAuthor, { color: cColor }]}>{item.author_username}</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (item.author_id === store.userId) return
+                if (store.isAdmin) {
+                  navigation.navigate('AdminUserProfile', { userId: item.author_id })
+                } else {
+                  navigation.navigate('UserProfile', { user: { user_id: item.author_id, username: item.author_username, level: item.author_level, avatar_url: null, status: '' } })
+                }
+              }}
+            >
+              <Text style={[styles.commentAuthor, { color: cColor }]}>{item.author_username}</Text>
+            </TouchableOpacity>
             <Text style={styles.commentTime}>{formatTime(item.created_at)}</Text>
             {store.isAdmin && !isOwn && (
               <TouchableOpacity onPress={() => adminDeleteComment(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -155,7 +166,18 @@ export default function PostScreen({ route, navigation }) {
       <View style={styles.postHeader}>
         <Avatar uri={null} username={post.author_username} level={post.author_level} size={36} />
         <View style={styles.postMeta}>
-          <Text style={[styles.postAuthor, { color: lvlColor }]}>{post.author_username}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              if (!post.author_id || post.author_id === store.userId) return
+              if (store.isAdmin) {
+                navigation.navigate('AdminUserProfile', { userId: post.author_id })
+              } else {
+                navigation.navigate('UserProfile', { user: { user_id: post.author_id, username: post.author_username, level: post.author_level, avatar_url: null, status: '' } })
+              }
+            }}
+          >
+            <Text style={[styles.postAuthor, { color: lvlColor }]}>{post.author_username}</Text>
+          </TouchableOpacity>
           <Text style={styles.postDate}>{formatDate(post.created_at)}</Text>
         </View>
         <View style={[styles.levelBadge, { borderColor: lvlColor }]}>
