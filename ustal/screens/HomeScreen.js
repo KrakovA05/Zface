@@ -188,7 +188,8 @@ export default function HomeScreen({ navigation }) {
   const scrollRef    = useRef(null);
   const [moodCardY,  setMoodCardY]  = useState(0);
   const [dailyCardY, setDailyCardY] = useState(0);
-  const [nextTestId,   setNextTestId]   = useState(null);
+  const [nextTestId,    setNextTestId]    = useState(null);
+  const [lastDoneTestId, setLastDoneTestId] = useState(null);
   const [proactiveMsg, setProactiveMsg] = useState(null);
   const [modNotice,    setModNotice]    = useState(null);
   const testJustDoneRef = useRef(false);
@@ -389,9 +390,25 @@ export default function HomeScreen({ navigation }) {
         if (testJustDoneRef.current) {
           testJustDoneRef.current = false;
           setNextTestId(null);
+          // lastDoneTestId уже установлен в onComplete
         } else {
           const testId = await getNextTestId(user.id);
           setNextTestId(testId);
+          if (!testId) {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            const { data: todayResult } = await supabase
+              .from('psych_test_results')
+              .select('test_id')
+              .eq('user_id', user.id)
+              .gte('created_at', startOfToday.toISOString())
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            setLastDoneTestId(todayResult?.test_id || null);
+          } else {
+            setLastDoneTestId(null);
+          }
         }
 
         // Еженедельная карточка состояния
@@ -1036,12 +1053,12 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {nextTestId && PSYCH_TESTS[nextTestId] && (
+        {nextTestId && PSYCH_TESTS[nextTestId] ? (
           <TouchableOpacity
             style={styles.testPromptCard}
             onPress={() => navigation.navigate('PsychTest', {
               testId: nextTestId,
-              onComplete: () => { testJustDoneRef.current = true; setNextTestId(null); },
+              onComplete: () => { testJustDoneRef.current = true; setLastDoneTestId(nextTestId); setNextTestId(null); },
             })}
             activeOpacity={0.8}
           >
@@ -1052,7 +1069,15 @@ export default function HomeScreen({ navigation }) {
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.muted} />
           </TouchableOpacity>
-        )}
+        ) : lastDoneTestId && PSYCH_TESTS[lastDoneTestId] ? (
+          <View style={[styles.testPromptCard, styles.testPromptCardDone]}>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#5DAA72" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.testPromptTitle}>{PSYCH_TESTS[lastDoneTestId].title}</Text>
+              <Text style={[styles.testPromptSub, { color: '#5DAA72' }]}>Пройдено сегодня</Text>
+            </View>
+          </View>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Модули</Text>
         <View style={styles.grid}>
@@ -1605,6 +1630,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card, borderRadius: 16, padding: 16,
     flexDirection: 'row', alignItems: 'center', marginBottom: 16,
     borderWidth: 1, borderColor: colors.border,
+  },
+  testPromptCardDone: {
+    backgroundColor: 'rgba(93, 170, 114, 0.12)',
+    borderColor: 'rgba(93, 170, 114, 0.35)',
   },
   testPromptTitle: { fontSize: 15, fontWeight: '600', color: colors.white },
   testPromptSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
