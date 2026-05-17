@@ -83,7 +83,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const loadHelpData = async () => {
     const [{ count: total }, { data: mine }] = await Promise.all([
       supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', user.user_id),
-      supabase.from('user_helps').select('id').eq('helper_id', user.user_id).eq('helped_id', store.userId).maybeSingle(),
+      supabase.from('user_helps').select('id').eq('helper_id', user.user_id).eq('helped_by_id', store.userId).maybeSingle(),
     ]);
     setHelpCount(total || 0);
     setHasHelped(!!mine);
@@ -93,11 +93,11 @@ export default function UserProfileScreen({ route, navigation }) {
     if (helpLoading) return;
     setHelpLoading(true);
     if (hasHelped) {
-      await supabase.from('user_helps').delete().eq('helper_id', user.user_id).eq('helped_id', store.userId);
+      await supabase.from('user_helps').delete().eq('helper_id', user.user_id).eq('helped_by_id', store.userId);
       setHasHelped(false);
       setHelpCount(c => Math.max(0, c - 1));
     } else {
-      await supabase.from('user_helps').insert({ helper_id: user.user_id, helped_id: store.userId });
+      await supabase.from('user_helps').insert({ helper_id: user.user_id, helped_by_id: store.userId });
       setHasHelped(true);
       setHelpCount(c => c + 1);
       const { data: target } = await supabase.from('users').select('push_token').eq('user_id', user.user_id).single();
