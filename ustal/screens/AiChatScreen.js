@@ -66,7 +66,7 @@ function CrisisCard({ onDismiss }) {
   );
 }
 
-export default function AiChatScreen() {
+export default function AiChatScreen({ route }) {
   const insets = useSafeAreaInsets();
   const [kbHeight, setKbHeight] = useState(0);
   const [messages, setMessages] = useState([]);
@@ -77,6 +77,7 @@ export default function AiChatScreen() {
   const flatListRef = useRef(null);
   const sessionIdRef = useRef(null);
   const messagesRef = useRef([]);
+  const initialMessage = route?.params?.initialMessage || null;
 
   const TAB_BAR_ABOVE_INSET = 68;
   const bottomOffset = insets.bottom + TAB_BAR_ABOVE_INSET;
@@ -138,6 +139,16 @@ export default function AiChatScreen() {
       .limit(20);
 
     setMessages(msgs || []);
+
+    // Если пришли с проактивным сообщением — показать его как первое
+    if (initialMessage && (!msgs || msgs.length === 0)) {
+      setMessages([{
+        id: `proactive_${Date.now()}`,
+        role: 'assistant',
+        text: initialMessage,
+        created_at: new Date().toISOString(),
+      }]);
+    }
   };
 
   const summarizeSession = async (sid) => {
