@@ -152,6 +152,8 @@ store = { username, email, level, userId, avatarUrl, status }
 | `psych_test_results` | `id`, `user_id UUID`, `test_id TEXT`, `dimension TEXT`, `raw_score INT`, `normalized_score INT`, `answers JSONB`, `created_at` — результаты психологических тестов | ✅ |
 | `user_metrics` | `id`, `user_id UUID`, `week_start DATE`, `anxiety/stress/apathy/loneliness/burnout/self_esteem/social_anxiety/attachment _score INT`, `composite_score INT`, `dominant_dimension TEXT`, `level TEXT` — еженедельные снапшоты психометрики, UNIQUE(user_id, week_start) | ✅ |
 | `resources` | `id`, `title TEXT`, `type TEXT ('video'\|'article')`, `url TEXT`, `topic TEXT`, `dimension_weights JSONB` — база материалов с весами по измерениям | ✅ |
+| `mood_checkins` | `id`, `user_id UUID`, `checkin_date DATE`, `score INT`, `note TEXT`, `created_at` — ежедневный чекин настроения (1–10), note — чип причины | ✅ |
+| `ai_proactive_messages` | `id`, `user_id UUID`, `text TEXT`, `type TEXT ('scheduled'\|'triggered')`, `trigger_reason TEXT`, `created_at`, `read_at TIMESTAMPTZ`, `push_sent BOOL` — проактивные сообщения от @одного | ✅ |
 
 #### Использование таблицы `messages` для разных чатов
 - Глобальный чат: `level = 'global'`
