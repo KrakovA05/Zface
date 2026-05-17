@@ -89,16 +89,24 @@ function ReportsTab() {
   async function banUser(userId, username) {
     Alert.alert(
       `Заблокировать @${username}?`,
-      'Это установит уровень "red" пользователю. Полный бан требует ручного удаления из БД.',
+      'Выберите тип блокировки',
       [
         { text: 'Отмена', style: 'cancel' },
         {
-          text: 'Заблокировать', style: 'destructive',
+          text: 'На 7 дней',
           onPress: async () => {
-            await supabase.from('users').update({ level: 'red' }).eq('user_id', userId)
-            Alert.alert('Готово', `@${username} переведён в red`)
+            const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            await supabase.from('users').update({ banned_until: until }).eq('user_id', userId)
+            Alert.alert('Готово', `@${username} заблокирован на 7 дней`)
           }
-        }
+        },
+        {
+          text: 'Навсегда', style: 'destructive',
+          onPress: async () => {
+            await supabase.from('users').update({ banned_until: '2099-01-01T00:00:00Z' }).eq('user_id', userId)
+            Alert.alert('Готово', `@${username} заблокирован перманентно`)
+          }
+        },
       ]
     )
   }
@@ -143,7 +151,7 @@ function ReportsTab() {
                       <Text style={s.actionBtnText}>Отметить решённой</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.actionBtn, s.actionBtnDanger]} onPress={() => banUser(item.reported_user_id, item.reported?.username)}>
-                      <Text style={[s.actionBtnText, { color: '#c0392b' }]}>Понизить уровень</Text>
+                      <Text style={[s.actionBtnText, { color: '#c0392b' }]}>Заблокировать</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -167,7 +175,7 @@ function UsersTab({ navigation }) {
     setLoading(true)
     const { data } = await supabase
       .from('users')
-      .select('user_id, username, level, email, created_at, is_admin')
+      .select('user_id, username, level, email, created_at, is_admin, banned_until')
       .ilike('username', `%${query.trim()}%`)
       .limit(20)
     setUsers(data || [])
@@ -179,6 +187,61 @@ function UsersTab({ navigation }) {
     await supabase.from('users').update({ is_admin: newVal }).eq('user_id', userId)
     setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_admin: newVal } : u))
     Alert.alert('Готово', `@${username} ${newVal ? 'получил права модератора' : 'лишён прав модератора'}`)
+  }
+
+  async function banUser(userId, username, currentBannedUntil) {
+    const isBanned = currentBannedUntil && new Date(currentBannedUntil) > new Date()
+    if (isBanned) {
+      Alert.alert(
+        `Разбанить @${username}?`,
+        '',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Разбанить',
+            onPress: async () => {
+              await supabase.from('users').update({ banned_until: null }).eq('user_id', userId)
+              setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: null } : u))
+              Alert.alert('Готово', `@${username} разбанен`)
+            }
+          }
+        ]
+      )
+      return
+    }
+    Alert.alert(
+      `Заблокировать @${username}?`,
+      'Выберите тип блокировки',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'На 7 дней',
+          onPress: async () => {
+            const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+            await supabase.from('users').update({ banned_until: until }).eq('user_id', userId)
+            setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: until } : u))
+            Alert.alert('Готово', `@${username} заблокирован на 7 дней`)
+          }
+        },
+        {
+          text: 'На 30 дней',
+          onPress: async () => {
+            const until = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            await supabase.from('users').update({ banned_until: until }).eq('user_id', userId)
+            setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: until } : u))
+            Alert.alert('Готово', `@${username} заблокирован на 30 дней`)
+          }
+        },
+        {
+          text: 'Навсегда', style: 'destructive',
+          onPress: async () => {
+            await supabase.from('users').update({ banned_until: '2099-01-01T00:00:00Z' }).eq('user_id', userId)
+            setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: '2099-01-01T00:00:00Z' } : u))
+            Alert.alert('Готово', `@${username} заблокирован перманентно`)
+          }
+        },
+      ]
+    )
   }
 
   return (
@@ -213,6 +276,9 @@ function UsersTab({ navigation }) {
                     <Text style={s.userMeta}>{item.level} · {new Date(item.created_at).toLocaleDateString('ru')}</Text>
                   </View>
                   {item.is_admin && <View style={s.adminBadge}><Text style={s.adminBadgeText}>admin</Text></View>}
+                  {item.banned_until && new Date(item.banned_until) > new Date() && (
+                    <View style={s.bannedBadge}><Text style={s.bannedBadgeText}>ban</Text></View>
+                  )}
                 </View>
                 <View style={s.userActions}>
                   <TouchableOpacity
@@ -227,6 +293,14 @@ function UsersTab({ navigation }) {
                   >
                     <Text style={[s.actionBtnText, item.is_admin && { color: '#c0392b' }]}>
                       {item.is_admin ? 'Снять admin' : 'Дать admin'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.actionBtn, (item.banned_until && new Date(item.banned_until) > new Date()) ? s.actionBtnSuccess : s.actionBtnDanger]}
+                    onPress={() => banUser(item.user_id, item.username, item.banned_until)}
+                  >
+                    <Text style={[s.actionBtnText, { color: (item.banned_until && new Date(item.banned_until) > new Date()) ? '#5DAA72' : '#c0392b' }]}>
+                      {(item.banned_until && new Date(item.banned_until) > new Date()) ? 'Разбанить' : 'Забанить'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -341,6 +415,9 @@ const s = StyleSheet.create({
   userMeta: { fontSize: 12, color: colors.muted },
   adminBadge: { backgroundColor: '#8B735522', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 'auto' },
   adminBadgeText: { fontSize: 11, color: colors.accent, fontWeight: '700' },
+  bannedBadge: { backgroundColor: '#c0392b22', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 4 },
+  bannedBadgeText: { fontSize: 11, color: '#c0392b', fontWeight: '700' },
+  actionBtnSuccess: { backgroundColor: '#e8f5e9' },
   userActions: { flexDirection: 'row', gap: 8 },
   statSection: { fontSize: 12, fontWeight: '700', color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 12 },
   statCard: { backgroundColor: 'white', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E8DFD0' },
