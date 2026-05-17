@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { supabase } from '../supabase'
@@ -44,7 +43,6 @@ function formatAction(action) {
 
 export default function AdminUserProfileScreen({ route, navigation }) {
   const { userId } = route.params
-  const insets = useSafeAreaInsets()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [testHistory, setTestHistory] = useState([])
@@ -182,7 +180,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={s.safe}>
-        <View style={[s.header, { paddingTop: insets.top + 14 }]}>
+        <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -197,7 +195,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
   if (!profile) {
     return (
       <View style={s.safe}>
-        <View style={[s.header, { paddingTop: insets.top + 14 }]}>
+        <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -404,7 +402,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: colors.white },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16 },

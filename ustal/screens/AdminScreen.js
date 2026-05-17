@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   TextInput, Alert, ActivityIndicator, ScrollView, Modal, KeyboardAvoidingView, Platform
 } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { supabase } from '../supabase'
@@ -16,11 +15,10 @@ const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' }
 
 export default function AdminScreen({ navigation }) {
   const [tab, setTab] = useState(0)
-  const insets = useSafeAreaInsets()
 
   return (
     <View style={s.safe}>
-      <View style={[s.header, { paddingTop: insets.top + 14 }]}>
+      <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
@@ -165,21 +163,29 @@ function ReportsTab({ navigation }) {
 // ── USERS TAB ─────────────────────────────────────────────────────
 function UsersTab({ navigation }) {
   const [query, setQuery] = useState('')
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [allUsers, setAllUsers] = useState([])
+  const [loading, setLoading] = useState(true)
   const [banTarget, setBanTarget] = useState(null)
 
-  async function search() {
-    if (!query.trim()) return
+  useFocusEffect(useCallback(() => {
+    loadAllUsers()
+  }, []))
+
+  async function loadAllUsers() {
     setLoading(true)
     const { data } = await supabase
       .from('users')
       .select('user_id, username, level, email, created_at, is_admin, banned_until')
-      .ilike('username', `%${query.trim()}%`)
-      .limit(20)
-    setUsers(data || [])
+      .order('username', { ascending: true })
+    setAllUsers(data || [])
     setLoading(false)
   }
+
+  const users = query.trim()
+    ? allUsers.filter(u => u.username.toLowerCase().includes(query.trim().toLowerCase()))
+    : allUsers
+
+  function search() { /* фильтрация клиентская через переменную users */ }
 
   async function toggleAdmin(userId, currentAdmin, username) {
     const newVal = !currentAdmin
@@ -219,6 +225,7 @@ function UsersTab({ navigation }) {
           <FlatList
             data={users}
             keyExtractor={u => u.user_id}
+            ListHeaderComponent={<Text style={s.usersCount}>{users.length} пользователей</Text>}
             contentContainerStyle={{ padding: 12 }}
             renderItem={({ item }) => (
               <View style={s.userCard}>
@@ -342,7 +349,7 @@ function StatsTab() {
 // ── STYLES ────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: colors.white },
   tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
@@ -382,6 +389,7 @@ const s = StyleSheet.create({
   bannedBadgeText: { fontSize: 11, color: '#c0392b', fontWeight: '700' },
   actionBtnSuccess: { backgroundColor: '#e8f5e9' },
   userActions: { flexDirection: 'row', gap: 8 },
+  usersCount: { fontSize: 12, color: colors.muted, marginBottom: 8 },
   statSection: { fontSize: 12, fontWeight: '700', color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 12 },
   statCard: { backgroundColor: 'white', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E8DFD0' },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8' },
