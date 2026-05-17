@@ -68,7 +68,7 @@ export default function DirectMessageScreen({ route, navigation }) {
         table: 'direct_messages',
         filter: `conversation_id=eq.${conversationId}`,
       }, payload => {
-        setMessages(prev => [payload.new, ...prev]);
+        setMessages(prev => prev.find(m => m.id === payload.new.id) ? prev : [payload.new, ...prev]);
       })
       .on('postgres_changes', {
         event: 'UPDATE',

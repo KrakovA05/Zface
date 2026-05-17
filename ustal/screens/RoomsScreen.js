@@ -286,8 +286,9 @@ export default function RoomsScreen({ route, navigation }) {
   const saveEdit = async () => {
     const trimmed = text2.trim();
     if (!trimmed || !editing) return;
-    await supabase.from('messages').update({ text: trimmed, edited_at: new Date().toISOString() })
+    const { error } = await supabase.from('messages').update({ text: trimmed, edited_at: new Date().toISOString() })
       .eq('id', editing.id).eq('sender_id', store.userId);
+    if (error) { Alert.alert('Ошибка', 'Не удалось сохранить изменения'); setSending(false); return; }
     setMessages(prev => prev.map(m => m.id === editing.id ? { ...m, text: trimmed, edited_at: new Date().toISOString() } : m));
     setText2(''); setEditing(null); setSending(false);
   };

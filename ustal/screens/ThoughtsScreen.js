@@ -108,7 +108,9 @@ export default function ThoughtsScreen({ navigation }) {
       .from('anonymous_thoughts')
       .insert({ user_id: store.userId, text: trimmed, level: store.level || 'green', thought_date: getTodayDate() })
       .select().single();
-    if (!error && data) {
+    if (error || !data) {
+      Alert.alert('Ошибка', 'Не удалось отправить мысль. Попробуй ещё раз.');
+    } else {
       setMyThought(data);
       setMyReactions({ understand: 0, same: 0, hold_on: 0 });
       setText('');
@@ -120,12 +122,14 @@ export default function ThoughtsScreen({ navigation }) {
     const prev = myReacted[thoughtId];
     if (prev === type) {
       setMyReacted(r => { const n = { ...r }; delete n[thoughtId]; return n; });
-      await supabase.from('thought_reactions').delete()
+      const { error } = await supabase.from('thought_reactions').delete()
         .eq('thought_id', thoughtId).eq('user_id', store.userId);
+      if (error) setMyReacted(r => ({ ...r, [thoughtId]: prev }));
     } else {
       setMyReacted(r => ({ ...r, [thoughtId]: type }));
-      await supabase.from('thought_reactions')
+      const { error } = await supabase.from('thought_reactions')
         .upsert({ thought_id: thoughtId, user_id: store.userId, reaction: type }, { onConflict: 'thought_id,user_id' });
+      if (error) setMyReacted(r => { const n = { ...r }; if (prev) n[thoughtId] = prev; else delete n[thoughtId]; return n; });
     }
   };
 
