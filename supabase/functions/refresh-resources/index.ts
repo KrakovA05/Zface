@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
 
       for (const item of items) {
         if (!isPsychologyRelated(item.title, item.description)) continue;
+        if (!item.link.startsWith('https://') && !item.link.startsWith('http://')) continue;
 
         const { data: existing } = await supabase
           .from('resources').select('id').eq('url', item.link).limit(1);

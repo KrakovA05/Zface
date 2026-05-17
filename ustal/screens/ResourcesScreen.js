@@ -136,7 +136,7 @@ export default function ResourcesScreen() {
 
 function ResourceItem({ item }) {
   return (
-    <TouchableOpacity style={styles.item} onPress={() => Linking.openURL(item.url)} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.item} onPress={() => { const u = item.url; if (u && (u.startsWith('https://') || u.startsWith('http://'))) Linking.openURL(u); }} activeOpacity={0.7}>
       <Ionicons
         name={item.type === 'video' ? 'play-circle-outline' : 'document-text-outline'}
         size={18} color={colors.accent} style={{ marginRight: 10 }}
