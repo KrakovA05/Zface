@@ -362,7 +362,7 @@ export default function App() {
         if (session?.user) {
           const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('username, level, email, avatar_url, status, login_streak, last_login_date, goal, is_admin')
+            .select('username, level, email, avatar_url, status, login_streak, last_login_date, goal, is_admin, banned_until')
             .eq('user_id', session.user.id)
             .single();
           if (userError) throw userError;
@@ -375,6 +375,17 @@ export default function App() {
             store.status = userData.status || '';
             store.goal = userData.goal || '';
             store.isAdmin = userData.is_admin || false;
+          }
+
+          // Проверка бана
+          if (userData?.banned_until) {
+            const until = new Date(userData.banned_until)
+            if (until > new Date()) {
+              await supabase.auth.signOut()
+              store.userId = null
+              setInitialRoute('Login')
+              return
+            }
           }
 
           // Стрик по дням входа

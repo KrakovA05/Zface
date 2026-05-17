@@ -25,7 +25,7 @@ export default function LoginScreen({ navigation }) {
     }
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('username, level, email, avatar_url, status, goal, is_admin')
+      .select('username, level, email, avatar_url, status, goal, is_admin, banned_until')
       .eq('user_id', data.user.id)
       .single();
     setLoading(false);
@@ -41,6 +41,19 @@ export default function LoginScreen({ navigation }) {
     store.status = userData.status || '';
     store.goal = userData.goal || '';
     store.isAdmin = userData.is_admin || false;
+    // Проверка бана
+    if (userData.banned_until) {
+      const until = new Date(userData.banned_until)
+      const isPermanent = until.getFullYear() >= 2099
+      const msg = isPermanent
+        ? 'Ваш аккаунт заблокирован навсегда за нарушение правил сообщества.'
+        : `Ваш аккаунт заблокирован до ${until.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}.`
+      if (until > new Date()) {
+        await supabase.auth.signOut()
+        Alert.alert('Аккаунт заблокирован', msg)
+        return
+      }
+    }
     navigation.navigate('Main');
   };
 
