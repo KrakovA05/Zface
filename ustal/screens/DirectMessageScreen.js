@@ -103,6 +103,14 @@ export default function DirectMessageScreen({ route, navigation }) {
   };
 
   const fetchMessages = async () => {
+    const { data: blockData } = await supabase
+      .from('blocks')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${store.userId},blocked_id.eq.${store.userId}`);
+    const blockedIds = new Set(
+      (blockData || []).map(b => b.blocker_id === store.userId ? b.blocked_id : b.blocker_id)
+    );
+
     const { data, error } = await supabase
       .from('direct_messages')
       .select('*')
@@ -110,8 +118,9 @@ export default function DirectMessageScreen({ route, navigation }) {
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) { Alert.alert('Ошибка', 'Не удалось загрузить сообщения'); return null; }
-    if (data) setMessages(data);
-    return data;
+    const filtered = (data || []).filter(m => !blockedIds.has(m.sender_id) || m.sender_id === store.userId);
+    if (filtered) setMessages(filtered);
+    return filtered;
   };
 
   const loadReactions = async (msgs) => {

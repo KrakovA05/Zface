@@ -68,6 +68,7 @@ export default function FeedScreen({ navigation }) {
 
   const cursorRef = useRef(null);
   const fetchedAuthors = useRef(new Set());
+  const blockedIdsRef = useRef(new Set());
   const inputRef = useRef(null);
 
   const insets = useSafeAreaInsets();
@@ -127,8 +128,19 @@ export default function FeedScreen({ navigation }) {
   };
 
   const loadPosts = useCallback(async (reset = true) => {
-    if (reset) { setLoading(true); cursorRef.current = null; }
-    else setLoadingMore(true);
+    if (reset) {
+      setLoading(true);
+      cursorRef.current = null;
+      if (store.userId) {
+        const { data: blocks } = await supabase
+          .from('blocks')
+          .select('blocker_id, blocked_id')
+          .or(`blocker_id.eq.${store.userId},blocked_id.eq.${store.userId}`);
+        blockedIdsRef.current = new Set(
+          (blocks || []).map(b => b.blocker_id === store.userId ? b.blocked_id : b.blocker_id)
+        );
+      }
+    } else setLoadingMore(true);
 
     let query = supabase.from('feed_posts').select('*')
       .order('created_at', { ascending: false }).limit(PAGE_SIZE);
@@ -137,8 +149,9 @@ export default function FeedScreen({ navigation }) {
 
     const { data, error } = await query;
     if (error) Alert.alert('Ошибка', 'Не удалось загрузить ленту');
-    const newPosts = data || [];
-    if (newPosts.length > 0) cursorRef.current = newPosts[newPosts.length - 1].created_at;
+    const rawPosts = data || [];
+    const newPosts = rawPosts.filter(p => !blockedIdsRef.current.has(p.author_id));
+    if (rawPosts.length > 0) cursorRef.current = rawPosts[rawPosts.length - 1].created_at;
     if (reset) {
       const userLvl = store.level || 'yellow';
       newPosts.sort((a, b) => scorePost(b, userLvl) - scorePost(a, userLvl));
