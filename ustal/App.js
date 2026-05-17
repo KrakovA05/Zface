@@ -49,6 +49,7 @@ import PsychTestScreen from './screens/PsychTestScreen';
 import AiChatScreen from './screens/AiChatScreen'
 import AccountSettingsScreen from './screens/AccountSettingsScreen';
 import AdminScreen from './screens/AdminScreen';
+import AdminUserProfileScreen from './screens/AdminUserProfileScreen';
 import AnalyticsScreen from './screens/AnalyticsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -502,6 +503,7 @@ export default function App() {
             <Stack.Screen name="AccountSettings"  component={AccountSettingsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Analytics"        component={AnalyticsScreen}       options={{ headerShown: false }} />
             <Stack.Screen name="Admin"            component={AdminScreen}           options={{ headerShown: false }} />
+            <Stack.Screen name="AdminUserProfile" component={AdminUserProfileScreen} options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />
