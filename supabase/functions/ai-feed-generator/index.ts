@@ -218,17 +218,35 @@ Deno.serve(async (req) => {
 
     type PostInput = { text: string; level: string; link_url?: string; link_title?: string };
     const allPosts: PostInput[] = [...redPosts, ...yellowPosts, ...greenPosts, ...crossPosts, ...resourcePosts];
-    const rows = allPosts.map((p) => ({
-      author_id: SYSTEM_USER_ID,
-      author_username: '@один',
-      author_level: p.level === 'all' ? 'green' : p.level,
-      text: p.text,
-      target_levels: p.level === 'all' ? ['green', 'yellow', 'red'] : [p.level],
-      likes: 0,
-      media_url: null,
-      link_url: p.link_url ?? null,
-      link_title: p.link_title ?? null,
-    }));
+
+    // Раскидываем посты равномерно с 9:00 до 22:00
+    const now = new Date();
+    const dayStart = new Date(now);
+    dayStart.setHours(9, 0, 0, 0);
+    const dayEnd = new Date(now);
+    dayEnd.setHours(22, 0, 0, 0);
+    const windowMs = dayEnd.getTime() - dayStart.getTime();
+    const stepMs = allPosts.length > 1 ? windowMs / (allPosts.length - 1) : 0;
+
+    // Перемешиваем чтобы разные уровни шли вперемежку
+    const shuffled = allPosts.sort(() => Math.random() - 0.5);
+
+    const rows = shuffled.map((p, i) => {
+      const scheduledAt = new Date(dayStart.getTime() + stepMs * i);
+      // если время уже прошло — оставляем как есть (пост виден сразу)
+      return {
+        author_id: SYSTEM_USER_ID,
+        author_username: '@один',
+        author_level: p.level === 'all' ? 'green' : p.level,
+        text: p.text,
+        target_levels: p.level === 'all' ? ['green', 'yellow', 'red'] : [p.level],
+        likes: 0,
+        media_url: null,
+        link_url: p.link_url ?? null,
+        link_title: p.link_title ?? null,
+        created_at: scheduledAt.toISOString(),
+      };
+    });
 
     const { error } = await supabase.from('feed_posts').insert(rows);
     if (error) {
