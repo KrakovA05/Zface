@@ -4,7 +4,7 @@ import { colors } from '../theme';
 
 const EMOJIS = ['❤️', '😂', '😮', '😢', '😡', '👍'];
 
-export default function ChatActionMenu({ message, isOwn, onClose, onReply, onEdit, onDelete, onReact, onReport }) {
+export default function ChatActionMenu({ message, isOwn, onClose, onReply, onEdit, onDelete, onReact, onReport, onAdminProfile }) {
   if (!message) return null;
   return (
     <Modal transparent animationType="fade" visible onRequestClose={onClose}>
@@ -23,6 +23,7 @@ export default function ChatActionMenu({ message, isOwn, onClose, onReply, onEdi
             {isOwn && <Item icon="pencil-outline" label="Редактировать" onPress={() => { onEdit(); onClose(); }} />}
             {isOwn && <Item icon="trash-outline" label="Удалить" danger onPress={() => { onDelete(); onClose(); }} />}
             {!isOwn && onReport && <Item icon="flag-outline" label="Пожаловаться" danger onPress={() => { onReport(); onClose(); }} />}
+            {onAdminProfile && <Item icon="person-outline" label="Профиль пользователя" onPress={() => { onAdminProfile(); onClose(); }} />}
           </View>
         </TouchableOpacity>
       </TouchableOpacity>

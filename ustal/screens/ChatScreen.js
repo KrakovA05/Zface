@@ -321,6 +321,9 @@ function GlobalChat({ navigation }) {
         onDelete={() => { deleteMessage(menuMsg); setMenuMsg(null); }}
         onReact={(emoji) => toggleReaction(menuMsg.id, emoji)}
         onReport={() => reportMessage(menuMsg)}
+        onAdminProfile={store.isAdmin && menuMsg && menuMsg.sender_id !== store.userId
+          ? () => { setMenuMsg(null); navigation.navigate('AdminUserProfile', { userId: menuMsg.sender_id }); }
+          : undefined}
       />
     </View>
   );
