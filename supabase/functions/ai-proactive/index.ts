@@ -1,24 +1,27 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+async function callGroq(prompt: string, apiKey: string): Promise<string> {
+  const res = await fetch(GROQ_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 120, temperature: 0.9 },
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 120,
+      temperature: 0.9,
     }),
   });
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text().then(t => t.slice(0, 200))}`);
+  if (!res.ok) throw new Error(`Groq ${res.status}: ${await res.text().then(t => t.slice(0, 200))}`);
   const data = await res.json();
-  return data.candidates[0].content.parts[0].text.trim();
+  return data.choices[0].message.content.trim();
 }
 
 async function sendPush(token: string, text: string, messageId: string) {
@@ -81,8 +84,8 @@ async function buildContext(userId: string, level: string): Promise<string> {
 }
 
 async function generateMessage(context: string, triggerReason: string): Promise<string> {
-  const apiKey = Deno.env.get('GEMINI_API_KEY');
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  const apiKey = Deno.env.get('GROQ_API_KEY');
+  if (!apiKey) throw new Error('GROQ_API_KEY not set');
 
   const triggerHints: Record<string, string> = {
     level_red: 'Пользователь только что получил уровень red — ему сейчас очень плохо.',
@@ -99,7 +102,7 @@ ${triggerHints[triggerReason] || ''}
 Контекст пользователя: ${context}
 Ответь ТОЛЬКО текстом сообщения, без кавычек и пояснений.`;
 
-  return callGemini(prompt, apiKey);
+  return callGroq(prompt, apiKey);
 }
 
 async function hasSentRecently(userId: string, type: 'scheduled' | 'triggered'): Promise<boolean> {
