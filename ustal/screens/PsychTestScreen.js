@@ -138,13 +138,16 @@ function computeRaw(test, answers) {
   if (test.scoring === 'mean') {
     return answers.reduce((s, v) => s + v, 0) / answers.length;
   }
+  const maxVal = test.scale.max;
+  const minVal = test.scale.min;
   if (test.scoring === 'sum_with_reverse') {
-    const maxVal = test.scale.max;
-    const minVal = test.scale.min;
     return answers.reduce((s, v, i) => {
       const val = test.reverseItems?.includes(i + 1) ? (maxVal + minVal - v) : v;
       return s + val;
     }, 0);
+  }
+  if (test.reverseAll) {
+    return answers.reduce((s, v) => s + (maxVal + minVal - v), 0);
   }
   return answers.reduce((s, v) => s + v, 0);
 }

@@ -399,7 +399,7 @@ export default function App() {
             const prevStreak = userData?.login_streak || 1;
             const newStreak = lastDate === yStr ? prevStreak + 1 : 1;
             await supabase.from('users').update({ login_streak: newStreak, last_login_date: today }).eq('user_id', session.user.id);
-            setStreakData(newStreak);
+            if (newStreak > 1) setStreakData(newStreak);
           }
 
           setInitialRoute('Main');

@@ -61,7 +61,7 @@ export default function RoomsScreen({ route, navigation }) {
   const openRoom = route?.params?.openRoom;
   const insets = useSafeAreaInsets();
   const isAdmin = store.isAdmin || false;
-  const [room, setRoom] = useState((openRoom === userLevel || openRoom === 'night' || isAdmin) ? openRoom : null);
+  const [room, setRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text2, setText2] = useState('');
   const [kbHeight, setKbHeight] = useState(0);

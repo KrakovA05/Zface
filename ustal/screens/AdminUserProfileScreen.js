@@ -159,13 +159,14 @@ export default function AdminUserProfileScreen({ route, navigation }) {
                 {
                   text: 'Да, удалить', style: 'destructive',
                   onPress: async () => {
+                    const { error } = await supabase.rpc('admin_delete_user', { target_id: userId })
+                    if (error) { Alert.alert('Ошибка', 'Не удалось удалить пользователя'); return; }
                     await supabase.from('admin_actions').insert({
                       admin_id: store.userId,
                       target_id: userId,
                       action_type: 'delete',
                       details: { username: profile?.username },
                     })
-                    await supabase.rpc('admin_delete_user', { target_id: userId })
                     navigation.goBack()
                   },
                 },
