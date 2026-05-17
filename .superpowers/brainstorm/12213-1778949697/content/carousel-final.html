@@ -1,0 +1,199 @@
+<h2>Финальный дизайн карусели — все 5 слайдов</h2>
+<p class="subtitle">Стрелки для переключения. Это полный флоу онбординга.</p>
+
+<div style="display:flex;justify-content:center;align-items:flex-start;gap:32px;flex-wrap:wrap;margin-top:16px">
+
+  <!-- Slide viewer -->
+  <div style="text-align:center">
+    <div id="slide-container" style="width:240px;background:white;border-radius:28px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.15);font-family:system-ui;transition:all 0.2s"></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px">
+      <button onclick="prevSlide()" style="background:#E8DFD0;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px">←</button>
+      <span id="slide-label" style="font-size:12px;color:#8B7355;font-weight:600"></span>
+      <button onclick="nextSlide()" style="background:#8B7355;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;color:white">→</button>
+    </div>
+  </div>
+
+  <!-- Slide list -->
+  <div style="min-width:260px">
+    <div class="label" style="margin-bottom:12px">Структура карусели</div>
+    <div id="slide-list"></div>
+  </div>
+
+</div>
+
+<script>
+const slides = [
+  {
+    num: "01 / 05",
+    title: "Найди своих",
+    desc: "Лента и комнаты — только для людей с твоим уровнем. Здесь не притворяются.",
+    btn: "дальше →",
+    screen: `
+      <div style="background:#FAF7F2;padding:8px">
+        <div style="background:white;border-radius:12px;padding:10px;margin-bottom:6px;border:1px solid #E8DFD0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+            <div style="width:24px;height:24px;border-radius:12px;background:#c9a96e;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:700">А</div>
+            <div><div style="font-size:9px;font-weight:600;color:#2C2420">анна_р</div><div style="font-size:7px;color:#8B7355">жёлтый · 2ч назад</div></div>
+          </div>
+          <div style="font-size:9px;color:#2C2420;line-height:1.4">сегодня просто не могу заставить себя выйти из дома</div>
+          <div style="display:flex;gap:8px;margin-top:5px"><div style="font-size:7px;color:#8B7355">♥ 14</div><div style="font-size:7px;color:#8B7355">◯ 6</div></div>
+        </div>
+        <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+            <div style="width:24px;height:24px;border-radius:12px;background:#AA7C00;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:700">М</div>
+            <div><div style="font-size:9px;font-weight:600;color:#2C2420">миша_т</div><div style="font-size:7px;color:#8B7355">жёлтый · 4ч назад</div></div>
+          </div>
+          <div style="font-size:9px;color:#2C2420;line-height:1.4">кто-нибудь ещё чувствует что устал от всего</div>
+        </div>
+      </div>`
+  },
+  {
+    num: "02 / 05",
+    title: "Поговори",
+    desc: "Комнаты по уровню, глобальный чат и @один — ИИ, который просто слушает.",
+    btn: "дальше →",
+    screen: `
+      <div style="background:#FAF7F2;padding:8px">
+        <div style="background:white;border-radius:12px;padding:10px;margin-bottom:6px;border:1px solid #E8DFD0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="width:32px;height:32px;border-radius:16px;background:#c9a96e;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700">✦</div>
+            <div><div style="font-size:10px;font-weight:700;color:#2C2420">@один</div><div style="font-size:7px;color:#8B7355">я здесь каждый день</div></div>
+          </div>
+          <div style="background:#c9a96e;border-radius:12px 12px 12px 4px;padding:8px 10px;margin-bottom:6px;display:inline-block">
+            <div style="font-size:9px;color:white;line-height:1.4">как ты сейчас?</div>
+          </div><br>
+          <div style="background:#F0E8D8;border-radius:12px 12px 4px 12px;padding:8px 10px;display:inline-block;margin-left:30px">
+            <div style="font-size:9px;color:#2C2420;line-height:1.4">не очень. просто устал</div>
+          </div>
+        </div>
+        <div style="background:white;border-radius:12px;padding:8px;border:1px solid #E8DFD0">
+          <div style="font-size:8px;font-weight:600;color:#8B7355;margin-bottom:5px">КОМНАТА · ЖЁЛТЫЙ</div>
+          <div style="height:5px;width:85%;background:#F0E8D8;border-radius:3px;margin-bottom:3px"></div>
+          <div style="height:5px;width:60%;background:#F0E8D8;border-radius:3px"></div>
+        </div>
+      </div>`
+  },
+  {
+    num: "03 / 05",
+    title: "Выдохни",
+    desc: "Коробочное дыхание, медитативная рыбалка и анонимные мысли — когда слов нет.",
+    btn: "дальше →",
+    screen: `
+      <div style="background:#FAF7F2;padding:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0;text-align:center">
+            <div style="font-size:22px;margin-bottom:4px">◯</div>
+            <div style="width:36px;height:36px;border-radius:18px;border:2px solid #8B7355;margin:0 auto 6px;display:flex;align-items:center;justify-content:center">
+              <div style="width:20px;height:20px;border-radius:10px;border:2px solid #c9a96e"></div>
+            </div>
+            <div style="font-size:8px;font-weight:600;color:#2C2420">дыхание</div>
+          </div>
+          <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0;text-align:center">
+            <div style="font-size:22px;margin-bottom:4px">🎣</div>
+            <div style="font-size:8px;font-weight:600;color:#2C2420;margin-top:14px">рыбалка</div>
+          </div>
+          <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0;grid-column:1/-1">
+            <div style="font-size:8px;color:#8B7355;margin-bottom:5px">АНОНИМНАЯ МЫСЛЬ ДНЯ</div>
+            <div style="font-size:9px;color:#2C2420;line-height:1.4;font-style:italic">«иногда просто хочется чтобы кто-то спросил как дела»</div>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <div style="font-size:8px;color:#8B7355">понимаю 32</div>
+              <div style="font-size:8px;color:#8B7355">я тоже 18</div>
+            </div>
+          </div>
+        </div>
+      </div>`
+  },
+  {
+    num: "04 / 05",
+    title: "Следи за собой",
+    desc: "Тест раз в сутки определяет твой уровень. Динамика видна — становится лучше или хуже.",
+    btn: "дальше →",
+    screen: `
+      <div style="background:#FAF7F2;padding:8px">
+        <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0;margin-bottom:6px">
+          <div style="font-size:8px;font-weight:600;color:#8B7355;margin-bottom:6px">ИСТОРИЯ УРОВНЕЙ</div>
+          <div style="display:flex;align-items:flex-end;gap:4px;height:40px">
+            <div style="flex:1;background:#5DAA72;border-radius:4px 4px 0 0;height:30%"></div>
+            <div style="flex:1;background:#AA7C00;border-radius:4px 4px 0 0;height:60%"></div>
+            <div style="flex:1;background:#AA7C00;border-radius:4px 4px 0 0;height:70%"></div>
+            <div style="flex:1;background:#c0392b;border-radius:4px 4px 0 0;height:100%"></div>
+            <div style="flex:1;background:#c0392b;border-radius:4px 4px 0 0;height:90%"></div>
+            <div style="flex:1;background:#AA7C00;border-radius:4px 4px 0 0;height:65%"></div>
+            <div style="flex:1;background:#AA7C00;border-radius:4px 4px 0 0;height:55%"></div>
+          </div>
+        </div>
+        <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:8px;color:#8B7355;margin-bottom:3px">сейчас</div>
+              <div style="font-size:11px;font-weight:700;color:#AA7C00">жёлтый уровень</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:8px;color:#8B7355;margin-bottom:3px">динамика</div>
+              <div style="font-size:11px;font-weight:700;color:#5DAA72">↑ лучше</div>
+            </div>
+          </div>
+        </div>
+      </div>`
+  },
+  {
+    num: "05 / 05",
+    title: "Приложение учится вместе с тобой",
+    desc: "Мы анализируем твою активность — и подстраиваем рекомендации, контент и подсказки именно под тебя.",
+    btn: "начать",
+    screen: `
+      <div style="background:#FAF7F2;padding:8px">
+        <div style="background:white;border-radius:12px;padding:12px;border:1px solid #E8DFD0;margin-bottom:6px">
+          <div style="font-size:8px;font-weight:600;color:#8B7355;margin-bottom:8px">ДЛЯ ТЕБЯ СЕЙЧАС</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:6px;height:6px;border-radius:3px;background:#c9a96e;flex-shrink:0"></div>
+            <div style="height:6px;flex:1;background:#F0E8D8;border-radius:3px"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:6px;height:6px;border-radius:3px;background:#c9a96e;flex-shrink:0"></div>
+            <div style="height:6px;flex:1;background:#F0E8D8;border-radius:3px;width:70%"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:6px;height:6px;border-radius:3px;background:#c9a96e;flex-shrink:0"></div>
+            <div style="height:6px;flex:1;background:#F0E8D8;border-radius:3px;width:80%"></div>
+          </div>
+        </div>
+        <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0">
+          <div style="font-size:8px;color:#8B7355;margin-bottom:4px">@один знает что тебе сейчас нужно</div>
+          <div style="font-size:9px;color:#2C2420;line-height:1.4">Твои паттерны → персональные советы и контент</div>
+        </div>
+      </div>`
+  }
+];
+
+let current = 0;
+
+function renderSlide(i) {
+  const s = slides[i];
+  document.getElementById('slide-container').innerHTML = `
+    <div style="background:#FAF7F2;min-height:${s.screen ? '160px' : '80px'}">${s.screen || ''}</div>
+    <div style="padding:14px;background:white">
+      <div style="font-size:10px;color:#C0A882;font-weight:600;margin-bottom:4px">${s.num}</div>
+      <div style="font-weight:700;font-size:14px;color:#2C2420;margin-bottom:5px">${s.title}</div>
+      <div style="font-size:10px;color:#6B5B4E;line-height:1.55;margin-bottom:12px">${s.desc}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;gap:3px">${slides.map((_,j) => `<div style="width:${j===i?'16px':'5px'};height:3px;border-radius:2px;background:${j===i?'#8B7355':'#E8DFD0'};transition:all 0.2s"></div>`).join('')}</div>
+        <div style="background:#8B7355;color:white;border-radius:16px;padding:7px 16px;font-size:10px;font-weight:600;cursor:pointer" onclick="nextSlide()">${s.btn}</div>
+      </div>
+    </div>`;
+  document.getElementById('slide-label').textContent = s.num;
+
+  // Update list
+  document.getElementById('slide-list').innerHTML = slides.map((sl, j) => `
+    <div onclick="goTo(${j})" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;background:${j===i?'#FAF7F2':'transparent'};margin-bottom:3px;border:1px solid ${j===i?'#E8DFD0':'transparent'}">
+      <div style="width:6px;height:6px;border-radius:3px;background:${j===i?'#8B7355':'#D0C4B8'};flex-shrink:0"></div>
+      <div style="font-size:11px;color:${j===i?'#2C2420':'#8B7355'};font-weight:${j===i?'600':'400'}">${sl.title}</div>
+    </div>`).join('');
+}
+
+function nextSlide() { if(current < slides.length-1) { current++; renderSlide(current); } }
+function prevSlide() { if(current > 0) { current--; renderSlide(current); } }
+function goTo(i) { current = i; renderSlide(i); }
+
+renderSlide(0);
+</script>

@@ -1,0 +1,101 @@
+<h2>Слайд со скриншотом экрана</h2>
+<p class="subtitle">Так выглядит один слайд карусели — скриншот занимает основную часть</p>
+
+<div class="cards">
+
+  <!-- Вариант A: скриншот сверху, текст снизу -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#F5F0EA;padding:16px;display:flex;justify-content:center;">
+      <div style="width:210px;background:white;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.13);font-family:system-ui">
+        <!-- Скриншот ленты -->
+        <div style="background:#FAF7F2;padding:10px 10px 0">
+          <div style="background:white;border-radius:14px;padding:10px;margin-bottom:6px;border:1px solid #E8DFD0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <div style="width:22px;height:22px;border-radius:11px;background:#c9a96e;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:700">А</div>
+              <div>
+                <div style="font-size:9px;font-weight:600;color:#2C2420">анна_р</div>
+                <div style="font-size:7px;color:#8B7355">уровень: жёлтый · 2ч назад</div>
+              </div>
+            </div>
+            <div style="font-size:9px;color:#2C2420;line-height:1.4">сегодня просто не могу заставить себя выйти из дома</div>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <div style="font-size:8px;color:#8B7355">♥ 14</div>
+              <div style="font-size:8px;color:#8B7355">◯ 6</div>
+            </div>
+          </div>
+          <div style="background:white;border-radius:14px;padding:10px;border:1px solid #E8DFD0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <div style="width:22px;height:22px;border-radius:11px;background:#AA7C00;display:flex;align-items:center;justify-content:center;color:white;font-size:9px;font-weight:700">М</div>
+              <div>
+                <div style="font-size:9px;font-weight:600;color:#2C2420">миша_т</div>
+                <div style="font-size:7px;color:#8B7355">уровень: жёлтый · 4ч назад</div>
+              </div>
+            </div>
+            <div style="font-size:9px;color:#2C2420;line-height:1.4">кто-нибудь ещё чувствует что устал от всего</div>
+          </div>
+        </div>
+        <!-- Текст и кнопка -->
+        <div style="padding:12px;background:white;border-top:1px solid #E8DFD0;margin-top:6px">
+          <div style="font-weight:700;font-size:13px;color:#2C2420;margin-bottom:4px">Найди своих</div>
+          <div style="font-size:10px;color:#6B5B4E;line-height:1.5;margin-bottom:10px">Лента только для людей с твоим уровнем. Здесь не притворяются.</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;gap:3px">
+              <div style="width:16px;height:3px;border-radius:2px;background:#8B7355"></div>
+              <div style="width:5px;height:3px;border-radius:2px;background:#E8DFD0"></div>
+              <div style="width:5px;height:3px;border-radius:2px;background:#E8DFD0"></div>
+              <div style="width:5px;height:3px;border-radius:2px;background:#E8DFD0"></div>
+            </div>
+            <div style="background:#8B7355;color:white;border-radius:16px;padding:6px 14px;font-size:10px;font-weight:600">дальше →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>А — скриншот сверху</h3>
+      <p>Скриншот занимает верх, текст + кнопка снизу. Видно интерфейс сразу.</p>
+    </div>
+  </div>
+
+  <!-- Вариант B: полноэкранный оверлей, скриншот в центре как телефон -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#2C2420;padding:16px;display:flex;justify-content:center;">
+      <div style="width:210px;font-family:system-ui;text-align:center">
+        <div style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">01 / 04</div>
+        <div style="font-weight:700;font-size:14px;color:white;margin-bottom:4px">Найди своих</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:12px">Лента только для людей с твоим уровнем</div>
+        <!-- Phone mockup -->
+        <div style="background:white;border-radius:20px;overflow:hidden;margin:0 auto;width:160px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+          <div style="background:#FAF7F2;padding:8px">
+            <div style="background:white;border-radius:10px;padding:8px;margin-bottom:4px;border:1px solid #E8DFD0">
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
+                <div style="width:18px;height:18px;border-radius:9px;background:#c9a96e"></div>
+                <div style="height:6px;width:50px;background:#E8DFD0;border-radius:3px"></div>
+              </div>
+              <div style="height:5px;width:100%;background:#F0E8D8;border-radius:3px;margin-bottom:3px"></div>
+              <div style="height:5px;width:75%;background:#F0E8D8;border-radius:3px"></div>
+            </div>
+            <div style="background:white;border-radius:10px;padding:8px;border:1px solid #E8DFD0">
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">
+                <div style="width:18px;height:18px;border-radius:9px;background:#AA7C00"></div>
+                <div style="height:6px;width:40px;background:#E8DFD0;border-radius:3px"></div>
+              </div>
+              <div style="height:5px;width:90%;background:#F0E8D8;border-radius:3px"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;justify-content:center;gap:4px;margin-bottom:12px">
+          <div style="width:18px;height:3px;border-radius:2px;background:white"></div>
+          <div style="width:5px;height:3px;border-radius:2px;background:rgba(255,255,255,0.3)"></div>
+          <div style="width:5px;height:3px;border-radius:2px;background:rgba(255,255,255,0.3)"></div>
+          <div style="width:5px;height:3px;border-radius:2px;background:rgba(255,255,255,0.3)"></div>
+        </div>
+        <div style="background:#8B7355;color:white;border-radius:20px;padding:9px 28px;font-size:11px;font-weight:600;display:inline-block">дальше →</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Б — тёмный оверлей + телефон</h3>
+      <p>Тёмный фон, телефон в центре с имитацией экрана. Драматично, фокус на контенте.</p>
+    </div>
+  </div>
+
+</div>

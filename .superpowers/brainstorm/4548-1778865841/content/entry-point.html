@@ -1,0 +1,86 @@
+<h2>Откуда открывается чат с @один?</h2>
+<p class="subtitle">Выбери точку входа</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">А</div>
+    <div class="content">
+      <h3>Вкладка Сообщения — сверху списка</h3>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Сообщения</div>
+        <div class="mockup-body" style="padding:0">
+          <div style="display:flex;align-items:center;padding:12px 14px;background:#fdf6ee;border-bottom:1px solid #f0e8d8;gap:10px">
+            <div style="width:38px;height:38px;border-radius:50%;background:#c9a96e;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0">✦</div>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13px">@один</div>
+              <div style="font-size:12px;color:#888">Здесь можно написать что угодно</div>
+            </div>
+            <div style="font-size:11px;color:#888">всегда</div>
+          </div>
+          <div style="display:flex;align-items:center;padding:12px 14px;gap:10px;border-bottom:1px solid #f5f5f5">
+            <div style="width:38px;height:38px;border-radius:50%;background:#e0e0e0"></div>
+            <div style="flex:1"><div style="font-size:13px">anon_user</div><div style="font-size:12px;color:#888">привет...</div></div>
+          </div>
+          <div style="display:flex;align-items:center;padding:12px 14px;gap:10px">
+            <div style="width:38px;height:38px;border-radius:50%;background:#e0e0e0"></div>
+            <div style="flex:1"><div style="font-size:13px">quiet_one</div><div style="font-size:12px;color:#888">спасибо</div></div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#666;margin-top:8px">@один всегда наверху в личных сообщениях. Привычное место.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">Б</div>
+    <div class="content">
+      <h3>Кнопка на HomeScreen</h3>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Главная</div>
+        <div class="mockup-body">
+          <div style="background:#fdf6ee;border-radius:10px;padding:12px;border:1.5px solid #e8d4b0;display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:50%;background:#c9a96e;display:flex;align-items:center;justify-content:center;color:white;font-weight:700">✦</div>
+            <div>
+              <div style="font-size:13px;font-weight:600">Написать @один</div>
+              <div style="font-size:12px;color:#888">Он здесь каждый день</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;height:60px;background:#f0f0f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#aaa">остальной контент...</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#666;margin-top:8px">@один на главном экране — заметнее, но занимает место.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">В</div>
+    <div class="content">
+      <h3>Из поста @один в ленте</h3>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Лента</div>
+        <div class="mockup-body">
+          <div style="background:#fdf6ee;border-radius:10px;padding:12px;border:1px solid #e8d4b0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <div style="width:30px;height:30px;border-radius:50%;background:#c9a96e;display:flex;align-items:center;justify-content:center;color:white;font-size:12px">✦</div>
+              <span style="font-size:13px;font-weight:600;color:#c9a96e">@один ✦</span>
+            </div>
+            <div style="font-size:13px;color:#444;margin-bottom:10px">Сегодня мне легче, потому что...</div>
+            <div style="border-top:1px solid #e8d4b0;padding-top:8px;display:flex;gap:8px">
+              <div style="font-size:12px;color:#888">♡ 12</div>
+              <div style="font-size:12px;color:#888">💬 3</div>
+              <div style="flex:1"></div>
+              <div style="font-size:12px;color:#c9a96e;font-weight:500">✉ Написать лично →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#666;margin-top:8px">Органично — видишь пост, хочется написать лично. Но менее очевидно для новых пользователей.</p>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:8px;font-size:12px;color:#666">
+  💡 Можно комбинировать: например А + В — и в сообщениях, и из поста
+</div>

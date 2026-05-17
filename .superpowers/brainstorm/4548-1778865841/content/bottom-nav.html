@@ -1,0 +1,122 @@
+<h2>@один в нижнем навбаре</h2>
+<p class="subtitle">Где разместить и как выглядит AI-стикер</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">А</div>
+    <div class="content">
+      <h3>Центральная позиция (вместо Сообщений)</h3>
+      <p style="font-size:12px;color:#666;margin-bottom:10px">Сообщения перемещаются под Messages, @один занимает центр — самое заметное место</p>
+      <div style="background:#FAF7F2;border-radius:16px;padding:10px 6px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,0.1);max-width:340px;margin:0 auto">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">🏠</span>
+          <span style="font-size:9px;color:#888">Главная</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">📰</span>
+          <span style="font-size:9px;color:#888">Лента</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+          <div style="position:relative">
+            <div style="width:44px;height:44px;background:#c9a96e;border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(201,169,110,0.5)">
+              <span style="color:white;font-size:20px;font-weight:700">✦</span>
+            </div>
+            <div style="position:absolute;top:-6px;right:-6px;background:#7B61FF;border-radius:6px;padding:2px 5px;font-size:8px;font-weight:700;color:white;letter-spacing:0.3px">AI</div>
+          </div>
+          <span style="font-size:9px;color:#c9a96e;font-weight:600">@один</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">👥</span>
+          <span style="font-size:9px;color:#888">Друзья</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">👤</span>
+          <span style="font-size:9px;color:#888">Профиль</span>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#666;margin-top:8px">⚠️ Сообщения убираем из таба — доступны через другой путь</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">Б</div>
+    <div class="content">
+      <h3>Шестой таб справа</h3>
+      <p style="font-size:12px;color:#666;margin-bottom:10px">Добавляем @один как новый таб, ничего не убираем — 6 табов</p>
+      <div style="background:#FAF7F2;border-radius:16px;padding:10px 4px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,0.1);max-width:340px;margin:0 auto">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0.5">
+          <span style="font-size:18px">🏠</span>
+          <span style="font-size:8px;color:#888">Дом</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0.5">
+          <span style="font-size:18px">📰</span>
+          <span style="font-size:8px;color:#888">Лента</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0.5">
+          <span style="font-size:18px">💬</span>
+          <span style="font-size:8px;color:#888">Чаты</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0.5">
+          <span style="font-size:18px">👥</span>
+          <span style="font-size:8px;color:#888">Друзья</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0.5">
+          <span style="font-size:18px">👤</span>
+          <span style="font-size:8px;color:#888">Профиль</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;position:relative">
+          <div style="position:relative">
+            <div style="width:34px;height:34px;background:#c9a96e;border-radius:10px;display:flex;align-items:center;justify-content:center">
+              <span style="color:white;font-size:16px;font-weight:700">✦</span>
+            </div>
+            <div style="position:absolute;top:-5px;right:-5px;background:#7B61FF;border-radius:5px;padding:1px 4px;font-size:7px;font-weight:700;color:white">AI</div>
+          </div>
+          <span style="font-size:8px;color:#c9a96e;font-weight:600">@один</span>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#666;margin-top:8px">⚠️ 6 табов — тесновато, иконки маленькие</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">В</div>
+    <div class="content">
+      <h3>@один заменяет Друзей (Друзья → в Профиль)</h3>
+      <p style="font-size:12px;color:#666;margin-bottom:10px">Друзья перемещаются в раздел Профиля, @один занимает 4-ю позицию</p>
+      <div style="background:#FAF7F2;border-radius:16px;padding:10px 6px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,0.1);max-width:340px;margin:0 auto">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">🏠</span>
+          <span style="font-size:9px;color:#888">Главная</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">📰</span>
+          <span style="font-size:9px;color:#888">Лента</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">💬</span>
+          <span style="font-size:9px;color:#888">Чаты</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+          <div style="position:relative">
+            <div style="width:38px;height:38px;background:#c9a96e;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(201,169,110,0.4)">
+              <span style="color:white;font-size:18px;font-weight:700">✦</span>
+            </div>
+            <div style="position:absolute;top:-6px;right:-6px;background:#7B61FF;border-radius:6px;padding:2px 5px;font-size:8px;font-weight:700;color:white">AI</div>
+          </div>
+          <span style="font-size:9px;color:#c9a96e;font-weight:600">@один</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5">
+          <span style="font-size:20px">👤</span>
+          <span style="font-size:9px;color:#888">Профиль</span>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#666;margin-top:8px">5 табов, @один на видном месте, Друзья в Профиле</p>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:16px;padding:12px;background:#f0f0ff;border-radius:8px;font-size:12px;color:#555">
+  💡 Моя рекомендация: <strong>В</strong> — 5 чистых табов, @один заметен, ничего не теряется
+</div>

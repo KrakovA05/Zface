@@ -1,0 +1,81 @@
+<h2>Финальный дизайн: AI в !один</h2>
+<p class="subtitle">Всё что строим — проверь что ничего не пропустили</p>
+
+<div class="section">
+  <h3>Навигация</h3>
+  <div style="background:#FAF7F2;border-radius:16px;padding:12px 8px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,0.1);max-width:340px;margin:10px auto">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5"><span style="font-size:20px">🏠</span><span style="font-size:9px;color:#888">Главная</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5"><span style="font-size:20px">📰</span><span style="font-size:9px;color:#888">Лента</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5"><span style="font-size:20px">💬</span><span style="font-size:9px;color:#888">Чаты</span></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+      <div style="position:relative">
+        <div style="width:38px;height:38px;background:#c9a96e;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(201,169,110,0.4)"><span style="color:white;font-size:18px;font-weight:700">✦</span></div>
+        <div style="position:absolute;top:-6px;right:-6px;background:#7B61FF;border-radius:6px;padding:2px 5px;font-size:8px;font-weight:700;color:white">AI</div>
+      </div>
+      <span style="font-size:9px;color:#c9a96e;font-weight:600">@один</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.5"><span style="font-size:20px">👤</span><span style="font-size:9px;color:#888">Профиль</span></div>
+  </div>
+  <p style="font-size:12px;color:#666;margin-top:8px;text-align:center">Друзья переезжают в Профиль. @один — 4-я позиция с AI-стикером.</p>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>1. Бесплатный AI-слой — работает везде</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+    <div style="background:#f8f8f8;border-radius:10px;padding:12px">
+      <p class="label">Умная лента</p>
+      <p style="font-size:12px;margin:4px 0 0">Порядок постов адаптируется под уровень и историю пользователя</p>
+    </div>
+    <div style="background:#f8f8f8;border-radius:10px;padding:12px">
+      <p class="label">Адаптивный вопрос дня</p>
+      <p style="font-size:12px;margin:4px 0 0">Вопрос меняется в зависимости от уровня и динамики за неделю</p>
+    </div>
+    <div style="background:#f8f8f8;border-radius:10px;padding:12px">
+      <p class="label">Навигационные подсказки</p>
+      <p style="font-size:12px;margin:4px 0 0">@один изредка появляется в интерфейсе: «Может быть дыхание?»</p>
+    </div>
+    <div style="background:#f8f8f8;border-radius:10px;padding:12px">
+      <p class="label">Детекция паттернов</p>
+      <p style="font-size:12px;margin:4px 0 0">3+ дней ухудшения → @один публикует специальный пост</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>2. Чат с @один — отдельный экран</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+    <div style="background:#fdf6ee;border-radius:10px;padding:12px;border:1px solid #e8d4b0">
+      <p class="label">Экран чата</p>
+      <ul style="font-size:12px;margin:4px 0 0;padding-left:14px">
+        <li>История переписки</li>
+        <li>@один знает уровень и психометрику</li>
+        <li>Контекст внутри сессии</li>
+        <li>Дисклеймер в шапке экрана</li>
+      </ul>
+    </div>
+    <div style="background:#fdf6ee;border-radius:10px;padding:12px;border:1px solid #e8d4b0">
+      <p class="label">Безопасность</p>
+      <ul style="font-size:12px;margin:4px 0 0;padding-left:14px">
+        <li>Кризисные слова → карточка с линией помощи</li>
+        <li>@один не советует, не диагностирует</li>
+        <li>«@один не психолог» — видно всегда</li>
+      </ul>
+    </div>
+  </div>
+  <div style="margin-top:10px;background:#fff3cd;border-radius:8px;padding:10px;font-size:12px;color:#856404">
+    💳 Монетизация позже: лимит сообщений для бесплатных пользователей, безлимит — платно. Сейчас всё бесплатно.
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>3. База данных — что добавляем</h3>
+  <div style="background:#f0f9f0;border-radius:10px;padding:12px;font-size:12px">
+    <code style="display:block;line-height:1.8">
+      ai_chat_messages — история чата (user_id, role, text, created_at)<br>
+      ai_chat_sessions — сессии (user_id, started_at, summary)<br>
+      users.ai_chat_enabled — флаг доступа (для будущей монетизации)
+    </code>
+  </div>
+</div>
+
+<p style="text-align:center;margin-top:24px;font-size:13px;color:#888">Всё правильно? Напиши в терминале — пишем спек</p>

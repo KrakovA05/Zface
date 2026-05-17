@@ -1,0 +1,97 @@
+<h2>Стиль карусели — выбери подход</h2>
+<p class="subtitle">Один слайд будет выглядеть примерно так</p>
+
+<div class="cards">
+
+  <!-- Вариант A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#FAF7F2;padding:16px;display:flex;justify-content:center;">
+      <div style="width:200px;background:#FAF7F2;border-radius:24px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12);font-family:system-ui">
+        <!-- Phone frame -->
+        <div style="background:#8B7355;height:140px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
+          <div style="font-size:36px;color:white">🏠</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:1px">01 / 04</div>
+        </div>
+        <div style="padding:16px;text-align:center">
+          <div style="font-weight:700;font-size:14px;color:#2C2420;margin-bottom:6px">Найди своих</div>
+          <div style="font-size:11px;color:#8B7355;line-height:1.5">Лента и комнаты только для людей с твоим уровнем</div>
+          <div style="display:flex;justify-content:center;gap:4px;margin-top:12px">
+            <div style="width:20px;height:4px;border-radius:2px;background:#8B7355"></div>
+            <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+            <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+            <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+          </div>
+          <div style="margin-top:14px;background:#8B7355;color:white;border-radius:20px;padding:8px 20px;font-size:12px;font-weight:600">дальше</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>А — Цветной верх</h3>
+      <p>Акцентный блок с иконкой, белый низ с текстом. Тепло, в стиле приложения.</p>
+    </div>
+  </div>
+
+  <!-- Вариант B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#FAF7F2;padding:16px;display:flex;justify-content:center;">
+      <div style="width:200px;background:#FAF7F2;border-radius:24px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12);font-family:system-ui">
+        <div style="padding:20px 16px">
+          <div style="font-size:11px;color:#8B7355;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">01 / 04</div>
+          <div style="font-weight:700;font-size:16px;color:#2C2420;margin-bottom:6px">Найди своих</div>
+          <div style="font-size:11px;color:#6B5B4E;line-height:1.5;margin-bottom:14px">Лента и комнаты только для людей с твоим уровнем</div>
+          <!-- Fake screenshot -->
+          <div style="background:white;border-radius:12px;padding:10px;border:1px solid #E8DFD0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <div style="width:28px;height:28px;border-radius:14px;background:#E8D5C0"></div>
+              <div>
+                <div style="height:7px;width:60px;background:#E8DFD0;border-radius:4px;margin-bottom:4px"></div>
+                <div style="height:5px;width:40px;background:#F0E8D8;border-radius:4px"></div>
+              </div>
+            </div>
+            <div style="height:6px;width:100%;background:#F0E8D8;border-radius:4px;margin-bottom:4px"></div>
+            <div style="height:6px;width:80%;background:#F0E8D8;border-radius:4px"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+            <div style="display:flex;gap:4px">
+              <div style="width:20px;height:4px;border-radius:2px;background:#8B7355"></div>
+              <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+              <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+              <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+            </div>
+            <div style="background:#8B7355;color:white;border-radius:20px;padding:6px 14px;font-size:11px;font-weight:600">дальше</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Б — Скриншот внутри</h3>
+      <p>Текст сверху, имитация экрана снизу. Пользователь сразу видит интерфейс.</p>
+    </div>
+  </div>
+
+  <!-- Вариант C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#FAF7F2;padding:16px;display:flex;justify-content:center;">
+      <div style="width:200px;background:white;border-radius:24px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12);font-family:system-ui">
+        <div style="padding:24px 16px;display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div style="width:56px;height:56px;border-radius:28px;background:#FAF7F2;border:2px solid #E8DFD0;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px">👥</div>
+          <div style="font-size:11px;color:#C0A882;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">01 / 04</div>
+          <div style="font-weight:700;font-size:15px;color:#2C2420;margin-bottom:8px">Найди своих</div>
+          <div style="font-size:11px;color:#8B7355;line-height:1.6;margin-bottom:20px">Лента и комнаты только для людей с твоим уровнем</div>
+          <div style="display:flex;gap:4px;margin-bottom:16px">
+            <div style="width:20px;height:4px;border-radius:2px;background:#8B7355"></div>
+            <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+            <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+            <div style="width:6px;height:4px;border-radius:2px;background:#E8DFD0"></div>
+          </div>
+          <div style="background:#8B7355;color:white;border-radius:20px;padding:9px 28px;font-size:12px;font-weight:600">дальше</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>В — Минимализм</h3>
+      <p>Белая карточка, иконка, текст, точки. Чисто, без лишнего.</p>
+    </div>
+  </div>
+
+</div>
