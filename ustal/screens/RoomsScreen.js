@@ -60,7 +60,8 @@ export default function RoomsScreen({ route, navigation }) {
   const userLevel = store.level || 'green';
   const openRoom = route?.params?.openRoom;
   const insets = useSafeAreaInsets();
-  const [room, setRoom] = useState((openRoom === userLevel || openRoom === 'night') ? openRoom : null);
+  const isAdmin = store.isAdmin || false;
+  const [room, setRoom] = useState((openRoom === userLevel || openRoom === 'night' || isAdmin) ? openRoom : null);
   const [messages, setMessages] = useState([]);
   const [text2, setText2] = useState('');
   const [kbHeight, setKbHeight] = useState(0);
@@ -108,7 +109,7 @@ export default function RoomsScreen({ route, navigation }) {
   }, []));
 
   useEffect(() => {
-    if (openRoom && (openRoom === userLevel || openRoom === 'night')) promptEnterRoom(openRoom);
+    if (openRoom && (openRoom === userLevel || openRoom === 'night' || isAdmin)) promptEnterRoom(openRoom);
   }, []);
 
   const loadParticipants = async (roomId) => {
@@ -144,7 +145,7 @@ export default function RoomsScreen({ route, navigation }) {
   };
 
   const enterRoom = async (roomId, anonymous = false) => {
-    if (roomId !== userLevel && roomId !== 'night') return;
+    if (roomId !== userLevel && roomId !== 'night' && !isAdmin) return;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -386,32 +387,33 @@ export default function RoomsScreen({ route, navigation }) {
 
           {ROOMS.map(r => {
             const isMyRoom = r.id === userLevel;
+            const canEnter = isMyRoom || isAdmin;
             return (
               <TouchableOpacity
                 key={r.id}
                 style={[
                   styles.roomCard,
                   { borderLeftColor: r.color },
-                  isMyRoom && styles.roomCardHighlight,
-                  !isMyRoom && styles.roomCardLocked,
+                  canEnter && styles.roomCardHighlight,
+                  !canEnter && styles.roomCardLocked,
                 ]}
-                onPress={() => isMyRoom ? promptEnterRoom(r.id) : null}
-                activeOpacity={isMyRoom ? 0.7 : 1}
+                onPress={() => canEnter ? promptEnterRoom(r.id) : null}
+                activeOpacity={canEnter ? 0.7 : 1}
               >
                 <View style={[styles.roomIcon, { backgroundColor: r.color + '22' }]}>
                   <Ionicons name={r.icon} size={20} color={r.color} />
                 </View>
                 <View style={styles.roomInfo}>
-                  <Text style={[styles.roomLabel, !isMyRoom && { color: colors.muted }]}>{r.label}</Text>
+                  <Text style={[styles.roomLabel, !canEnter && { color: colors.muted }]}>{r.label}</Text>
                   <Text style={styles.roomDesc}>{r.desc}</Text>
                 </View>
                 <View style={styles.roomRight}>
-                  {isMyRoom ? (
+                  {canEnter ? (
                     <>
                       <Text style={styles.roomCount}>{onlineCount[r.id] ?? '—'}</Text>
                       <Text style={styles.roomCountLabel}>чел.</Text>
                       <View style={[styles.matchBadge, { backgroundColor: r.color }]}>
-                        <Text style={styles.matchText}>ТВОЯ</Text>
+                        <Text style={styles.matchText}>{isMyRoom ? 'ТВОЯ' : 'ADMIN'}</Text>
                       </View>
                     </>
                   ) : (
