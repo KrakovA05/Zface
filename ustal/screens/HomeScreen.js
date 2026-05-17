@@ -41,7 +41,6 @@ function getModuleItems(goal) {
   });
 }
 
-let testReminderShown = false;
 const wordTapCache = {};
 let wordTapCacheDate = '';
 
@@ -272,10 +271,12 @@ export default function HomeScreen({ navigation }) {
             .neq('user_id', user.id);
           setCommunityCount(cc || 0);
 
-          if (!testReminderShown) {
+          const reminderKey = `test_reminder_${getTodayDate()}`;
+          const alreadyShown = await AsyncStorage.getItem(reminderKey);
+          if (!alreadyShown) {
             const days = (Date.now() - new Date(recent[0].created_at).getTime()) / 86400000;
             if (days > 3) {
-              testReminderShown = true;
+              await AsyncStorage.setItem(reminderKey, '1');
               Alert.alert(
                 'Как ты сейчас?',
                 `Последний раз ты проверял состояние ${Math.floor(days)} дн. назад. Пройдём тест?`,
@@ -497,16 +498,7 @@ export default function HomeScreen({ navigation }) {
     );
     if (myWords.size < 5) return;
 
-    // Берём ответы других с тем же уровнем
-    const { data: others } = await supabase
-      .from('daily_answers')
-      .select('user_id, answer')
-      .neq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(200);
-    if (!others || others.length === 0) return;
-
-    // Фильтруем по уровню, исключаем тех кто отказался от рекомендаций
+    // Берём пользователей того же уровня, согласных на рекомендации
     const { data: sameLevelUsers } = await supabase
       .from('users')
       .select('user_id, username, avatar_url')
@@ -515,6 +507,16 @@ export default function HomeScreen({ navigation }) {
       .neq('user_id', userId);
     if (!sameLevelUsers || sameLevelUsers.length === 0) return;
     const sameLevelSet = new Set(sameLevelUsers.map(u => u.user_id));
+    const sameLevelIds = sameLevelUsers.map(u => u.user_id);
+
+    // Берём ответы только от пользователей того же уровня
+    const { data: others } = await supabase
+      .from('daily_answers')
+      .select('user_id, answer')
+      .in('user_id', sameLevelIds)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (!others || others.length === 0) return;
 
     // Исключаем уже существующих друзей
     const { data: friendships } = await supabase

@@ -131,6 +131,7 @@ export default function FeedScreen({ navigation }) {
     if (reset) {
       setLoading(true);
       cursorRef.current = null;
+      fetchedAuthors.current = new Set();
       if (store.userId) {
         const { data: blocks } = await supabase
           .from('blocks')

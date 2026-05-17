@@ -51,6 +51,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const [helpCount, setHelpCount] = useState(0);
   const [hasHelped, setHasHelped] = useState(false);
   const [helpLoading, setHelpLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     if (isMe) return;
@@ -218,9 +219,12 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const sendReport = async (reason) => {
+    if (reportLoading) return;
+    setReportLoading(true);
     const { error } = await supabase.from('reports').insert({
       reporter_id: store.userId, reported_user_id: user.user_id, reason,
     });
+    setReportLoading(false);
     if (!error) Alert.alert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время');
   };
 

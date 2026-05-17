@@ -162,6 +162,7 @@ export default function ProfileScreen({ navigation }) {
 
   const checkAndAwardAchievements = async () => {
     if (!store.userId) return;
+    try {
 
     const { data: existing } = await supabase
       .from('user_achievements')
@@ -249,6 +250,9 @@ export default function ProfileScreen({ navigation }) {
 
     const allEarned = ACHIEVEMENTS.filter(a => earned.has(a.id));
     setEarnedAchievements(allEarned);
+    } catch {
+      // тихий fallback
+    }
   };
 
   const toggleShowHistory = async (value) => {
