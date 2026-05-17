@@ -338,12 +338,7 @@ export default function FeedScreen({ navigation }) {
 
   const renderFooter = () => {
     if (loadingMore) return <ActivityIndicator color={colors.accent} style={{ marginVertical: 16 }} />;
-    if (!hasMore || posts.length === 0) return null;
-    return (
-      <TouchableOpacity style={styles.loadMoreBtn} onPress={() => loadPosts(false)}>
-        <Text style={styles.loadMoreText}>Загрузить ещё</Text>
-      </TouchableOpacity>
-    );
+    return null;
   };
 
   const barTop = Math.max(insets.bottom, 12) + 60 + 8 + 6;
@@ -375,6 +370,8 @@ export default function FeedScreen({ navigation }) {
             </View>
           }
           ListFooterComponent={renderFooter}
+          onEndReached={() => { if (hasMore && !loadingMore && !loading) loadPosts(false); }}
+          onEndReachedThreshold={0.3}
         />
       )}
 
@@ -512,8 +509,7 @@ const styles = StyleSheet.create({
   emptyBlock: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: colors.muted, marginBottom: 8 },
   emptyHint: { fontSize: 14, color: colors.muted, textAlign: 'center', lineHeight: 20, opacity: 0.7 },
-  loadMoreBtn: { alignItems: 'center', paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginHorizontal: 16, marginBottom: 8 },
-  loadMoreText: { color: colors.muted, fontSize: 14 },
+
 
   inputBackground: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.background },
   inputWrap: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
