@@ -103,14 +103,59 @@ Deno.serve(async (req: Request) => {
 
     if (!message?.trim()) throw new Error('Empty message');
 
-    // Загружаем профиль пользователя
-    const { data: profile } = await supabase
-      .from('users')
-      .select('level')
-      .eq('user_id', userId)
-      .single();
+    // Загружаем расширенный профиль пользователя
+    const [{ data: profile }, { data: metrics }, { data: moods }] = await Promise.all([
+      supabase.from('users').select('level').eq('user_id', userId).single(),
+      supabase.from('user_metrics')
+        .select('dominant_dimension, anxiety_score, burnout_score, stress_score, loneliness_score, composite_score')
+        .eq('user_id', userId)
+        .order('week_start', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase.from('mood_checkins')
+        .select('score, checkin_date')
+        .eq('user_id', userId)
+        .order('checkin_date', { ascending: false })
+        .limit(7),
+    ]);
 
     const userLevel = profile?.level || 'yellow';
+
+    function buildUserContext(): string {
+      const lines: string[] = [];
+      lines.push(`Уровень: ${userLevel}`);
+
+      if (metrics) {
+        if (metrics.dominant_dimension) {
+          const score = metrics[`${metrics.dominant_dimension}_score`] ?? metrics.composite_score;
+          const dimLabel: Record<string, string> = {
+            anxiety: 'тревога', stress: 'стресс', apathy: 'апатия',
+            loneliness: 'одиночество', burnout: 'выгорание',
+            self_esteem: 'самооценка', social_anxiety: 'соц. тревога', attachment: 'привязанность',
+          };
+          lines.push(`Доминирующее: ${dimLabel[metrics.dominant_dimension] ?? metrics.dominant_dimension} (${score ?? '?'}/100)`);
+        }
+        if (metrics.burnout_score != null && metrics.burnout_score > 65) {
+          lines.push(`Выгорание: ${metrics.burnout_score}/100 (повышено)`);
+        }
+        if (metrics.anxiety_score != null && metrics.anxiety_score > 65) {
+          lines.push(`Тревога: ${metrics.anxiety_score}/100 (повышена)`);
+        }
+      }
+
+      if (moods && moods.length > 0) {
+        const scores = moods.map((m: { score: number }) => m.score);
+        const avg = (scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(1);
+        const oldest = scores[scores.length - 1];
+        const newest = scores[0];
+        const trend = newest > oldest + 1 ? '↑ улучшается' : newest < oldest - 1 ? '↓ ухудшается' : '→ стабильно';
+        lines.push(`Настроение (7 дн): среднее ${avg}/10, ${trend}`);
+      }
+
+      return lines.join('\n');
+    }
+
+    const userContext = buildUserContext();
 
     // Загружаем саммари предыдущей сессии
     let previousSummary = '';
@@ -159,7 +204,16 @@ Deno.serve(async (req: Request) => {
       messages.push({ role: 'system', content: `Предыдущий разговор: ${previousSummary}` });
     }
 
-    messages.push({ role: 'system', content: `Состояние пользователя: уровень ${userLevel}` });
+    messages.push({
+      role: 'system',
+      content: `Контекст пользователя (используй для тона, не цитируй цифры вслух):
+${userContext}
+
+Правила тона:
+- Если уровень red или burnout/тревога > 65 — не давай советов пока не попросят, просто будь рядом
+- Если настроение падает — не торопи с решениями
+- Никогда не говори "я вижу что у тебя тревога" или "по твоим данным"`,
+    });
 
     for (const m of history) {
       messages.push({
