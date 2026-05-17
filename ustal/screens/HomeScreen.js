@@ -421,7 +421,7 @@ export default function HomeScreen({ navigation }) {
         // Уведомление о модерации
         const { data: notice } = await supabase
           .from('moderation_notices')
-          .select('id, message_preview, created_at')
+          .select('id, message_preview, created_at, type')
           .eq('user_id', user.id)
           .is('read_at', null)
           .order('created_at', { ascending: false })
@@ -1162,10 +1162,14 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.modIconWrap}>
               <Ionicons name="shield-outline" size={28} color="#c0392b" />
             </View>
-            <Text style={styles.modTitle}>Сообщение удалено</Text>
+            <Text style={styles.modTitle}>
+              {modNotice?.type === 'warning' ? 'Предупреждение от модератора' : 'Сообщение удалено'}
+            </Text>
             <Text style={styles.modBody}>
-              Ваше сообщение было удалено за нарушение правил сообщества.
-              {modNotice?.message_preview ? `\n\n«${modNotice.message_preview}»` : ''}
+              {modNotice?.type === 'warning'
+                ? (modNotice?.message_preview || 'Пожалуйста, соблюдай правила сообщества.')
+                : `Ваше сообщение было удалено за нарушение правил сообщества.${modNotice?.message_preview ? `\n\n«${modNotice.message_preview}»` : ''}`
+              }
             </Text>
             <Text style={styles.modWarn}>
               Повторные нарушения могут привести к блокировке аккаунта.
