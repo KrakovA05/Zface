@@ -293,6 +293,30 @@ export default function RoomsScreen({ route, navigation }) {
     setMessages(prev => prev.filter(m => m.id !== item.id));
   };
 
+  const adminDeleteMessage = (msg) => {
+    Alert.alert(
+      'Удалить сообщение?',
+      `"${msg.text?.slice(0, 60)}${msg.text?.length > 60 ? '…' : ''}"`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить', style: 'destructive',
+          onPress: async () => {
+            await supabase.from('messages').delete().eq('id', msg.id);
+            const authorId = msg.sender_id || msg.user_id;
+            if (authorId && authorId !== store.userId) {
+              await supabase.from('moderation_notices').insert({
+                user_id: authorId,
+                type: 'message_deleted',
+                message_preview: msg.text?.slice(0, 100) || '',
+              });
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const toggleReaction = async (messageId, emoji) => {
     const list = reactions[messageId] || [];
     const myReaction = list.find(r => r.user_id === store.userId);
@@ -512,6 +536,11 @@ export default function RoomsScreen({ route, navigation }) {
                         <Text style={styles.msgTime}>{formatTime(item.created_at)}</Text>
                       </View>
                     </View>
+                    {store.isAdmin && !isMe && (
+                      <TouchableOpacity onPress={() => adminDeleteMessage(item)} style={styles.adminTrash} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="trash-outline" size={14} color="#c0392b" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </TouchableOpacity>
                 {rxs.length > 0 && (
@@ -741,6 +770,8 @@ const styles = StyleSheet.create({
   },
   sendBtn: { borderRadius: 22, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
+
+  adminTrash: { alignSelf: 'center', marginLeft: 4, opacity: 0.7 },
 
   crisisBanner:    { backgroundColor: colors.accent + '12', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4, marginHorizontal: 8 },
   crisisCallRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },

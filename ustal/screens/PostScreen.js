@@ -100,6 +100,30 @@ export default function PostScreen({ route, navigation }) {
     ]);
   };
 
+  const adminDeleteComment = (comment) => {
+    Alert.alert(
+      'Удалить комментарий?',
+      `"${comment.text?.slice(0, 60)}${comment.text?.length > 60 ? '…' : ''}"`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить', style: 'destructive',
+          onPress: async () => {
+            await supabase.from('post_comments').delete().eq('id', comment.id);
+            setComments(prev => prev.filter(c => c.id !== comment.id));
+            if (comment.author_id && comment.author_id !== store.userId) {
+              await supabase.from('moderation_notices').insert({
+                user_id: comment.author_id,
+                type: 'message_deleted',
+                message_preview: comment.text?.slice(0, 100) || '',
+              });
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderComment = ({ item }) => {
     const cColor = LEVEL_COLORS[item.author_level] || colors.accent;
     const isOwn = item.author_id === store.userId;
@@ -114,6 +138,11 @@ export default function PostScreen({ route, navigation }) {
           <View style={styles.commentHeader}>
             <Text style={[styles.commentAuthor, { color: cColor }]}>{item.author_username}</Text>
             <Text style={styles.commentTime}>{formatTime(item.created_at)}</Text>
+            {store.isAdmin && !isOwn && (
+              <TouchableOpacity onPress={() => adminDeleteComment(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="trash-outline" size={14} color="#c0392b" style={{ opacity: 0.7 }} />
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.commentText}>{item.text}</Text>
         </View>

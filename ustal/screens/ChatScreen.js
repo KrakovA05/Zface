@@ -155,6 +155,30 @@ function GlobalChat({ navigation }) {
     setMessages(prev => prev.filter(m => m.id !== item.id));
   };
 
+  const adminDeleteMessage = (msg) => {
+    Alert.alert(
+      'Удалить сообщение?',
+      `"${msg.text?.slice(0, 60)}${msg.text?.length > 60 ? '…' : ''}"`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить', style: 'destructive',
+          onPress: async () => {
+            await supabase.from('messages').delete().eq('id', msg.id);
+            const authorId = msg.sender_id || msg.user_id;
+            if (authorId && authorId !== store.userId) {
+              await supabase.from('moderation_notices').insert({
+                user_id: authorId,
+                type: 'message_deleted',
+                message_preview: msg.text?.slice(0, 100) || '',
+              });
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const toggleReaction = async (messageId, emoji) => {
     const list = reactions[messageId] || [];
     const myReaction = list.find(r => r.user_id === store.userId);
@@ -215,6 +239,11 @@ function GlobalChat({ navigation }) {
                       <Text style={s.bubbleTime}>{formatTime(item.created_at)}</Text>
                     </View>
                   </View>
+                  {store.isAdmin && !isMe && (
+                    <TouchableOpacity onPress={() => adminDeleteMessage(item)} style={s.adminTrash} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="trash-outline" size={14} color="#c0392b" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </TouchableOpacity>
               {rxs.length > 0 && (
@@ -351,4 +380,5 @@ const s = StyleSheet.create({
   input: { flex: 1, backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, color: colors.white, fontSize: 15 },
   sendBtn: { backgroundColor: colors.accent, borderRadius: 22, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   sendBtnOff: { opacity: 0.4 },
+  adminTrash: { alignSelf: 'center', marginLeft: 4, opacity: 0.7 },
 });

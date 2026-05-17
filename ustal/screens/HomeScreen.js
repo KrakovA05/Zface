@@ -190,6 +190,7 @@ export default function HomeScreen({ navigation }) {
   const [dailyCardY, setDailyCardY] = useState(0);
   const [nextTestId,   setNextTestId]   = useState(null);
   const [proactiveMsg, setProactiveMsg] = useState(null);
+  const [modNotice,    setModNotice]    = useState(null);
   const testJustDoneRef = useRef(false);
   const [weeklyInsight, setWeeklyInsight] = useState(null);
   const [showFocusAsk,  setShowFocusAsk]  = useState(false);
@@ -231,6 +232,15 @@ export default function HomeScreen({ navigation }) {
       .from('ai_proactive_messages')
       .update({ read_at: new Date().toISOString() })
       .eq('id', id);
+  };
+
+  const dismissModNotice = async () => {
+    if (!modNotice) return;
+    setModNotice(null);
+    await supabase
+      .from('moderation_notices')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', modNotice.id);
   };
 
   useFocusEffect(useCallback(() => {
@@ -407,6 +417,17 @@ export default function HomeScreen({ navigation }) {
           .limit(1)
           .maybeSingle();
         setProactiveMsg(proactive || null);
+
+        // Уведомление о модерации
+        const { data: notice } = await supabase
+          .from('moderation_notices')
+          .select('id, message_preview, created_at')
+          .eq('user_id', user.id)
+          .is('read_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setModNotice(notice || null);
       }
       } catch (e) {
         console.error('HomeScreen load error', e);
@@ -1128,6 +1149,33 @@ export default function HomeScreen({ navigation }) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Модальное уведомление о модерации */}
+      <Modal
+        visible={!!modNotice}
+        transparent
+        animationType="fade"
+        onRequestClose={dismissModNotice}
+      >
+        <View style={styles.modOverlay}>
+          <View style={styles.modCard}>
+            <View style={styles.modIconWrap}>
+              <Ionicons name="shield-outline" size={28} color="#c0392b" />
+            </View>
+            <Text style={styles.modTitle}>Сообщение удалено</Text>
+            <Text style={styles.modBody}>
+              Ваше сообщение было удалено за нарушение правил сообщества.
+              {modNotice?.message_preview ? `\n\n«${modNotice.message_preview}»` : ''}
+            </Text>
+            <Text style={styles.modWarn}>
+              Повторные нарушения могут привести к блокировке аккаунта.
+            </Text>
+            <TouchableOpacity style={styles.modBtn} onPress={dismissModNotice}>
+              <Text style={styles.modBtnText}>Понятно</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1570,6 +1618,65 @@ const styles = StyleSheet.create({
   moodMiniBar:  { width: 8, borderRadius: 4 },
   moodMiniScore:{ fontSize: 11, fontWeight: '700' },
   moodMiniDay:  { fontSize: 11, color: colors.muted },
+
+  // Moderation notice modal
+  modOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  modCard: {
+    backgroundColor: '#FFF9F4',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#f5c6c6',
+  },
+  modIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fdecea',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  modTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#c0392b',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modBody: {
+    fontSize: 14,
+    color: '#2C2420',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  modWarn: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 20,
+  },
+  modBtn: {
+    backgroundColor: '#c0392b',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+  },
+  modBtnText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 15,
+  },
 
   // History
   historyBlock: { backgroundColor: colors.card, borderRadius: 14, overflow: 'hidden' },
