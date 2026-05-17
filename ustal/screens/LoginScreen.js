@@ -25,7 +25,7 @@ export default function LoginScreen({ navigation }) {
     }
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('username, level, email, avatar_url, status')
+      .select('username, level, email, avatar_url, status, goal, is_admin')
       .eq('user_id', data.user.id)
       .single();
     setLoading(false);
@@ -39,6 +39,8 @@ export default function LoginScreen({ navigation }) {
     store.email = userData.email || email;
     store.avatarUrl = userData.avatar_url || '';
     store.status = userData.status || '';
+    store.goal = userData.goal || '';
+    store.isAdmin = userData.is_admin || false;
     navigation.navigate('Main');
   };
 
