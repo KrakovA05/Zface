@@ -113,7 +113,8 @@ export default function FriendsScreen({ navigation }) {
 
     let query = supabase.from('users')
       .select('user_id, username, level, avatar_url, status, labels')
-      .neq('user_id', store.userId);
+      .neq('user_id', store.userId)
+      .neq('is_admin', true);
     if (blockedIds.length > 0) query = query.not('user_id', 'in', `(${blockedIds.join(',')})`);
     if (nick) query = query.ilike('username', `%${nick}%`);
     if (selectedLabels.length > 0) query = query.overlaps('labels', selectedLabels);
