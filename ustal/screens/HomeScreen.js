@@ -189,6 +189,7 @@ export default function HomeScreen({ navigation }) {
   const [moodCardY,  setMoodCardY]  = useState(0);
   const [dailyCardY, setDailyCardY] = useState(0);
   const [nextTestId,   setNextTestId]   = useState(null);
+  const [proactiveMsg, setProactiveMsg] = useState(null);
   const testJustDoneRef = useRef(false);
   const [weeklyInsight, setWeeklyInsight] = useState(null);
   const [showFocusAsk,  setShowFocusAsk]  = useState(false);
@@ -222,6 +223,14 @@ export default function HomeScreen({ navigation }) {
         return;
       }
     }
+  };
+
+  const markProactiveRead = async (id) => {
+    setProactiveMsg(null);
+    await supabase
+      .from('ai_proactive_messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', id);
   };
 
   useFocusEffect(useCallback(() => {
@@ -387,6 +396,17 @@ export default function HomeScreen({ navigation }) {
           const dim = metrics.dominant_dimension;
           setWeeklyInsight(WEEKLY_PHRASES[dim] || WEEKLY_PHRASES.ok);
         }
+
+        // Проактивное сообщение от @одного
+        const { data: proactive } = await supabase
+          .from('ai_proactive_messages')
+          .select('id, text, created_at')
+          .eq('user_id', user.id)
+          .is('read_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setProactiveMsg(proactive || null);
       }
       } catch (e) {
         console.error('HomeScreen load error', e);
@@ -665,6 +685,27 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
         </View>
+
+        {/* ── Проактивное сообщение от @одного ── */}
+        {!loading && proactiveMsg && (
+          <TouchableOpacity
+            style={styles.proactiveCard}
+            onPress={() => {
+              markProactiveRead(proactiveMsg.id);
+              navigation.navigate('AiChat', { initialMessage: proactiveMsg.text });
+            }}
+            activeOpacity={0.75}
+          >
+            <View style={styles.proactiveIconWrap}>
+              <Ionicons name="sparkles-outline" size={18} color={colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.proactiveLabel}>@один</Text>
+              <Text style={styles.proactiveText} numberOfLines={2}>{proactiveMsg.text}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          </TouchableOpacity>
+        )}
 
         {!loading && (hasUnreadLetter || dailyAnswered === false || moodScore === null) && (
           (() => {
@@ -1229,6 +1270,40 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+  },
+  proactiveCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: '#8B7355',
+  },
+  proactiveIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#8B735515',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proactiveLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B7355',
+    marginBottom: 2,
+  },
+  proactiveText: {
+    fontSize: 14,
+    color: colors.white,
+    lineHeight: 19,
   },
   focusIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   focusInfo: { flex: 1 },
