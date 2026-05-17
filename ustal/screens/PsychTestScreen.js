@@ -47,7 +47,7 @@ export default function PsychTestScreen({ route, navigation }) {
         user_id: userId,
         test_id: test.id,
         dimension: test.dimension,
-        raw_score: rawScore,
+        raw_score: Math.round(rawScore),
         normalized_score: normalizedScore,
         answers: newAnswers,
       });
