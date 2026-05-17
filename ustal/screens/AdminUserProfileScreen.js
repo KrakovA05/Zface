@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { supabase } from '../supabase'
@@ -44,6 +44,7 @@ function formatAction(action) {
 
 export default function AdminUserProfileScreen({ route, navigation }) {
   const { userId } = route.params
+  const insets = useSafeAreaInsets()
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState(null)
   const [testHistory, setTestHistory] = useState([])
@@ -180,8 +181,8 @@ export default function AdminUserProfileScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.header}>
+      <View style={s.safe}>
+        <View style={[s.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -189,14 +190,14 @@ export default function AdminUserProfileScreen({ route, navigation }) {
           <View style={{ width: 24 }} />
         </View>
         <View style={s.center}><ActivityIndicator color={colors.accent} /></View>
-      </SafeAreaView>
+      </View>
     )
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.header}>
+      <View style={s.safe}>
+        <View style={[s.header, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -204,7 +205,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
           <View style={{ width: 24 }} />
         </View>
         <View style={s.center}><Text style={s.muted}>Пользователь не найден</Text></View>
-      </SafeAreaView>
+      </View>
     )
   }
 
@@ -223,7 +224,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
   }
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <View style={s.safe}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={24} color={colors.white} />
@@ -397,13 +398,13 @@ export default function AdminUserProfileScreen({ route, navigation }) {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </View>
   )
 }
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: colors.white },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16 },

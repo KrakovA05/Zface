@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   TextInput, Alert, ActivityIndicator, ScrollView, Modal, KeyboardAvoidingView, Platform
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
 import { supabase } from '../supabase'
@@ -16,10 +16,11 @@ const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' }
 
 export default function AdminScreen({ navigation }) {
   const [tab, setTab] = useState(0)
+  const insets = useSafeAreaInsets()
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      <View style={s.header}>
+    <View style={s.safe}>
+      <View style={[s.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
@@ -39,7 +40,7 @@ export default function AdminScreen({ navigation }) {
       {tab === 0 && <ReportsTab navigation={navigation} />}
       {tab === 1 && <UsersTab navigation={navigation} />}
       {tab === 2 && <StatsTab />}
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -341,7 +342,7 @@ function StatsTab() {
 // ── STYLES ────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: colors.white },
   tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E8DFD0' },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
