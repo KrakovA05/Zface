@@ -57,7 +57,7 @@ function getDynamic(history) {
 
 function getAdaptiveQuestion(recentHistory) {
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
+  const start = new Date('2024-01-01');
   const dayIdx = Math.floor((now - start) / 86400000);
 
   if (!recentHistory || recentHistory.length < 3) {
@@ -82,14 +82,14 @@ function getTodayDate() {
 
 function getTodayWord() {
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
+  const start = new Date('2024-01-01');
   const day = Math.floor((now - start) / 86400000);
   return DAILY_WORDS[day % DAILY_WORDS.length];
 }
 
 function getTodayWordContext() {
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
+  const start = new Date('2024-01-01');
   const day = Math.floor((now - start) / 86400000);
   return DAILY_WORDS_CONTEXT[day % DAILY_WORDS_CONTEXT.length];
 }
