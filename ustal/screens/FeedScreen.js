@@ -229,6 +229,30 @@ export default function FeedScreen({ navigation }) {
     // DB trigger update_post_likes_count() maintains feed_posts.likes automatically
   };
 
+  const adminDeletePost = (item) => {
+    Alert.alert(
+      'Удалить пост?',
+      `"${item.text?.slice(0, 60)}${item.text?.length > 60 ? '…' : ''}"`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Удалить', style: 'destructive',
+          onPress: async () => {
+            await supabase.from('feed_posts').delete().eq('id', item.id);
+            setPosts(prev => prev.filter(p => p.id !== item.id));
+            if (item.author_id && item.author_id !== store.userId) {
+              await supabase.from('moderation_notices').insert({
+                user_id: item.author_id,
+                type: 'message_deleted',
+                message_preview: item.text?.slice(0, 100) || '',
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const onLongPressPost = (item) => {
     if (item.author_id !== store.userId) return;
     Alert.alert('Действия с постом', '', [
@@ -289,6 +313,11 @@ export default function FeedScreen({ navigation }) {
             <Text style={[styles.username, { color: lvlColor }]}>{item.author_username}{isSystemPost ? ' ✦' : ''}</Text>
             <Text style={styles.date}>{date}</Text>
           </View>
+          {store.isAdmin && !isOwn && (
+            <TouchableOpacity onPress={() => adminDeletePost(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="trash-outline" size={16} color={colors.muted} />
+            </TouchableOpacity>
+          )}
           <View style={[styles.levelBadge, { borderColor: lvlColor }]}>
             <Text style={[styles.levelBadgeText, { color: lvlColor }]}>{LEVEL_DATA[currentLevel]?.emoji || '•'}</Text>
           </View>
