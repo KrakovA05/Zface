@@ -41,21 +41,24 @@ export default function PsychTestScreen({ route, navigation }) {
     const rawScore = computeRaw(test, newAnswers);
     const normalizedScore = test.normalize(rawScore);
 
-    const userId = store.userId;
-    if (userId) {
-      const { error } = await supabase.from('psych_test_results').insert({
-        user_id: userId,
-        test_id: test.id,
-        dimension: test.dimension,
-        raw_score: Math.round(rawScore),
-        normalized_score: normalizedScore,
-        answers: newAnswers,
-      });
-      if (error) {
-        setSaving(false);
-        Alert.alert('Ошибка', 'Не удалось сохранить результат. Попробуй ещё раз.');
-        return;
-      }
+    const userId = store.userId || (await supabase.auth.getUser())?.data?.user?.id;
+    if (!userId) {
+      setSaving(false);
+      Alert.alert('Ошибка', 'Сессия истекла. Войди снова.');
+      return;
+    }
+    const { error } = await supabase.from('psych_test_results').insert({
+      user_id: userId,
+      test_id: test.id,
+      dimension: test.dimension,
+      raw_score: Math.round(rawScore),
+      normalized_score: normalizedScore,
+      answers: newAnswers,
+    });
+    if (error) {
+      setSaving(false);
+      Alert.alert('Ошибка', 'Не удалось сохранить результат. Попробуй ещё раз.');
+      return;
     }
     setSaving(false);
     setDone(true);
