@@ -551,7 +551,7 @@ export default function HomeScreen({ navigation }) {
 
     // Записываем показ
     await supabase.from('similar_user_shown').upsert(
-      { user_id: userId, matched_user_id: bestId },
+      { user_id: userId, matched_user_id: bestId, shown_at: new Date().toISOString() },
       { onConflict: 'user_id,matched_user_id' }
     );
 

@@ -54,10 +54,7 @@ export default function NotificationsScreen({ navigation }) {
       .order('created_at', { ascending: false })
       .limit(60);
 
-    setItems(data || []);
-    setLoading(false);
-
-    // Отмечаем все прочитанными
+    // Отмечаем прочитанными до показа — badge сбрасывается до того как юзер уйдёт назад
     if (data?.some(n => !n.read)) {
       await supabase
         .from('notifications')
@@ -65,6 +62,9 @@ export default function NotificationsScreen({ navigation }) {
         .eq('user_id', user.id)
         .eq('read', false);
     }
+
+    setItems(data || []);
+    setLoading(false);
   };
 
   const handleTap = async (notif) => {
