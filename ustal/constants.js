@@ -305,17 +305,64 @@ export const DAILY_QUESTIONS_GREEN = [
   'Чем ты гордишься прямо сейчас — даже немного?',
 ];
 
-export const ACHIEVEMENTS = [
-  { id: 'first_test',    emoji: '🐣', label: 'Первый шаг',     desc: 'Ты решился посмотреть на себя честно' },
-  { id: 'five_tests',    emoji: '🔁', label: 'Привычка',        desc: 'Пять тестов. Значит, ты возвращаешься' },
-  { id: 'ten_tests',     emoji: '🧠', label: 'Самоанализ',      desc: 'Десять раз — это уже не случайность' },
-  { id: 'comeback',      emoji: '📈', label: 'Возвращение',     desc: 'Из красного вышел. Это непросто' },
-  { id: 'stable',        emoji: '🧘', label: 'Стабильность',    desc: 'Три зелёных подряд. Держишься' },
-  { id: 'first_friend',  emoji: '🤝', label: 'Не один',         desc: 'Кто-то нашёлся. Это что-то значит' },
-  { id: 'first_dm',      emoji: '📨', label: 'Первое письмо',   desc: 'Написал первым. Это смелость' },
-  { id: 'profile_done',  emoji: '👤', label: 'Личность',        desc: 'Ты заполнил статус. Тебя теперь видно' },
-  { id: 'daily_7',       emoji: '📅', label: 'Неделя',          desc: 'Семь дней подряд. Ты здесь — и это важно' },
-  { id: 'first_post',    emoji: '✍️', label: 'Голос',           desc: 'Написал пост. Кто-то прочитал и почувствовал' },
-  { id: 'helper_5',     emoji: '🕯️', label: 'Рядом',           desc: 'Пять людей сказали что ты им помог' },
-  { id: 'helper_20',    emoji: '🔦', label: 'Маяк',            desc: 'Двадцать. Ты стал чем-то важным для кого-то' },
+export const ACHIEVEMENT_GROUPS = [
+  {
+    id: 'path',
+    label: 'Путь',
+    achievements: [
+      { id: 'first_test',   icon: 'flask-outline',       label: 'Первый шаг',       desc: 'Ты решился посмотреть на себя честно',        hidden: false },
+      { id: 'five_tests',   icon: 'repeat-outline',      label: 'Привычка',         desc: 'Пять тестов. Значит, ты возвращаешься',       hidden: false },
+      { id: 'ten_tests',    icon: 'analytics-outline',   label: 'Самоанализ',       desc: 'Десять раз — это уже не случайность',         hidden: true  },
+      { id: 'twenty_tests', icon: 'telescope-outline',   label: 'Глубже',           desc: 'Двадцать тестов. Ты смотришь честно',         hidden: true  },
+      { id: 'comeback',     icon: 'trending-up-outline', label: 'Возвращение',      desc: 'Из красного вышел. Это непросто',             hidden: false },
+      { id: 'stable',       icon: 'leaf-outline',        label: 'Стабильность',     desc: 'Три зелёных подряд. Держишься',               hidden: false },
+    ],
+  },
+  {
+    id: 'daily',
+    label: 'Каждый день',
+    achievements: [
+      { id: 'checkin_first', icon: 'thermometer-outline', label: 'Честно',           desc: 'Первый чекин настроения. Хорошее начало',     hidden: false },
+      { id: 'checkin_7',     icon: 'calendar-outline',    label: 'Неделя честности', desc: 'Семь чекинов подряд. Ты замечаешь себя',      hidden: true  },
+      { id: 'daily_7',       icon: 'chatbox-outline',     label: 'Неделя',           desc: 'Семь дней подряд. Ты здесь — и это важно',    hidden: true  },
+      { id: 'daily_30',      icon: 'ribbon-outline',      label: 'Месяц',            desc: 'Тридцать дней. Это уже часть тебя',           hidden: true  },
+      { id: 'streak_14',     icon: 'flame-outline',       label: 'Две недели',       desc: 'Четырнадцать дней в приложении подряд',       hidden: true  },
+    ],
+  },
+  {
+    id: 'voice',
+    label: 'Голос',
+    achievements: [
+      { id: 'profile_done',       icon: 'person-outline',              label: 'Личность',       desc: 'Ты заполнил статус. Тебя теперь видно',         hidden: false },
+      { id: 'first_post',         icon: 'create-outline',              label: 'Голос',          desc: 'Написал пост. Кто-то прочитал и почувствовал',  hidden: true  },
+      { id: 'first_thought',      icon: 'chatbubble-ellipses-outline', label: 'Мысль вслух',   desc: 'Первая анонимная мысль. Это смелость',          hidden: false },
+      { id: 'thought_reactions_5',icon: 'heart-outline',               label: 'Тебя услышали', desc: 'Пять реакций на твою мысль',                    hidden: true  },
+      { id: 'first_reaction',     icon: 'hand-left-outline',           label: 'Поддержал',     desc: 'Первая реакция на чужую мысль',                 hidden: false },
+    ],
+  },
+  {
+    id: 'connections',
+    label: 'Связи',
+    achievements: [
+      { id: 'first_friend', icon: 'people-outline',      label: 'Не один',        desc: 'Кто-то нашёлся. Это что-то значит',            hidden: false },
+      { id: 'first_dm',     icon: 'paper-plane-outline', label: 'Написал первым', desc: 'Написал первым. Это смелость',                  hidden: false },
+      { id: 'helper_1',     icon: 'sparkles-outline',    label: 'Кто-то заметил', desc: 'Один человек сказал, что ты ему помог',         hidden: false },
+      { id: 'helper_5',     icon: 'sunny-outline',       label: 'Рядом',          desc: 'Пять людей сказали что ты им помог',            hidden: true  },
+      { id: 'helper_20',    icon: 'bonfire-outline',     label: 'Маяк',           desc: 'Двадцать. Ты стал чем-то важным для кого-то',   hidden: true  },
+    ],
+  },
+  {
+    id: 'depth',
+    label: 'Глубина',
+    achievements: [
+      { id: 'psych_first',    icon: 'layers-outline',   label: 'Под поверхностью', desc: 'Первый психологический тест',                    hidden: false },
+      { id: 'psych_all',      icon: 'prism-outline',    label: 'Полная картина',   desc: 'Все 8 психотестов пройдены хотя бы раз',        hidden: true  },
+      { id: 'breathing_first',icon: 'sync-outline',     label: 'Выдох',            desc: 'Первая дыхательная сессия',                      hidden: false },
+      { id: 'breathing_10',   icon: 'water-outline',    label: 'Дышу',             desc: 'Десять сессий дыхания',                          hidden: true  },
+      { id: 'fish_first',     icon: 'fish-outline',     label: 'Рыбак',            desc: 'Первая пойманная рыба',                          hidden: false },
+      { id: 'fish_rare',      icon: 'diamond-outline',  label: 'Редкость',         desc: 'Поймал редкую или легендарную рыбу',             hidden: true  },
+    ],
+  },
 ];
+
+export const ACHIEVEMENTS = ACHIEVEMENT_GROUPS.flatMap(g => g.achievements);
