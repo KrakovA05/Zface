@@ -81,18 +81,19 @@ function getTodayDate() {
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
 }
 
-function getTodayWord() {
+function getLocalDayIndex() {
   const now = new Date();
-  const start = new Date('2024-01-01');
-  const day = Math.floor((now - start) / 86400000);
-  return DAILY_WORDS[day % DAILY_WORDS.length];
+  const local = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start = new Date(2024, 0, 1);
+  return Math.floor((local - start) / 86400000);
+}
+
+function getTodayWord() {
+  return DAILY_WORDS[getLocalDayIndex() % DAILY_WORDS.length];
 }
 
 function getTodayWordContext() {
-  const now = new Date();
-  const start = new Date('2024-01-01');
-  const day = Math.floor((now - start) / 86400000);
-  return DAILY_WORDS_CONTEXT[day % DAILY_WORDS_CONTEXT.length];
+  return DAILY_WORDS_CONTEXT[getLocalDayIndex() % DAILY_WORDS_CONTEXT.length];
 }
 
 function calcStreak(answers) {
