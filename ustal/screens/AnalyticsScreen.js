@@ -5,7 +5,7 @@ import {
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
@@ -301,6 +301,7 @@ function ActivitySection({ userActivity }) {
 // ─── Главный экран ────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [metrics, setMetrics] = useState(null);
   const [prevMetrics, setPrevMetrics] = useState(null);
   const [metricsHistory, setMetricsHistory] = useState([]);
@@ -368,7 +369,7 @@ export default function AnalyticsScreen({ navigation }) {
   }, []));
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       {/* Шапка */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
@@ -396,7 +397,7 @@ export default function AnalyticsScreen({ navigation }) {
           <View style={styles.bottomPad} />
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
