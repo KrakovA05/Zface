@@ -1,7 +1,8 @@
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  ScrollView, ActivityIndicator,
+  ScrollView, ActivityIndicator, Dimensions,
 } from 'react-native';
+import Svg, { Polyline, Circle } from 'react-native-svg';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -233,40 +234,87 @@ function ProfileSection({ metrics, prevMetrics, navigation }) {
   );
 }
 
-// Секция 4: Тренд 4 недели
+// Секция 4: Тренд
+const SPARKLINE_W = Dimensions.get('window').width - 32 - 32; // card padding
+const SPARKLINE_H = 48;
+
 function TrendSection({ metricsHistory }) {
-  if (!metricsHistory || metricsHistory.length === 0) {
+  // Меньше 2 точек — тренда нет, показываем заглушку
+  if (!metricsHistory || metricsHistory.length < 2) {
     return (
-      <SectionCard title="Тренд за 4 недели">
-        <Text style={styles.emptyText}>
-          Данные появятся после нескольких недель использования
-        </Text>
+      <SectionCard title="Тренд">
+        <View style={styles.trendEmptyRow}>
+          <Ionicons name="time-outline" size={16} color="#C8BFB0" />
+          <Text style={styles.trendEmptyText}>
+            Появится после второй недели использования
+          </Text>
+        </View>
       </SectionCard>
     );
   }
 
-  // metricsHistory отсортирован desc, разворачиваем для отображения от старого к новому
   const ordered = [...metricsHistory].reverse();
-  const maxScore = Math.max(...ordered.map(m => m.composite_score || 1), 1);
-  const BAR_MAX_HEIGHT = 80;
+  const first = ordered[0].composite_score ?? 0;
+  const last = ordered[ordered.length - 1].composite_score ?? 0;
+  const delta = last - first;
+  const improved = delta < 0;
+  const deltaColor = improved ? '#5DAA72' : '#c0392b';
+  const deltaText = improved
+    ? `снизился на ${Math.abs(delta)} за ${ordered.length} нед.`
+    : `вырос на ${Math.abs(delta)} за ${ordered.length} нед.`;
+
+  // Спарклайн
+  const pad = 6;
+  const innerW = SPARKLINE_W - pad * 2;
+  const innerH = SPARKLINE_H - pad * 2;
+  const xStep = ordered.length > 1 ? innerW / (ordered.length - 1) : 0;
+  const points = ordered.map((m, i) => {
+    const s = m.composite_score ?? 0;
+    return {
+      x: pad + i * xStep,
+      y: pad + innerH - (s / 100) * innerH,
+      score: s,
+    };
+  });
+  const polylineStr = points.map(p => `${p.x},${p.y}`).join(' ');
 
   return (
-    <SectionCard title="Тренд за 4 недели">
-      <View style={styles.trendRow}>
-        {ordered.map((m, i) => {
-          const score = m.composite_score ?? 0;
-          const barH = Math.max(6, Math.round((score / 100) * BAR_MAX_HEIGHT));
-          const barColor = scoreColor(score);
-          return (
-            <View key={i} style={styles.trendCol}>
-              <Text style={[styles.trendScore, { color: barColor }]}>{score}</Text>
-              <View style={styles.trendBarWrap}>
-                <View style={[styles.trendBar, { height: barH, backgroundColor: barColor }]} />
-              </View>
-              <Text style={styles.trendDate}>{formatDayMonth(m.week_start)}</Text>
-            </View>
-          );
-        })}
+    <SectionCard title="Тренд">
+      {/* Итоговая строка */}
+      <View style={styles.trendSummaryRow}>
+        <View style={styles.trendSummaryLeft}>
+          <Text style={[styles.trendSummaryScore, { color: scoreColor(last) }]}>{last}</Text>
+          <Text style={styles.trendSummaryLabel}>сейчас</Text>
+        </View>
+        <View style={styles.trendSummaryMid}>
+          <Ionicons
+            name={improved ? 'trending-down' : 'trending-up'}
+            size={18}
+            color={deltaColor}
+          />
+          <Text style={[styles.trendDeltaText, { color: deltaColor }]}>{deltaText}</Text>
+        </View>
+      </View>
+
+      {/* Спарклайн */}
+      <Svg width={SPARKLINE_W} height={SPARKLINE_H} style={styles.sparkline}>
+        <Polyline
+          points={polylineStr}
+          fill="none"
+          stroke={colors.accent}
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
+        {points.map((p, i) => (
+          <Circle key={i} cx={p.x} cy={p.y} r={3}
+            fill={scoreColor(p.score)} stroke={colors.background} strokeWidth="1.5" />
+        ))}
+      </Svg>
+
+      {/* Даты под спарклайном */}
+      <View style={styles.trendDatesRow}>
+        <Text style={styles.trendDateLabel}>{formatDayMonth(ordered[0].week_start)}</Text>
+        <Text style={styles.trendDateLabel}>{formatDayMonth(ordered[ordered.length - 1].week_start)}</Text>
       </View>
       <Text style={styles.trendHint}>Ниже — лучше. Индекс показывает общую нагрузку.</Text>
     </SectionCard>
@@ -603,40 +651,62 @@ const styles = StyleSheet.create({
   },
 
   // Секция 4: Тренд
-  trendRow: {
+  trendEmptyRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 12,
-    paddingBottom: 8,
-  },
-  trendCol: {
-    flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+    paddingVertical: 4,
   },
-  trendScore: {
+  trendEmptyText: {
     fontSize: 13,
-    fontWeight: '700',
+    color: '#A09080',
+    flex: 1,
   },
-  trendBarWrap: {
-    width: '100%',
+  trendSummaryRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    height: 84,
-    justifyContent: 'flex-end',
+    gap: 12,
+    marginBottom: 12,
   },
-  trendBar: {
-    width: '60%',
-    borderRadius: 4,
+  trendSummaryLeft: {
+    alignItems: 'center',
+    minWidth: 40,
   },
-  trendDate: {
+  trendSummaryScore: {
+    fontSize: 26,
+    fontWeight: '800',
+    lineHeight: 28,
+  },
+  trendSummaryLabel: {
     fontSize: 10,
     color: '#A09080',
-    textAlign: 'center',
+  },
+  trendSummaryMid: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  trendDeltaText: {
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  sparkline: {
+    marginBottom: 4,
+  },
+  trendDatesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  trendDateLabel: {
+    fontSize: 10,
+    color: '#A09080',
   },
   trendHint: {
     fontSize: 11,
     color: '#A09080',
-    marginTop: 8,
     textAlign: 'center',
   },
 
