@@ -1056,28 +1056,47 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {nextTestId && PSYCH_TESTS[nextTestId] ? (
-          <TouchableOpacity
-            style={styles.testPromptCard}
-            onPress={() => navigation.navigate('PsychTest', {
-              testId: nextTestId,
-              onComplete: () => { testJustDoneRef.current = true; setLastDoneTestId(nextTestId); setNextTestId(null); },
-            })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="flask-outline" size={20} color={colors.accent} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.testPromptTitle}>{PSYCH_TESTS[nextTestId].title}</Text>
-              <Text style={styles.testPromptSub}>{PSYCH_TESTS[nextTestId].subtitle} · займёт пару минут</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-          </TouchableOpacity>
+          <View style={styles.testPromptCard}>
+            <TouchableOpacity
+              style={styles.testPromptMain}
+              onPress={() => navigation.navigate('PsychTest', {
+                testId: nextTestId,
+                onComplete: () => { testJustDoneRef.current = true; setLastDoneTestId(nextTestId); setNextTestId(null); },
+              })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="flask-outline" size={20} color={colors.accent} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.testPromptTitle}>{PSYCH_TESTS[nextTestId].title}</Text>
+                <Text style={styles.testPromptSub}>{PSYCH_TESTS[nextTestId].subtitle} · займёт пару минут</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.testPromptHelp}
+              onPress={() => Alert.alert('зачем тесты?', 'короткие вопросы — честные ответы. для себя: чтобы замечать то, что обычно не замечаешь. для приложения: чтобы оно лучше понимало тебя и показывало то, что сейчас нужно')}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            >
+              <Ionicons name="help-circle-outline" size={18} color={colors.muted} />
+            </TouchableOpacity>
+          </View>
         ) : lastDoneTestId && PSYCH_TESTS[lastDoneTestId] ? (
           <View style={[styles.testPromptCard, styles.testPromptCardDone]}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#5DAA72" />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.testPromptTitle}>{PSYCH_TESTS[lastDoneTestId].title}</Text>
-              <Text style={[styles.testPromptSub, { color: '#5DAA72' }]}>Пройдено сегодня</Text>
+            <View style={styles.testPromptMain}>
+              <Ionicons name="checkmark-circle-outline" size={20} color="#5DAA72" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.testPromptTitle}>{PSYCH_TESTS[lastDoneTestId].title}</Text>
+                <Text style={[styles.testPromptSub, { color: '#5DAA72' }]}>Пройдено сегодня</Text>
+                <Text style={styles.testPromptRefresh}>обновится завтра</Text>
+              </View>
             </View>
+            <TouchableOpacity
+              style={styles.testPromptHelp}
+              onPress={() => Alert.alert('зачем тесты?', 'короткие вопросы — честные ответы. для себя: чтобы замечать то, что обычно не замечаешь. для приложения: чтобы оно лучше понимало тебя и показывало то, что сейчас нужно')}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            >
+              <Ionicons name="help-circle-outline" size={18} color={colors.muted} />
+            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -1637,8 +1656,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(93, 170, 114, 0.12)',
     borderColor: 'rgba(93, 170, 114, 0.35)',
   },
+  testPromptMain: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  testPromptHelp: { paddingLeft: 10 },
   testPromptTitle: { fontSize: 15, fontWeight: '600', color: colors.white },
   testPromptSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  testPromptRefresh: { fontSize: 11, color: colors.muted, fontStyle: 'italic', marginTop: 4 },
 
   // Chart
   chartCard: { backgroundColor: colors.card, borderRadius: 14, padding: 14 },
