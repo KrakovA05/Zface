@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+import { computeLiveProfile } from '../utils/computeLiveProfile';
 
 // ─── Константы ───────────────────────────────────────────────────────────────
 
@@ -18,12 +19,10 @@ const DIMENSION_LABELS = {
   apathy:         'Апатия',
   loneliness:     'Одиночество',
   burnout:        'Выгорание',
-  self_esteem:    'Самооценка',
+  self_esteem:    'Нехватка уверенности',
   social_anxiety: 'Соц. тревога',
-  attachment:     'Привязанность',
+  attachment:     'Тревога привязанности',
 };
-
-const NEGATIVE_DIMS = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'social_anxiety'];
 
 const WEEKLY_PHRASES = {
   anxiety:        'Эта неделя была напряжённой. Ты справляешься.',
@@ -46,12 +45,9 @@ function scoreColor(score) {
   return LEVEL_COLORS.red;
 }
 
-function dimBarColor(dim, score) {
-  if (NEGATIVE_DIMS.includes(dim)) return scoreColor(score);
-  // Позитивные: self_esteem, attachment — инвертируем
-  if (score >= 67) return LEVEL_COLORS.green;
-  if (score >= 34) return LEVEL_COLORS.yellow;
-  return LEVEL_COLORS.red;
+// Все 8 измерений: выше = хуже
+function dimBarColor(score) {
+  return scoreColor(score);
 }
 
 function formatDayMonth(dateStr) {
@@ -180,7 +176,7 @@ function LevelHistorySection({ testHistory }) {
 // Секция 3: Психометрический профиль
 const DIMENSION_ORDER = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment'];
 
-function ProfileSection({ metrics }) {
+function ProfileSection({ metrics, prevMetrics }) {
   if (!metrics) {
     return (
       <SectionCard title="Психометрический профиль">
@@ -197,14 +193,34 @@ function ProfileSection({ metrics }) {
         const key = `${dim}_score`;
         const score = metrics[key];
         if (score === undefined || score === null) return null;
-        const barColor = dimBarColor(dim, score);
+        const prevScore = prevMetrics?.[key];
+        const delta = prevScore !== undefined ? score - prevScore : 0;
+        const barColor = dimBarColor(score);
+
         return (
           <View key={dim} style={styles.dimRow}>
             <Text style={styles.dimLabel}>{DIMENSION_LABELS[dim]}</Text>
             <View style={styles.dimBarWrap}>
               <View style={[styles.dimBarFill, { width: `${score}%`, backgroundColor: barColor }]} />
+              {delta !== 0 && (
+                <View style={[
+                  styles.dimDeltaSegment,
+                  {
+                    left: `${Math.min(score, prevScore)}%`,
+                    width: `${Math.abs(delta)}%`,
+                    backgroundColor: delta > 0 ? '#c0392b' : '#5DAA72',
+                  }
+                ]} />
+              )}
             </View>
-            <Text style={[styles.dimScore, { color: barColor }]}>{score}</Text>
+            <View style={styles.dimScoreWrap}>
+              <Text style={[styles.dimScore, { color: barColor }]}>{score}</Text>
+              {delta !== 0 && (
+                <Text style={[styles.dimDelta, { color: delta > 0 ? '#c0392b' : '#5DAA72' }]}>
+                  {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                </Text>
+              )}
+            </View>
           </View>
         );
       })}
@@ -280,6 +296,7 @@ function ActivitySection({ userActivity }) {
 
 export default function AnalyticsScreen({ navigation }) {
   const [metrics, setMetrics] = useState(null);
+  const [prevMetrics, setPrevMetrics] = useState(null);
   const [metricsHistory, setMetricsHistory] = useState([]);
   const [testHistory, setTestHistory] = useState([]);
   const [userActivity, setUserActivity] = useState({ streak: 0, testCount: 0, lastTest: null });
@@ -294,18 +311,13 @@ export default function AnalyticsScreen({ navigation }) {
       if (!uid) { setLoading(false); return; }
 
       const [
-        { data: latestMetrics },
+        liveMetrics,
         { data: mHistory },
         { data: tests },
         { data: userRow },
+        { data: prevMetricsRow },
       ] = await Promise.all([
-        supabase
-          .from('user_metrics')
-          .select('*')
-          .eq('user_id', uid)
-          .order('week_start', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+        computeLiveProfile(uid),
         supabase
           .from('user_metrics')
           .select('composite_score, week_start')
@@ -323,10 +335,18 @@ export default function AnalyticsScreen({ navigation }) {
           .select('login_streak')
           .eq('user_id', uid)
           .maybeSingle(),
+        supabase
+          .from('user_metrics')
+          .select('*')
+          .eq('user_id', uid)
+          .order('week_start', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       if (!active) return;
-      setMetrics(latestMetrics);
+      setMetrics(liveMetrics);
+      setPrevMetrics(prevMetricsRow);
       setMetricsHistory(mHistory || []);
       setTestHistory(tests || []);
       setUserActivity({
@@ -364,7 +384,7 @@ export default function AnalyticsScreen({ navigation }) {
         >
           <CompositeSection metrics={metrics} />
           <LevelHistorySection testHistory={testHistory} />
-          <ProfileSection metrics={metrics} />
+          <ProfileSection metrics={metrics} prevMetrics={prevMetrics} />
           <TrendSection metricsHistory={metricsHistory} />
           <ActivitySection userActivity={userActivity} />
           <View style={styles.bottomPad} />
@@ -552,17 +572,29 @@ const styles = StyleSheet.create({
     height: 6,
     backgroundColor: '#E8DFD0',
     borderRadius: 3,
-    overflow: 'hidden',
+    position: 'relative',
   },
   dimBarFill: {
     height: 6,
     borderRadius: 3,
   },
+  dimDeltaSegment: {
+    position: 'absolute',
+    height: 6,
+    borderRadius: 2,
+    opacity: 0.6,
+  },
+  dimScoreWrap: {
+    width: 44,
+    alignItems: 'flex-end',
+  },
   dimScore: {
-    width: 28,
     fontSize: 12,
     fontWeight: '700',
-    textAlign: 'right',
+  },
+  dimDelta: {
+    fontSize: 9,
+    fontWeight: '600',
   },
 
   // Секция 4: Тренд
