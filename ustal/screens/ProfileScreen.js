@@ -8,11 +8,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
+import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS, ACHIEVEMENT_GROUPS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 
-const HIDDEN_ACHIEVEMENTS = new Set(['ten_tests', 'daily_7', 'first_post', 'helper_5', 'helper_20']);
 
 const ALL_FISH = [
   { name: 'Тихий карась',     rarity: 'common' },
@@ -72,6 +71,24 @@ function Row({ icon, label, value, valueColor, onPress, danger, last }) {
   );
 }
 
+function calcDateStreak(rows, dateField) {
+  if (!rows || rows.length === 0) return 0;
+  const dates = [...new Set(rows.map(r => r[dateField]))].sort().reverse();
+  let streak = 0;
+  const cur = new Date();
+  cur.setHours(0, 0, 0, 0);
+  for (const d of dates) {
+    const expected = [
+      cur.getFullYear(),
+      String(cur.getMonth() + 1).padStart(2, '0'),
+      String(cur.getDate()).padStart(2, '0'),
+    ].join('-');
+    if (d === expected) { streak++; cur.setDate(cur.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
+
 export default function ProfileScreen({ navigation }) {
   const [status, setStatus] = useState(store.status || '');
   const [avatarUri, setAvatarUri] = useState(store.avatarUrl || null);
@@ -81,7 +98,8 @@ export default function ProfileScreen({ navigation }) {
   const [motivator] = useState(
     () => MOTIVATORS[Math.floor(Math.random() * MOTIVATORS.length)]
   );
-  const [earnedAchievements, setEarnedAchievements] = useState([]);
+  const [earnedAchievementIds, setEarnedAchievementIds] = useState(new Set());
+  const [progressData, setProgressData] = useState({ dailyStreak: 0, dailyStreakTarget: 7, checkinStreak: 0, psychCount: 0 });
   const [showHistory, setShowHistory] = useState(false);
   const [showSimilar, setShowSimilar] = useState(true);
   const [presenceStats, setPresenceStats] = useState(null);
@@ -163,93 +181,120 @@ export default function ProfileScreen({ navigation }) {
   const checkAndAwardAchievements = async () => {
     if (!store.userId) return;
     try {
+      const uid = store.userId;
+      const thirtyAgo = new Date();
+      thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+      const thirtyAgoStr = thirtyAgo.toISOString().split('T')[0];
 
-    const { data: existing } = await supabase
-      .from('user_achievements')
-      .select('achievement_id')
-      .eq('user_id', store.userId);
-    const earned = new Set((existing || []).map(e => e.achievement_id));
+      const [
+        { data: existing },
+        { count: testCount },
+        { data: recentTests },
+        { count: friendCount },
+        { count: dmCount },
+        { count: postCount },
+        { data: dailyAnswers },
+        { count: helpCount },
+        { data: myThoughts },
+        { data: myThoughtReacts },
+        { count: breathingCount },
+        { data: caughtFish },
+        { data: psychResults },
+        { data: userRow },
+        { data: checkinData },
+      ] = await Promise.all([
+        supabase.from('user_achievements').select('achievement_id').eq('user_id', uid),
+        supabase.from('test_results').select('*', { count: 'exact', head: true }).eq('user_id', uid),
+        supabase.from('test_results').select('level').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
+        supabase.from('friendships').select('*', { count: 'exact', head: true }).or(`requester_id.eq.${uid},receiver_id.eq.${uid}`).eq('status', 'accepted'),
+        supabase.from('direct_messages').select('*', { count: 'exact', head: true }).eq('sender_id', uid),
+        supabase.from('feed_posts').select('*', { count: 'exact', head: true }).eq('author_id', uid),
+        supabase.from('daily_answers').select('question_date').eq('user_id', uid).order('question_date', { ascending: false }).limit(35),
+        supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', uid),
+        supabase.from('anonymous_thoughts').select('id').eq('user_id', uid),
+        supabase.from('thought_reactions').select('id').eq('user_id', uid).limit(1),
+        supabase.from('breathing_sessions').select('*', { count: 'exact', head: true }).eq('user_id', uid),
+        supabase.from('caught_fish').select('fish_name').eq('user_id', uid),
+        supabase.from('psych_test_results').select('test_id').eq('user_id', uid),
+        supabase.from('users').select('login_streak, status, avatar_url').eq('user_id', uid).single(),
+        supabase.from('mood_checkins').select('checkin_date').eq('user_id', uid).gte('checkin_date', thirtyAgoStr),
+      ]);
 
-    const toAward = [];
+      const earned = new Set((existing || []).map(e => e.achievement_id));
+      const toAward = [];
+      const levels = (recentTests || []).map(t => t.level);
 
-    const { count: testCount } = await supabase
-      .from('test_results').select('*', { count: 'exact', head: true }).eq('user_id', store.userId);
-    if (testCount >= 1 && !earned.has('first_test')) toAward.push('first_test');
-    if (testCount >= 5 && !earned.has('five_tests')) toAward.push('five_tests');
-    if (testCount >= 10 && !earned.has('ten_tests')) toAward.push('ten_tests');
-
-    if (!earned.has('comeback')) {
-      const { data: tests } = await supabase
-        .from('test_results').select('level').eq('user_id', store.userId)
-        .order('created_at', { ascending: false }).limit(10);
-      const levels = (tests || []).map(t => t.level);
-      for (let i = 0; i < levels.length - 1; i++) {
-        if (levels[i] !== 'red' && levels[i + 1] === 'red') { toAward.push('comeback'); break; }
-      }
-    }
-
-    if (!earned.has('stable')) {
-      const { data: tests } = await supabase
-        .from('test_results').select('level').eq('user_id', store.userId)
-        .order('created_at', { ascending: false }).limit(3);
-      if (tests?.length === 3 && tests.every(t => t.level === 'green')) toAward.push('stable');
-    }
-
-    if (!earned.has('first_friend')) {
-      const { count: fc } = await supabase
-        .from('friendships').select('*', { count: 'exact', head: true })
-        .or(`requester_id.eq.${store.userId},receiver_id.eq.${store.userId}`)
-        .eq('status', 'accepted');
-      if (fc >= 1) toAward.push('first_friend');
-    }
-
-    if (!earned.has('first_dm')) {
-      const { count: dc } = await supabase
-        .from('direct_messages').select('*', { count: 'exact', head: true }).eq('sender_id', store.userId);
-      if (dc >= 1) toAward.push('first_dm');
-    }
-
-    if (!earned.has('profile_done') && store.status && store.avatarUrl) {
-      toAward.push('profile_done');
-    }
-
-    if (!earned.has('first_post')) {
-      const { count: pc } = await supabase
-        .from('feed_posts').select('*', { count: 'exact', head: true }).eq('author_id', store.userId);
-      if (pc >= 1) toAward.push('first_post');
-    }
-
-    if (!earned.has('daily_7')) {
-      const { data: answers } = await supabase
-        .from('daily_answers').select('question_date').eq('user_id', store.userId)
-        .order('question_date', { ascending: false }).limit(7);
-      if (answers?.length === 7) {
-        let consecutive = true;
-        for (let i = 0; i < answers.length - 1; i++) {
-          const d1 = new Date(answers[i].question_date);
-          const d2 = new Date(answers[i + 1].question_date);
-          if ((d1 - d2) / (1000 * 60 * 60 * 24) !== 1) { consecutive = false; break; }
+      // Путь
+      if ((testCount || 0) >= 1  && !earned.has('first_test'))   toAward.push('first_test');
+      if ((testCount || 0) >= 5  && !earned.has('five_tests'))   toAward.push('five_tests');
+      if ((testCount || 0) >= 10 && !earned.has('ten_tests'))    toAward.push('ten_tests');
+      if ((testCount || 0) >= 20 && !earned.has('twenty_tests')) toAward.push('twenty_tests');
+      if (!earned.has('comeback')) {
+        for (let i = 0; i < levels.length - 1; i++) {
+          if (levels[i] !== 'red' && levels[i + 1] === 'red') { toAward.push('comeback'); break; }
         }
-        if (consecutive) toAward.push('daily_7');
       }
-    }
+      if (!earned.has('stable') && levels.length >= 3 && levels.slice(0, 3).every(l => l === 'green')) {
+        toAward.push('stable');
+      }
 
-    if (!earned.has('helper_5') || !earned.has('helper_20')) {
-      const { count: hc } = await supabase
-        .from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', store.userId);
-      if ((hc || 0) >= 5  && !earned.has('helper_5'))  toAward.push('helper_5');
-      if ((hc || 0) >= 20 && !earned.has('helper_20')) toAward.push('helper_20');
-    }
+      // Каждый день
+      const dailyStreak = calcDateStreak(dailyAnswers, 'question_date');
+      const checkinStreak = calcDateStreak(checkinData, 'checkin_date');
+      if ((checkinData || []).length >= 1 && !earned.has('checkin_first')) toAward.push('checkin_first');
+      if (checkinStreak >= 7  && !earned.has('checkin_7'))  toAward.push('checkin_7');
+      if (dailyStreak   >= 7  && !earned.has('daily_7'))   toAward.push('daily_7');
+      if (dailyStreak   >= 30 && !earned.has('daily_30'))  toAward.push('daily_30');
+      const loginStreak = userRow?.login_streak || 0;
+      if (loginStreak   >= 14 && !earned.has('streak_14')) toAward.push('streak_14');
 
-    if (toAward.length > 0) {
-      await supabase.from('user_achievements').insert(
-        toAward.map(id => ({ user_id: store.userId, achievement_id: id }))
-      );
-      toAward.forEach(id => earned.add(id));
-    }
+      // Голос
+      if (userRow?.status && userRow?.avatar_url && !earned.has('profile_done')) toAward.push('profile_done');
+      if ((postCount || 0) >= 1 && !earned.has('first_post')) toAward.push('first_post');
+      if ((myThoughts || []).length >= 1 && !earned.has('first_thought')) toAward.push('first_thought');
+      if ((myThoughtReacts || []).length >= 1 && !earned.has('first_reaction')) toAward.push('first_reaction');
+      if (!earned.has('thought_reactions_5') && (myThoughts || []).length > 0) {
+        const ids = myThoughts.map(t => t.id);
+        const { count: rxCount } = await supabase
+          .from('thought_reactions').select('*', { count: 'exact', head: true }).in('thought_id', ids);
+        if ((rxCount || 0) >= 5) toAward.push('thought_reactions_5');
+      }
 
-    const allEarned = ACHIEVEMENTS.filter(a => earned.has(a.id));
-    setEarnedAchievements(allEarned);
+      // Связи
+      if ((friendCount || 0) >= 1 && !earned.has('first_friend')) toAward.push('first_friend');
+      if ((dmCount     || 0) >= 1 && !earned.has('first_dm'))     toAward.push('first_dm');
+      if ((helpCount   || 0) >= 1 && !earned.has('helper_1'))     toAward.push('helper_1');
+      if ((helpCount   || 0) >= 5 && !earned.has('helper_5'))     toAward.push('helper_5');
+      if ((helpCount   || 0) >= 20&& !earned.has('helper_20'))    toAward.push('helper_20');
+
+      // Глубина
+      const uniquePsychTests = new Set((psychResults || []).map(r => r.test_id)).size;
+      if (uniquePsychTests >= 1 && !earned.has('psych_first')) toAward.push('psych_first');
+      if (uniquePsychTests >= 8 && !earned.has('psych_all'))   toAward.push('psych_all');
+      if ((breathingCount || 0) >= 1  && !earned.has('breathing_first')) toAward.push('breathing_first');
+      if ((breathingCount || 0) >= 10 && !earned.has('breathing_10'))    toAward.push('breathing_10');
+      const hasFish = (caughtFish || []).length >= 1;
+      const hasRareFish = (caughtFish || []).some(f => {
+        const info = ALL_FISH.find(a => a.name === f.fish_name);
+        return info?.rarity === 'rare' || info?.rarity === 'legendary';
+      });
+      if (hasFish     && !earned.has('fish_first')) toAward.push('fish_first');
+      if (hasRareFish && !earned.has('fish_rare'))  toAward.push('fish_rare');
+
+      if (toAward.length > 0) {
+        await supabase.from('user_achievements').insert(
+          toAward.map(id => ({ user_id: uid, achievement_id: id }))
+        );
+        toAward.forEach(id => earned.add(id));
+      }
+
+      setEarnedAchievementIds(new Set(earned));
+      setProgressData({
+        dailyStreak,
+        dailyStreakTarget: earned.has('daily_7') ? 30 : 7,
+        checkinStreak,
+        psychCount: uniquePsychTests,
+      });
     } catch {
       // тихий fallback
     }
