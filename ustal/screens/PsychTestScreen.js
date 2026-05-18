@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors, shared } from '../theme';
@@ -61,6 +62,7 @@ export default function PsychTestScreen({ route, navigation }) {
       return;
     }
     setSaving(false);
+    await AsyncStorage.setItem('profile_updated', 'true');
     setDone(true);
   };
 

@@ -196,6 +196,7 @@ export default function HomeScreen({ navigation }) {
   const [weeklyInsight, setWeeklyInsight] = useState(null);
   const [showFocusAsk,  setShowFocusAsk]  = useState(false);
   const [navHint,       setNavHint]       = useState(null);
+  const [profileUpdated, setProfileUpdated] = useState(false);
   const dailyQuestion = getAdaptiveQuestion(history);
   const todayWord = getTodayWord();
   const todayWordContext = getTodayWordContext();
@@ -247,6 +248,9 @@ export default function HomeScreen({ navigation }) {
   useFocusEffect(useCallback(() => {
     const load = async () => {
       setLoading(true);
+      AsyncStorage.getItem('profile_updated').then(v => {
+        if (v === 'true') setProfileUpdated(true);
+      });
       try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -784,6 +788,22 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
             );
           })()
+        )}
+
+        {/* ── Профиль обновился ── */}
+        {!loading && profileUpdated && (
+          <TouchableOpacity
+            style={styles.profileUpdatedCard}
+            onPress={async () => {
+              await AsyncStorage.removeItem('profile_updated');
+              setProfileUpdated(false);
+              navigation.navigate('Analytics');
+            }}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.profileUpdatedText}>твой профиль обновился</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+          </TouchableOpacity>
         )}
 
         {/* ── Чекин настроения — сразу под фокусом ── */}
@@ -1734,6 +1754,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
     fontSize: 15,
+  },
+
+  profileUpdatedCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.card, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 9,
+    marginHorizontal: 16, marginBottom: 8,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: '#E8DFD0',
+  },
+  profileUpdatedText: {
+    fontSize: 12, color: colors.muted,
   },
 
   // History
