@@ -3,7 +3,6 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Polyline, Circle, Line, Text as SvgText } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
@@ -103,7 +102,6 @@ function LineChart({ data }) {
 export default function DimensionHistoryScreen({ route, navigation }) {
   const { dimension, label } = route.params;
   const scoreKey = `${dimension}_score`;
-  const insets = useSafeAreaInsets();
 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +133,7 @@ export default function DimensionHistoryScreen({ route, navigation }) {
   const totalDelta = current !== null && first !== null ? current - first : null;
 
   return (
-    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+    <View style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={colors.white} />
