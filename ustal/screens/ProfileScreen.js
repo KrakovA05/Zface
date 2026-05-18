@@ -89,6 +89,33 @@ function calcDateStreak(rows, dateField) {
   return streak;
 }
 
+function ProgressCard({ label, current, target, icon }) {
+  const pct = Math.min(current / Math.max(target, 1), 1);
+  return (
+    <View style={pStyles.card}>
+      <Ionicons name={icon} size={15} color={colors.accent} />
+      <View style={{ flex: 1 }}>
+        <View style={pStyles.header}>
+          <Text style={pStyles.label}>{label}</Text>
+          <Text style={pStyles.count}>{Math.min(current, target)}/{target}</Text>
+        </View>
+        <View style={pStyles.bar}>
+          <View style={[pStyles.fill, { width: `${pct * 100}%` }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const pStyles = StyleSheet.create({
+  card:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  label:  { fontSize: 13, color: colors.white, fontWeight: '500' },
+  count:  { fontSize: 12, color: colors.muted },
+  bar:    { height: 3, backgroundColor: colors.border, borderRadius: 2 },
+  fill:   { height: 3, backgroundColor: colors.accent, borderRadius: 2 },
+});
+
 export default function ProfileScreen({ navigation }) {
   const [status, setStatus] = useState(store.status || '');
   const [avatarUri, setAvatarUri] = useState(store.avatarUrl || null);
@@ -614,37 +641,56 @@ export default function ProfileScreen({ navigation }) {
         </Section>
 
         {/* Достижения */}
-        {earnedAchievements.length > 0 && (
-          <Section title={`Достижения ${earnedAchievements.length}/${ACHIEVEMENTS.length}`}>
-            <View style={styles.achievementsGrid}>
-              {ACHIEVEMENTS.map(a => {
-                const earned = earnedAchievements.some(e => e.id === a.id);
-                const hidden = !earned && HIDDEN_ACHIEVEMENTS.has(a.id);
-                if (hidden) {
+        <Section title="Достижения">
+          {/* Шапка с общим прогрессом */}
+          <View style={styles.achHeader}>
+            <Text style={styles.achHeaderCount}>{earnedAchievementIds.size} из {ACHIEVEMENTS.length}</Text>
+          </View>
+          <View style={styles.achProgressBar}>
+            <View style={[styles.achProgressFill, { width: `${(earnedAchievementIds.size / ACHIEVEMENTS.length) * 100}%` }]} />
+          </View>
+
+          {/* В процессе */}
+          <Text style={styles.achGroupLabel}>В процессе</Text>
+          <View style={styles.inProgressBlock}>
+            <ProgressCard label="Вопрос дня" current={progressData.dailyStreak} target={progressData.dailyStreakTarget} icon="chatbox-outline" />
+            <ProgressCard label="Чекин настроения" current={progressData.checkinStreak} target={7} icon="thermometer-outline" />
+            <ProgressCard label="Психотесты" current={progressData.psychCount} target={8} icon="flask-outline" />
+          </View>
+
+          {/* Группы */}
+          {ACHIEVEMENT_GROUPS.map(group => (
+            <View key={group.id}>
+              <Text style={styles.achGroupLabel}>{group.label}</Text>
+              <View style={styles.achievementsGrid}>
+                {group.achievements.map(a => {
+                  const isEarned = earnedAchievementIds.has(a.id);
+                  if (!isEarned && a.hidden) {
+                    return (
+                      <View key={a.id} style={[styles.achievementItem, styles.achievementLocked]}>
+                        <Ionicons name="help-outline" size={22} color={colors.muted} />
+                        <Text style={[styles.achievementLabel, { color: colors.muted }]}>???</Text>
+                        <Text style={styles.achievementDesc}>эту получают единицы</Text>
+                      </View>
+                    );
+                  }
                   return (
-                    <View key={a.id} style={[styles.achievementItem, styles.achievementLocked]}>
-                      <Text style={styles.achievementEmoji}>🔮</Text>
-                      <Text style={[styles.achievementLabel, { color: colors.muted }]}>???</Text>
-                      <Text style={styles.achievementDesc}>эту получают единицы</Text>
-                    </View>
+                    <TouchableOpacity
+                      key={a.id}
+                      style={[styles.achievementItem, !isEarned && styles.achievementLocked]}
+                      onPress={() => !isEarned && Alert.alert(a.label, `Как получить:\n${a.desc}`)}
+                      activeOpacity={isEarned ? 1 : 0.7}
+                    >
+                      <Ionicons name={a.icon} size={22} color={isEarned ? colors.accent : colors.muted} />
+                      <Text style={[styles.achievementLabel, !isEarned && { color: colors.muted }]}>{a.label}</Text>
+                      <Text style={styles.achievementDesc}>{isEarned ? a.desc : '?'}</Text>
+                    </TouchableOpacity>
                   );
-                }
-                return (
-                  <TouchableOpacity
-                    key={a.id}
-                    style={[styles.achievementItem, !earned && styles.achievementLocked]}
-                    onPress={() => !earned && Alert.alert(a.label, `Как получить:\n${a.desc}`)}
-                    activeOpacity={earned ? 1 : 0.7}
-                  >
-                    <Text style={styles.achievementEmoji}>{earned ? a.emoji : '🔒'}</Text>
-                    <Text style={[styles.achievementLabel, !earned && { color: colors.muted }]}>{a.label}</Text>
-                    <Text style={styles.achievementDesc}>{earned ? a.desc : '?'}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+                })}
+              </View>
             </View>
-          </Section>
-        )}
+          ))}
+        </Section>
 
         {/* Коллекция рыб */}
         <Section title="Рыбалка">
@@ -832,9 +878,19 @@ const styles = StyleSheet.create({
   },
 
   // Achievements
+  achHeader: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 14, paddingBottom: 6 },
+  achHeaderCount: { fontSize: 12, color: colors.muted },
+  achProgressBar: { height: 3, backgroundColor: colors.border, borderRadius: 2, marginHorizontal: 14, marginBottom: 16 },
+  achProgressFill: { height: 3, backgroundColor: colors.accent, borderRadius: 2 },
+  achGroupLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.7,
+    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 6,
+  },
+  inProgressBlock: { paddingHorizontal: 14, paddingBottom: 4 },
   achievementsGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
-    padding: 10, gap: 8,
+    paddingHorizontal: 10, paddingBottom: 8, gap: 8,
   },
   achievementItem: {
     width: '30%', flexGrow: 1,
@@ -842,7 +898,6 @@ const styles = StyleSheet.create({
     borderRadius: 12, padding: 10, alignItems: 'center', gap: 4,
   },
   achievementLocked: { opacity: 0.35 },
-  achievementEmoji: { fontSize: 24 },
   achievementLabel: { color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' },
   achievementDesc: { color: colors.muted, fontSize: 9, textAlign: 'center', lineHeight: 13 },
 
