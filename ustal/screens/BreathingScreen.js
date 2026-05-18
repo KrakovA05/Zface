@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../supabase';
+import { store } from '../store';
 import { colors } from '../theme';
 
 const PHASES = [
@@ -50,6 +52,9 @@ export default function BreathingScreen({ navigation }) {
 
   const start = () => { setRunning(true); setPhaseIdx(0); };
   const stop  = () => {
+    if (running && store.userId) {
+      supabase.from('breathing_sessions').insert({ user_id: store.userId }).then(() => {});
+    }
     setRunning(false);
     setPhaseIdx(0);
     setSecs(PHASES[0].duration / 1000);
