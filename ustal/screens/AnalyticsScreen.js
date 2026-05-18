@@ -317,7 +317,7 @@ export default function AnalyticsScreen({ navigation }) {
         { data: userRow },
         { data: prevMetricsRow },
       ] = await Promise.all([
-        computeLiveProfile(uid),
+        computeLiveProfile(uid, { updateLevel: true }),
         supabase
           .from('user_metrics')
           .select('composite_score, week_start')

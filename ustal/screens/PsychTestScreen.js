@@ -6,6 +6,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors, shared } from '../theme';
 import { PSYCH_TESTS } from '../utils/psychTests';
+import { computeLiveProfile } from '../utils/computeLiveProfile';
 
 export default function PsychTestScreen({ route, navigation }) {
   const { testId, onComplete } = route.params;
@@ -63,6 +64,7 @@ export default function PsychTestScreen({ route, navigation }) {
     }
     setSaving(false);
     await AsyncStorage.setItem('profile_updated', 'true');
+    await computeLiveProfile(userId, { updateLevel: true });
     setDone(true);
   };
 

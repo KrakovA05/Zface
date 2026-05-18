@@ -12,6 +12,7 @@ import { scheduleLowMoodPush } from '../utils/notifications';
 import { logEvent } from '../utils/analytics';
 import { getNextTestId } from '../utils/psychScheduler';
 import { PSYCH_TESTS, WEEKLY_PHRASES } from '../utils/psychTests';
+import { computeLiveProfile } from '../utils/computeLiveProfile';
 
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
 const LEVEL_ICONS  = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'thunderstorm-outline' };
@@ -599,6 +600,9 @@ export default function HomeScreen({ navigation }) {
       { user_id: user.id, checkin_date: getTodayDate(), score },
       { onConflict: 'user_id,checkin_date' }
     );
+
+    // Пересчитываем composite — чекин влияет на stress и burnout
+    computeLiveProfile(user.id, { updateLevel: true });
 
     // C) Если 3 дня подряд оценка ≤3 — поддерживающий пуш через 3 часа
     if (score <= 3) {

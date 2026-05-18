@@ -1,8 +1,23 @@
 import { supabase } from '../supabase';
+import { store } from '../store';
 
 const DIMENSION_WEIGHTS = {
   anxiety: 0.20, stress: 0.20, apathy: 0.15, loneliness: 0.15,
   burnout: 0.10, self_esteem: 0.10, social_anxiety: 0.05, attachment: 0.05,
+};
+
+// Какое измерение покрывает каждый пакет ежедневного теста (TEST_PACKS из constants.js)
+const PACK_DIMENSION_MAP = {
+  0: ['apathy', 'stress'],              // Общее настроение
+  1: ['burnout', 'apathy'],             // Энергия и сон
+  2: ['loneliness', 'social_anxiety'],  // Отношения с людьми
+  3: ['self_esteem'],                   // Самооценка
+  4: ['apathy'],                        // Мотивация и цели
+  5: ['anxiety', 'stress'],             // Тревога и стресс
+  6: ['apathy'],                        // Радость и удовольствие
+  7: ['anxiety'],                       // Здесь и сейчас
+  8: ['apathy', 'burnout'],             // Смысл и ценности
+  9: ['burnout', 'stress'],             // Тело и голова
 };
 
 function norm(value, min, max) {
@@ -10,84 +25,146 @@ function norm(value, min, max) {
   return Math.round(Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100)));
 }
 
-export async function computeLiveProfile(uid) {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  weekStart.setHours(0, 0, 0, 0);
-  const weekStartIso = weekStart.toISOString();
-  const weekStartStr = weekStart.toISOString().split('T')[0];
+export function scoreToLevel(score) {
+  if (score <= 33) return 'green';
+  if (score <= 66) return 'yellow';
+  return 'red';
+}
+
+// updateLevel: true — после вычисления записать users.level + store.level
+export async function computeLiveProfile(uid, { updateLevel = false } = {}) {
+  const now = Date.now();
+  const sevenDaysAgo = new Date(now - 7 * 86400000).toISOString();
+  const sevenDaysAgoStr = sevenDaysAgo.split('T')[0];
+  const thirtyDaysAgo = new Date(now - 30 * 86400000).toISOString();
 
   const [
     { data: psychResults },
-    { count: msgCount },
     { data: dmData },
-    { data: nightMsgData },
-    { count: checkinCount },
-    { data: checkinScoreData },
-    { count: helpsCount },
+    { data: messages },
+    { data: checkinData },
+    { data: dailyTests },
   ] = await Promise.all([
+    // Валидированные психотесты за 30 дней
     supabase.from('psych_test_results')
-      .select('dimension, normalized_score, created_at')
+      .select('dimension, normalized_score')
       .eq('user_id', uid).gte('created_at', thirtyDaysAgo)
       .order('created_at', { ascending: false }),
-    supabase.from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('sender_id', uid).gte('created_at', weekStartIso),
+    // Уникальные DM-собеседники за 7 дней
     supabase.from('direct_messages')
       .select('conversation_id')
-      .eq('sender_id', uid).gte('created_at', weekStartIso),
+      .eq('sender_id', uid).gte('created_at', sevenDaysAgo),
+    // Все сообщения за 7 дней (для msgCount и ночной активности)
     supabase.from('messages')
       .select('created_at')
-      .eq('sender_id', uid).gte('created_at', weekStartIso),
-    supabase.from('mood_checkins')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', uid).gte('checkin_date', weekStartStr),
+      .eq('sender_id', uid).gte('created_at', sevenDaysAgo),
+    // Чекины настроения за 7 дней
     supabase.from('mood_checkins')
       .select('score')
-      .eq('user_id', uid).gte('checkin_date', weekStartStr)
+      .eq('user_id', uid).gte('checkin_date', sevenDaysAgoStr)
       .order('checkin_date', { ascending: true }),
-    supabase.from('user_helps')
-      .select('*', { count: 'exact', head: true })
-      .eq('helped_id', uid).gte('created_at', weekStartIso),
+    // Ежедневные тесты за 7 дней (с pack_id для маппинга на измерения)
+    supabase.from('test_results')
+      .select('score, pack_id')
+      .eq('user_id', uid).gte('created_at', sevenDaysAgo)
+      .order('created_at', { ascending: false }),
   ]);
 
-  const testScores = {};
+  // ── Валидированные психотесты: последний результат по каждому измерению ──────
+  const psychScores = {};
   for (const r of psychResults ?? []) {
-    if (!testScores[r.dimension]) testScores[r.dimension] = r.normalized_score;
+    if (psychScores[r.dimension] === undefined) psychScores[r.dimension] = r.normalized_score;
   }
 
-  const uniqueConvs = new Set((dmData ?? []).map(d => d.conversation_id)).size;
-  const nightCount = (nightMsgData ?? []).filter(m => {
+  // ── Сырые поведенческие данные ───────────────────────────────────────────────
+  const msgCount = messages?.length ?? 0;
+  const nightCount = (messages ?? []).filter(m => {
     const h = new Date(m.created_at).getHours();
     return h >= 0 && h < 5;
   }).length;
-  const checkinScores = (checkinScoreData ?? []).map(c => c.score);
+  const uniqueConvs = new Set((dmData ?? []).map(d => d.conversation_id)).size;
+  const checkinScores = (checkinData ?? []).map(c => c.score);
+  const avgCheckin = checkinScores.length > 0
+    ? checkinScores.reduce((a, b) => a + b, 0) / checkinScores.length
+    : null;
+  // Тренд: последний чекин минус первый (скользящие 7 дней)
   const checkinTrend = checkinScores.length >= 2
     ? checkinScores[checkinScores.length - 1] - checkinScores[0]
-    : 0;
+    : null;
 
-  const behavioralScores = {
-    anxiety:        norm(nightCount, 0, 10),
-    stress:         norm(Math.max(0, 7 - (checkinCount ?? 0)), 0, 7),
-    loneliness:     norm(Math.max(0, 5 - uniqueConvs), 0, 5),
-    apathy:         norm(Math.max(0, 7 - Math.min(7, msgCount ?? 0)), 0, 7),
-    self_esteem:    Math.max(0, 100 - norm(helpsCount ?? 0, 0, 5)),
-    burnout:        checkinTrend < -2 ? 70 : checkinTrend < 0 ? 40 : 20,
-    social_anxiety: norm(Math.max(0, 10 - (msgCount ?? 0)), 0, 10),
-    attachment:     testScores['attachment'] ?? 50,
-  };
+  // Признак «есть хоть какая-то активность за 7 дней»
+  // Если нет — поведенческие сигналы дефолтятся в 50, а не в 100 (новый пользователь)
+  const hasActivity = msgCount > 0 || checkinScores.length > 0 || uniqueConvs > 0;
 
-  const dimensionScores = {};
-  for (const dim of Object.keys(DIMENSION_WEIGHTS)) {
-    const hasTest = testScores[dim] !== undefined;
-    const testScore = testScores[dim] ?? behavioralScores[dim] ?? 50;
-    const behavScore = behavioralScores[dim] ?? testScore;
-    dimensionScores[dim] = Math.round(
-      hasTest ? testScore * 0.6 + behavScore * 0.4 : behavScore
-    );
+  // ── Ежедневный тест → баллы по измерениям ────────────────────────────────────
+  // Каждый пак нормализуется: pessimisticCount / 10 * 100 → 0-100
+  // Несколько паков за 7 дней → среднее по каждому измерению
+  const dailyDimAccum = {};
+  for (const t of dailyTests ?? []) {
+    const packScore = Math.round((t.score / 10) * 100);
+    for (const dim of PACK_DIMENSION_MAP[t.pack_id] ?? []) {
+      if (!dailyDimAccum[dim]) dailyDimAccum[dim] = [];
+      dailyDimAccum[dim].push(packScore);
+    }
+  }
+  const dailyScores = {};
+  for (const [dim, scores] of Object.entries(dailyDimAccum)) {
+    dailyScores[dim] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   }
 
+  // ── Поведенческие сигналы ─────────────────────────────────────────────────────
+  //
+  // anxiety:  доля ночных сообщений (0-5 утра) как прокси инсомнии/тревоги
+  // stress:   средний балл чекинов (низкий = плохое настроение = стресс)
+  // loneliness: мало уникальных DM-собеседников
+  // apathy:   мало сообщений в чатах
+  // burnout:  тренд чекинов вниз = истощение; fallback через средний балл
+  // self_esteem, social_anxiety, attachment: только через валидированные тесты
+  //   (прокси через поведение ненадёжны или вводят дубли)
+  const behavioral = {
+    anxiety:        hasActivity ? norm(nightCount, 0, 10) : 50,
+    stress:         avgCheckin !== null
+                      ? Math.round(((10 - avgCheckin) / 9) * 100)
+                      : 50,
+    loneliness:     hasActivity ? norm(Math.max(0, 5 - uniqueConvs), 0, 5) : 50,
+    apathy:         hasActivity ? norm(Math.max(0, 7 - Math.min(7, msgCount)), 0, 7) : 50,
+    burnout:        checkinTrend !== null
+                      // Непрерывная формула: тренд 0 → 45, -3 → 69, +3 → 21
+                      ? Math.max(5, Math.min(90, 45 - Math.round(checkinTrend * 8)))
+                      : avgCheckin !== null
+                        // Нет тренда, но есть чекины: средний балл как слабый сигнал
+                        ? Math.round(((10 - avgCheckin) / 9) * 70)
+                        : 30,
+    self_esteem:    50,
+    social_anxiety: 50,
+    attachment:     50,
+  };
+
+  // ── Итоговые баллы: psych > daily > behavioral ────────────────────────────────
+  //
+  // Приоритет источников:
+  //   1. Валидированный психотест (самый надёжный, окно 30 дней)
+  //   2. Ежедневный пак-тест     (умеренно надёжный, окно 7 дней)
+  //   3. Поведенческий сигнал    (слабый прокси, дефолт 50 при отсутствии данных)
+  const dimensionScores = {};
+  for (const dim of Object.keys(DIMENSION_WEIGHTS)) {
+    const ps = psychScores[dim];  // валидированный психотест
+    const ds = dailyScores[dim];  // ежедневный пак
+    const bs = behavioral[dim];   // поведение
+
+    if (ps !== undefined) {
+      // Психотест есть — самый надёжный. Смешиваем с ближайшим сигналом актуальности.
+      dimensionScores[dim] = Math.round(ps * 0.6 + (ds !== undefined ? ds : bs) * 0.4);
+    } else if (ds !== undefined) {
+      // Пак-тест без психотеста
+      dimensionScores[dim] = Math.round(ds * 0.6 + bs * 0.4);
+    } else {
+      // Только поведение (или 50 если нет данных)
+      dimensionScores[dim] = bs;
+    }
+  }
+
+  // ── Composite ─────────────────────────────────────────────────────────────────
   let composite = 0;
   for (const [dim, weight] of Object.entries(DIMENSION_WEIGHTS)) {
     composite += (dimensionScores[dim] ?? 50) * weight;
@@ -96,6 +173,14 @@ export async function computeLiveProfile(uid) {
 
   const dominant = Object.entries(dimensionScores)
     .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'stress';
+
+  const level = scoreToLevel(composite);
+
+  // ── Запись уровня (опционально) ───────────────────────────────────────────────
+  if (updateLevel) {
+    await supabase.from('users').update({ level }).eq('user_id', uid);
+    store.level = level;
+  }
 
   return {
     anxiety_score:        dimensionScores.anxiety,
@@ -108,6 +193,7 @@ export async function computeLiveProfile(uid) {
     attachment_score:     dimensionScores.attachment,
     composite_score:      composite,
     dominant_dimension:   dominant,
-    week_start:           weekStartStr,
+    week_start:           sevenDaysAgoStr,
+    level,
   };
 }

@@ -6,6 +6,7 @@ import { LEVEL_DATA, LEVEL_COLORS, TEST_PACKS } from '../constants';
 import { colors, shared } from '../theme';
 import { scheduleQuestNotifications } from '../utils/notifications';
 import { logEvent } from '../utils/analytics';
+import { computeLiveProfile } from '../utils/computeLiveProfile';
 
 function isWithin24Hours(dateStr) {
   return (Date.now() - new Date(dateStr).getTime()) < 24 * 60 * 60 * 1000;
@@ -63,15 +64,11 @@ export default function TestScreen({ navigation }) {
   const saveResult = async (lvl, score) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const [r1, r2] = await Promise.all([
-        supabase.from('users').update({ level: lvl }).eq('user_id', user.id),
-        supabase.from('test_results').insert({ user_id: user.id, level: lvl, score, pack_id: packId }),
-      ]);
-      if (!r1.error && !r2.error) {
-        store.level = lvl;
-      }
+      await supabase.from('test_results').insert({ user_id: user.id, level: lvl, score, pack_id: packId });
+      // Пересчитываем composite из всех источников — он и становится users.level
+      const profile = await computeLiveProfile(user.id, { updateLevel: true });
+      scheduleQuestNotifications(profile.level);
     }
-    scheduleQuestNotifications(lvl);
   };
 
   const answer = async (isPessimistic) => {
