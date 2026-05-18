@@ -137,17 +137,10 @@ export default function TestScreen({ navigation }) {
   }
 
   if (finished && level) {
-    const lvlData = LEVEL_DATA[level];
-    const btnLabels = { green: 'Что это значит →', yellow: 'Найти что поможет →', red: 'Узнать что можно сделать →' };
     return (
       <View style={styles.container}>
-        <Text style={styles.resultEmoji}>{lvlData.emoji}</Text>
-        <Text style={[styles.resultLevel, { color: lvlData.color }]}>{lvlData.label}</Text>
-        <Text style={styles.resultText}>{lvlData.text}</Text>
-        <Text style={styles.disclaimer}>
-          Это не медицинский диагноз — только отражение твоего состояния сейчас.{'\n'}
-          Если тебе очень плохо, поговори с живым человеком.
-        </Text>
+        <Text style={styles.resultDone}>Записали</Text>
+        <Text style={styles.resultSub}>Ответы учтены в профиле</Text>
         {level === 'red' && (
           <TouchableOpacity
             style={styles.crisisBtn}
@@ -157,13 +150,13 @@ export default function TestScreen({ navigation }) {
           </TouchableOpacity>
         )}
         {saving ? (
-          <ActivityIndicator color={lvlData.color} style={styles.saving} />
+          <ActivityIndicator color={colors.accent} style={styles.saving} />
         ) : (
           <TouchableOpacity
-            style={[shared.button, { backgroundColor: lvlData.color }]}
+            style={shared.button}
             onPress={() => navigation.replace('Recommendations', { level, isFirstTest: !!isFirstTest })}
           >
-            <Text style={shared.buttonText}>{btnLabels[level]}</Text>
+            <Text style={shared.buttonText}>Посмотреть рекомендации</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -249,31 +242,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-  resultEmoji: {
-    fontSize: 80,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  resultLevel: {
+  resultDone: {
     fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  resultText: {
-    fontSize: 16,
+    fontWeight: '700',
     color: colors.white,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  disclaimer: {
-    fontSize: 12,
+  resultSub: {
+    fontSize: 16,
     color: colors.muted,
     textAlign: 'center',
-    lineHeight: 17,
-    marginBottom: 20,
-    paddingHorizontal: 8,
+    marginBottom: 40,
   },
   crisisBtn: {
     borderWidth: 1,
