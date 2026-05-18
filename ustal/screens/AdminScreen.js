@@ -10,7 +10,7 @@ import { store } from '../store'
 import { colors } from '../theme'
 import BanModal from '../components/BanModal'
 
-const TABS = ['Жалобы', 'Пользователи', 'Статистика']
+const TABS = ['Жалобы', 'Письма', 'Пользователи', 'Статистика']
 const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' }
 
 export default function AdminScreen({ navigation }) {
@@ -36,8 +36,9 @@ export default function AdminScreen({ navigation }) {
       </View>
 
       {tab === 0 && <ReportsTab navigation={navigation} />}
-      {tab === 1 && <UsersTab navigation={navigation} />}
-      {tab === 2 && <StatsTab />}
+      {tab === 1 && <LettersTab />}
+      {tab === 2 && <UsersTab navigation={navigation} />}
+      {tab === 3 && <StatsTab />}
     </View>
   )
 }
@@ -158,6 +159,50 @@ function ReportsTab({ navigation }) {
       />
     </View>
   )
+}
+
+// ── LETTERS TAB ──────────────────────────────────────────────────
+function LettersTab() {
+  const [letters, setLetters] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useFocusEffect(useCallback(() => {
+    loadLetters()
+  }, []))
+
+  async function loadLetters() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('support_requests')
+      .select('id, category, subject, message, username, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    setLetters(data || [])
+    setLoading(false)
+  }
+
+  if (loading) return <View style={s.center}><ActivityIndicator color={colors.accent} /></View>
+
+  return letters.length === 0
+    ? <View style={s.center}><Text style={s.empty}>Писем нет</Text></View>
+    : (
+      <FlatList
+        data={letters}
+        keyExtractor={l => l.id}
+        contentContainerStyle={{ padding: 12 }}
+        renderItem={({ item }) => (
+          <View style={s.reportCard}>
+            <View style={s.reportHeader}>
+              <Text style={[s.reportLabel, { fontWeight: '700' }]}>{item.category}</Text>
+              <Text style={s.reportMeta}>{new Date(item.created_at).toLocaleDateString('ru')}</Text>
+            </View>
+            <Text style={s.reportReason}>{item.subject}</Text>
+            <Text style={[s.reportReason, { color: colors.white, marginTop: 4 }]}>{item.message}</Text>
+            <Text style={s.reportMeta}>от @{item.username || '?'}</Text>
+          </View>
+        )}
+      />
+    )
 }
 
 // ── USERS TAB ─────────────────────────────────────────────────────

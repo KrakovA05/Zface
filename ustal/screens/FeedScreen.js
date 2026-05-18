@@ -13,6 +13,7 @@ import { store } from '../store';
 import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
+import { SYSTEM_AVATAR_URI } from '../systemAssets';
 
 const PAGE_SIZE = 20;
 const SUPABASE_URL = 'https://yincycmdsdluueqsxtwn.supabase.co';
@@ -334,7 +335,7 @@ export default function FeedScreen({ navigation }) {
       >
         <TouchableOpacity style={styles.cardHeader} onPress={() => openAuthorProfile(item)} disabled={isOwn}>
           <Avatar
-            uri={item.author_id === store.userId ? store.avatarUrl : (avatarMap[item.author_id] || null)}
+            uri={item.author_id === SYSTEM_USER_ID ? SYSTEM_AVATAR_URI : item.author_id === store.userId ? store.avatarUrl : (avatarMap[item.author_id] || null)}
             username={item.author_username} level={currentLevel} size={36}
           />
           <View style={styles.cardMeta}>

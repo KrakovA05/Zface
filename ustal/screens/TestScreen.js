@@ -108,12 +108,6 @@ export default function TestScreen({ navigation }) {
       <View style={styles.container}>
         <Text style={styles.blockedEmoji}>🕐</Text>
         <Text style={styles.blockedTitle}>Тест уже пройден сегодня</Text>
-        <View style={[styles.blockedCard, { borderColor: lvlColor }]}>
-          <Text style={styles.blockedCardLabel}>Результат сегодня</Text>
-          <Text style={[styles.blockedCardLevel, { color: lvlColor }]}>
-            {lvlData.emoji} {lvlData.label}
-          </Text>
-        </View>
         <Text style={styles.blockedHint}>
           Следующий тест через{'\n'}
           <Text style={{ color: colors.accent, fontWeight: 'bold' }}>

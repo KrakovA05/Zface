@@ -31,6 +31,22 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
   return data.candidates[0].content.parts[0].text;
 }
 
+function cleanPlainText(raw: string): string {
+  let text = raw.trim();
+  // Gemini иногда возвращает ["текст"] вместо просто текста
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        text = String(parsed[0]).trim();
+      }
+    } catch { /* оставляем как есть */ }
+  }
+  // Убираем обрамляющие кавычки
+  text = text.replace(/^["']|["']$/g, '').trim();
+  return text;
+}
+
 function parseJson(raw: string): { text: string; type: string }[] {
   const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
@@ -97,7 +113,7 @@ async function generateResourcePosts(
 Статья: "${article.title}", тема: "${article.topic}"`;
     const intro = await callGemini(prompt, apiKey);
     results.push({
-      text: intro.trim().slice(0, 300),
+      text: cleanPlainText(intro).slice(0, 300),
       level: 'all',
       link_url: article.url,
       link_title: article.title,
@@ -179,7 +195,7 @@ Deno.serve(async (req) => {
       if (parsed.text) {
         await supabase.from('feed_posts').insert({
           author_id: SYSTEM_USER_ID,
-          author_username: '@один',
+          author_username: '@не один',
           author_level: 'red',
           text: parsed.text,
           target_levels: ['red', 'yellow'],
@@ -193,13 +209,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Пропустить если уже генерировали сегодня
-  const since = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
+  // Пропустить если уже генерировали сегодня (по UTC-дате)
+  const todayUTC = new Date().toISOString().split('T')[0]; // "2026-05-18"
   const { data: existing } = await supabase
     .from('feed_posts')
     .select('id')
     .eq('author_id', SYSTEM_USER_ID)
-    .gte('created_at', since)
+    .gte('created_at', todayUTC)
     .limit(1);
 
   if (existing && existing.length > 0) {
@@ -236,7 +252,7 @@ Deno.serve(async (req) => {
       // если время уже прошло — оставляем как есть (пост виден сразу)
       return {
         author_id: SYSTEM_USER_ID,
-        author_username: '@один',
+        author_username: '@не один',
         author_level: p.level === 'all' ? 'green' : p.level,
         text: p.text,
         target_levels: p.level === 'all' ? ['green', 'yellow', 'red'] : [p.level],

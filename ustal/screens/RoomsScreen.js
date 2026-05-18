@@ -80,6 +80,7 @@ export default function RoomsScreen({ route, navigation }) {
   const flatRef = useRef(null);
   const channelRef = useRef(null);
   const participantsChannelRef = useRef(null);
+  const myNightMsgIds = useRef(new Set());
 
   useEffect(() => {
     if (store.userId) {
@@ -273,12 +274,13 @@ export default function RoomsScreen({ route, navigation }) {
       payload.reply_to_username = replyTo.username;
       setReplyTo(null);
     }
-    const { error } = await supabase.from('messages').insert(payload);
+    const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id').single();
     if (error) {
       setSending(false);
       Alert.alert('Ошибка', 'Не удалось отправить сообщение');
       return;
     }
+    if (isNightRoom && inserted?.id) myNightMsgIds.current.add(inserted.id);
     setText2('');
     setSending(false);
   };
@@ -441,7 +443,7 @@ export default function RoomsScreen({ route, navigation }) {
     <View style={styles.safeArea}>
       <View style={[styles.flex, { marginBottom: kbHeight }]}>
         <View style={[styles.roomHeader, { borderBottomColor: roomData.color + '66' }]}>
-          <TouchableOpacity onPress={() => { setRoom(null); setIsAnonymous(false); }} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => { setRoom(null); setIsAnonymous(false); myNightMsgIds.current.clear(); }} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={26} color={colors.white} />
           </TouchableOpacity>
           <View style={[styles.roomHeaderDot, { backgroundColor: roomData.color }]} />
@@ -523,7 +525,9 @@ export default function RoomsScreen({ route, navigation }) {
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => {
-            const isMe = !!store.userId && item.sender_id === store.userId;
+            const isMe = room === 'night'
+              ? myNightMsgIds.current.has(item.id)
+              : !!store.userId && item.sender_id === store.userId;
             const lvlColor = LEVEL_COLORS[item.level] || colors.accent;
             const rxs = groupReactions(reactions[item.id]);
             return (

@@ -17,9 +17,9 @@ const CATEGORIES = [
   { id: 'other', label: 'Другое', icon: 'chatbubble-outline' },
 ];
 
-export default function SupportScreen({ navigation }) {
+export default function SupportScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
-  const [category, setCategory] = useState('question');
+  const [category, setCategory] = useState(route?.params?.initialCategory || 'question');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -29,20 +29,28 @@ export default function SupportScreen({ navigation }) {
     if (!subject.trim() || !message.trim() || sending) return;
     setSending(true);
 
-    const { error } = await supabase.functions.invoke('send-support-email', {
+    const categoryLabel = CATEGORIES.find(c => c.id === category)?.label || category;
+
+    // Сохраняем в БД напрямую (чтобы было видно в админ-панели)
+    await supabase.from('support_requests').insert({
+      user_id: store.userId || null,
+      username: store.username || 'unknown',
+      category: categoryLabel,
+      subject: subject.trim(),
+      message: message.trim(),
+    });
+
+    // Дублируем на email через Edge Function (игнорируем ошибку — запись уже сохранена)
+    supabase.functions.invoke('send-support-email', {
       body: {
-        category: CATEGORIES.find(c => c.id === category)?.label || category,
+        category: categoryLabel,
         subject: subject.trim(),
         message: message.trim(),
         username: store.username || 'unknown',
       },
-    });
+    }).catch(() => {});
 
     setSending(false);
-    if (error) {
-      Alert.alert('Ошибка', 'Не удалось отправить обращение. Попробуй ещё раз.');
-      return;
-    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setDone(true);
   };

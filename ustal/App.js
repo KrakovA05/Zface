@@ -2,7 +2,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, useRef, useCallback } from 'react';
 
 SplashScreen.preventAutoHideAsync();
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -354,6 +355,7 @@ function navigateFromNotification(navigationRef, data) {
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [streakData, setStreakData] = useState(null);
+  const [showFeedbackAlert, setShowFeedbackAlert] = useState(false);
   const presenceInterval = useRef(null);
   const navigationRef = useRef(null);
   const pendingNotificationData = useRef(null);
@@ -406,6 +408,21 @@ export default function App() {
           }
 
           setInitialRoute('Main');
+
+          // Алерт удовлетворённости — показываем один раз на 3-м визите
+          const shownKey = 'feedback_alert_shown';
+          const visitKey = 'app_visit_count';
+          const alreadyShown = await AsyncStorage.getItem(shownKey);
+          if (!alreadyShown) {
+            const visitStr = await AsyncStorage.getItem(visitKey);
+            const visits = parseInt(visitStr || '0', 10) + 1;
+            await AsyncStorage.setItem(visitKey, String(visits));
+            if (visits >= 3) {
+              await AsyncStorage.setItem(shownKey, '1');
+              setShowFeedbackAlert(true);
+            }
+          }
+
           updatePresence();
           registerForPushNotifications().then(token => {
             if (token) supabase.from('users').update({ push_token: token }).eq('user_id', session.user.id);
@@ -460,6 +477,25 @@ export default function App() {
   useEffect(() => {
     if (initialRoute) SplashScreen.hideAsync();
   }, [initialRoute]);
+
+  useEffect(() => {
+    if (!showFeedbackAlert || !navigationRef.current) return;
+    const timer = setTimeout(() => {
+      Alert.alert(
+        'Привет!',
+        'Всё ли тебя устраивает в приложении? Если есть идея или замечание — будем рады услышать.\n\nВ дальнейшем можешь написать нам из профиля.',
+        [
+          { text: 'Всё нравится', style: 'cancel' },
+          {
+            text: 'Написать нам',
+            onPress: () => navigationRef.current?.navigate('Support', { initialCategory: 'idea' }),
+          },
+        ]
+      );
+      setShowFeedbackAlert(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [showFeedbackAlert, initialRoute]);
 
   if (!initialRoute) return null;
 

@@ -354,7 +354,7 @@ export default function HomeScreen({ navigation }) {
         } else {
           const { data: taps } = await supabase
             .from('daily_word_taps').select('reaction')
-            .eq('user_id', user.id).eq('word_date', today).limit(1);
+            .eq('user_id', user.id).eq('word_date', today).eq('word', word).limit(1);
           const tapVal = taps?.[0]?.reaction || false;
           wordTapCache[cacheKey] = tapVal;
           setWordTapped(tapVal);
