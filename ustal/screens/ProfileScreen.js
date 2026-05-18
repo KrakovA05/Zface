@@ -512,34 +512,6 @@ export default function ProfileScreen({ navigation }) {
           </View>
         )}
 
-        {/* Настроение за 7 дней */}
-        {moodHistory.some(d => d.score !== null) && (
-          <View style={styles.moodChartCard}>
-            <Text style={styles.moodChartTitle}>Настроение за 7 дней</Text>
-            <View style={styles.moodChartBars}>
-              {moodHistory.map((d, i) => {
-                const barColor = d.score === null ? colors.border
-                  : d.score <= 3 ? '#E57373'
-                  : d.score <= 6 ? '#FFB74D'
-                  : '#81C784';
-                const barH = d.score === null ? 4 : Math.max(6, (d.score / 10) * 60);
-                return (
-                  <View key={i} style={styles.moodChartCol}>
-                    <View style={styles.moodChartBarWrap}>
-                      <View style={[styles.moodChartBar, { height: barH, backgroundColor: barColor }]} />
-                    </View>
-                    <Text style={styles.moodChartLabel}>{d.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            <View style={styles.moodChartLegend}>
-              <View style={styles.moodChartLegendItem}><View style={[styles.moodChartDot, { backgroundColor: '#E57373' }]} /><Text style={styles.moodChartLegendText}>плохо</Text></View>
-              <View style={styles.moodChartLegendItem}><View style={[styles.moodChartDot, { backgroundColor: '#FFB74D' }]} /><Text style={styles.moodChartLegendText}>средне</Text></View>
-              <View style={styles.moodChartLegendItem}><View style={[styles.moodChartDot, { backgroundColor: '#81C784' }]} /><Text style={styles.moodChartLegendText}>хорошо</Text></View>
-            </View>
-          </View>
-        )}
 
         {/* Аккаунт */}
         <Section title="Аккаунт">
@@ -851,19 +823,4 @@ const styles = StyleSheet.create({
   presenceLabel: { fontSize: 11, color: colors.muted, textAlign: 'center', lineHeight: 15 },
   presenceDivider: { width: 1, height: 36, backgroundColor: colors.border },
 
-  moodChartCard: {
-    backgroundColor: colors.card, borderRadius: 16,
-    padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  moodChartTitle: { fontSize: 13, fontWeight: '700', color: colors.muted, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 },
-  moodChartBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 72 },
-  moodChartCol: { flex: 1, alignItems: 'center', gap: 4 },
-  moodChartBarWrap: { flex: 1, justifyContent: 'flex-end', width: '100%', alignItems: 'center' },
-  moodChartBar: { width: '80%', borderRadius: 4, minHeight: 4 },
-  moodChartLabel: { fontSize: 10, color: colors.muted, fontWeight: '500' },
-  moodChartLegend: { flexDirection: 'row', gap: 14, marginTop: 12, justifyContent: 'center' },
-  moodChartLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  moodChartDot: { width: 8, height: 8, borderRadius: 4 },
-  moodChartLegendText: { fontSize: 11, color: colors.muted },
 });
