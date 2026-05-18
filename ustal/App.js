@@ -51,6 +51,7 @@ import AccountSettingsScreen from './screens/AccountSettingsScreen';
 import AdminScreen from './screens/AdminScreen';
 import AdminUserProfileScreen from './screens/AdminUserProfileScreen';
 import AnalyticsScreen from './screens/AnalyticsScreen';
+import AchievementsScreen from './screens/AchievementsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -504,6 +505,7 @@ export default function App() {
             <Stack.Screen name="Analytics"        component={AnalyticsScreen}       options={{ headerShown: false }} />
             <Stack.Screen name="Admin"            component={AdminScreen}           options={{ headerShown: false }} />
             <Stack.Screen name="AdminUserProfile" component={AdminUserProfileScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Achievements"     component={AchievementsScreen}     options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />

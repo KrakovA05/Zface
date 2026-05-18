@@ -30,6 +30,7 @@ const ALL_MODULES = [
   { icon: 'pencil-outline',     label: 'Мысли',     route: 'Thoughts',  goals: [] },
   { icon: 'library-outline',    label: 'Материалы', route: 'Resources', goals: ['anxiety'] },
   { icon: 'mail-outline',       label: 'Письмо',    route: 'Letter',    goals: ['social', 'meditative'] },
+  { icon: 'trophy-outline',    label: 'Достижения', route: 'Achievements', goals: [] },
 ];
 
 function getModuleItems(goal) {

@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
-import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS, ACHIEVEMENT_GROUPS } from '../constants';
+import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 
@@ -89,32 +89,6 @@ function calcDateStreak(rows, dateField) {
   return streak;
 }
 
-function ProgressCard({ label, current, target, icon }) {
-  const pct = Math.min(current / Math.max(target, 1), 1);
-  return (
-    <View style={pStyles.card}>
-      <Ionicons name={icon} size={15} color={colors.accent} />
-      <View style={{ flex: 1 }}>
-        <View style={pStyles.header}>
-          <Text style={pStyles.label}>{label}</Text>
-          <Text style={pStyles.count}>{Math.min(current, target)}/{target}</Text>
-        </View>
-        <View style={pStyles.bar}>
-          <View style={[pStyles.fill, { width: `${pct * 100}%` }]} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-const pStyles = StyleSheet.create({
-  card:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  label:  { fontSize: 13, color: colors.white, fontWeight: '500' },
-  count:  { fontSize: 12, color: colors.muted },
-  bar:    { height: 3, backgroundColor: colors.border, borderRadius: 2 },
-  fill:   { height: 3, backgroundColor: colors.accent, borderRadius: 2 },
-});
 
 export default function ProfileScreen({ navigation }) {
   const [status, setStatus] = useState(store.status || '');
@@ -126,7 +100,6 @@ export default function ProfileScreen({ navigation }) {
     () => MOTIVATORS[Math.floor(Math.random() * MOTIVATORS.length)]
   );
   const [earnedAchievementIds, setEarnedAchievementIds] = useState(new Set());
-  const [progressData, setProgressData] = useState({ dailyStreak: 0, dailyStreakTarget: 7, checkinStreak: 0, psychCount: 0 });
   const [showHistory, setShowHistory] = useState(false);
   const [showSimilar, setShowSimilar] = useState(true);
   const [presenceStats, setPresenceStats] = useState(null);
@@ -316,12 +289,6 @@ export default function ProfileScreen({ navigation }) {
       }
 
       setEarnedAchievementIds(new Set(earned));
-      setProgressData({
-        dailyStreak,
-        dailyStreakTarget: earned.has('daily_7') ? 30 : 7,
-        checkinStreak,
-        psychCount: uniquePsychTests,
-      });
     } catch {
       // тихий fallback
     }
@@ -642,54 +609,13 @@ export default function ProfileScreen({ navigation }) {
 
         {/* Достижения */}
         <Section title="Достижения">
-          {/* Шапка с общим прогрессом */}
-          <View style={styles.achHeader}>
-            <Text style={styles.achHeaderCount}>{earnedAchievementIds.size} из {ACHIEVEMENTS.length}</Text>
-          </View>
-          <View style={styles.achProgressBar}>
-            <View style={[styles.achProgressFill, { width: `${(earnedAchievementIds.size / ACHIEVEMENTS.length) * 100}%` }]} />
-          </View>
-
-          {/* В процессе */}
-          <Text style={styles.achGroupLabel}>В процессе</Text>
-          <View style={styles.inProgressBlock}>
-            <ProgressCard label="Вопрос дня" current={progressData.dailyStreak} target={progressData.dailyStreakTarget} icon="chatbox-outline" />
-            <ProgressCard label="Чекин настроения" current={progressData.checkinStreak} target={7} icon="thermometer-outline" />
-            <ProgressCard label="Психотесты" current={progressData.psychCount} target={8} icon="flask-outline" />
-          </View>
-
-          {/* Группы */}
-          {ACHIEVEMENT_GROUPS.map(group => (
-            <View key={group.id}>
-              <Text style={styles.achGroupLabel}>{group.label}</Text>
-              <View style={styles.achievementsGrid}>
-                {group.achievements.map(a => {
-                  const isEarned = earnedAchievementIds.has(a.id);
-                  if (!isEarned && a.hidden) {
-                    return (
-                      <View key={a.id} style={[styles.achievementItem, styles.achievementLocked]}>
-                        <Ionicons name="help-outline" size={22} color={colors.muted} />
-                        <Text style={[styles.achievementLabel, { color: colors.muted }]}>???</Text>
-                        <Text style={styles.achievementDesc}>эту получают единицы</Text>
-                      </View>
-                    );
-                  }
-                  return (
-                    <TouchableOpacity
-                      key={a.id}
-                      style={[styles.achievementItem, !isEarned && styles.achievementLocked]}
-                      onPress={() => !isEarned && Alert.alert(a.label, `Как получить:\n${a.desc}`)}
-                      activeOpacity={isEarned ? 1 : 0.7}
-                    >
-                      <Ionicons name={a.icon} size={22} color={isEarned ? colors.accent : colors.muted} />
-                      <Text style={[styles.achievementLabel, !isEarned && { color: colors.muted }]}>{a.label}</Text>
-                      <Text style={styles.achievementDesc}>{isEarned ? a.desc : '?'}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
+          <Row
+            icon="trophy-outline"
+            label="Достижения"
+            value={`${earnedAchievementIds.size} из ${ACHIEVEMENTS.length}`}
+            onPress={() => navigation.navigate('Achievements')}
+            last={true}
+          />
         </Section>
 
         {/* Коллекция рыб */}
@@ -876,30 +802,6 @@ const styles = StyleSheet.create({
   motivatorText: {
     flex: 1, fontSize: 15, color: colors.white, lineHeight: 22,
   },
-
-  // Achievements
-  achHeader: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 14, paddingBottom: 6 },
-  achHeaderCount: { fontSize: 12, color: colors.muted },
-  achProgressBar: { height: 3, backgroundColor: colors.border, borderRadius: 2, marginHorizontal: 14, marginBottom: 16 },
-  achProgressFill: { height: 3, backgroundColor: colors.accent, borderRadius: 2 },
-  achGroupLabel: {
-    fontSize: 11, fontWeight: '700', color: colors.muted,
-    textTransform: 'uppercase', letterSpacing: 0.7,
-    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 6,
-  },
-  inProgressBlock: { paddingHorizontal: 14, paddingBottom: 4 },
-  achievementsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 10, paddingBottom: 8, gap: 8,
-  },
-  achievementItem: {
-    width: '30%', flexGrow: 1,
-    backgroundColor: colors.background,
-    borderRadius: 12, padding: 10, alignItems: 'center', gap: 4,
-  },
-  achievementLocked: { opacity: 0.35 },
-  achievementLabel: { color: colors.white, fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  achievementDesc: { color: colors.muted, fontSize: 9, textAlign: 'center', lineHeight: 13 },
 
   // Fish collection
   fishProgress: { paddingHorizontal: 16, paddingBottom: 12, gap: 6 },
