@@ -205,7 +205,7 @@ export default function RecommendationsScreen({ navigation, route }) {
 
         <TouchableOpacity
           style={[styles.homeBtn, { backgroundColor: lvlColor }]}
-          onPress={() => isFirstTest ? navigation.replace('OnboardingMoment', { level }) : navigation.navigate('Main')}
+          onPress={() => isFirstTest ? navigation.replace('AnalyticsPreview', { level }) : navigation.navigate('Main')}
           activeOpacity={0.8}
         >
           <Text style={styles.homeBtnText}>{isFirstTest ? 'Далее' : 'Войти в приложение'}</Text>
