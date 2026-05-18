@@ -116,7 +116,7 @@ export default function RegisterScreen({ navigation }) {
           <View style={styles.logoCircle}>
             <Ionicons name="moon" size={22} color={colors.accent} />
           </View>
-          <Text style={styles.appName}>устал</Text>
+          <Text style={styles.appName}>не один</Text>
         </View>
 
         <Text style={styles.title}>Расскажи о себе</Text>

@@ -98,7 +98,7 @@ export default function LoginScreen({ navigation }) {
         {/* Лого */}
         <View style={styles.logoArea}>
           <Image source={require('../assets/icon.png')} style={styles.appIcon} />
-          <Text style={styles.appName}>!один</Text>
+          <Text style={styles.appName}>не один</Text>
         </View>
 
         <Text style={styles.title}>Всё достало?</Text>
