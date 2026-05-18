@@ -6,6 +6,7 @@ import Svg, { Polyline, Circle, Line, Text as SvgText } from 'react-native-svg';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+import { computeLiveProfile } from '../utils/computeLiveProfile';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_H = 180;
@@ -104,6 +105,7 @@ export default function DimensionHistoryScreen({ route, navigation }) {
   const scoreKey = `${dimension}_score`;
 
   const [history, setHistory] = useState([]);
+  const [liveScore, setLiveScore] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
@@ -113,22 +115,26 @@ export default function DimensionHistoryScreen({ route, navigation }) {
       const uid = store.userId;
       if (!uid) { setLoading(false); return; }
 
-      const { data } = await supabase
-        .from('user_metrics')
-        .select(`week_start, ${scoreKey}`)
-        .eq('user_id', uid)
-        .order('week_start', { ascending: true })
-        .limit(12);
+      const [{ data }, liveProfile] = await Promise.all([
+        supabase
+          .from('user_metrics')
+          .select(`week_start, ${scoreKey}`)
+          .eq('user_id', uid)
+          .order('week_start', { ascending: true })
+          .limit(12),
+        computeLiveProfile(uid),
+      ]);
 
       if (!active) return;
       setHistory((data || []).map(r => ({ week_start: r.week_start, score: r[scoreKey] ?? 0 })));
+      setLiveScore(liveProfile[scoreKey] ?? null);
       setLoading(false);
     }
     load();
     return () => { active = false; };
   }, [dimension]));
 
-  const current = history.length > 0 ? history[history.length - 1].score : null;
+  const current = liveScore;
   const first = history.length > 1 ? history[0].score : null;
   const totalDelta = current !== null && first !== null ? current - first : null;
 
