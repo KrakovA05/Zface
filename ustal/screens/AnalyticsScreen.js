@@ -176,7 +176,7 @@ function LevelHistorySection({ testHistory }) {
 // Секция 3: Психометрический профиль
 const DIMENSION_ORDER = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment'];
 
-function ProfileSection({ metrics, prevMetrics }) {
+function ProfileSection({ metrics, prevMetrics, navigation }) {
   if (!metrics) {
     return (
       <SectionCard title="Психометрический профиль">
@@ -198,7 +198,12 @@ function ProfileSection({ metrics, prevMetrics }) {
         const barColor = dimBarColor(score);
 
         return (
-          <View key={dim} style={styles.dimRow}>
+          <TouchableOpacity
+            key={dim}
+            style={styles.dimRow}
+            onPress={() => navigation.navigate('DimensionHistory', { dimension: dim, label: DIMENSION_LABELS[dim] })}
+            activeOpacity={0.7}
+          >
             <Text style={styles.dimLabel}>{DIMENSION_LABELS[dim]}</Text>
             <View style={styles.dimBarWrap}>
               <View style={[styles.dimBarFill, { width: `${score}%`, backgroundColor: barColor }]} />
@@ -221,7 +226,8 @@ function ProfileSection({ metrics, prevMetrics }) {
                 </Text>
               )}
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={14} color="#C8BFB0" style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         );
       })}
     </SectionCard>
@@ -384,7 +390,7 @@ export default function AnalyticsScreen({ navigation }) {
         >
           <CompositeSection metrics={metrics} />
           <LevelHistorySection testHistory={testHistory} />
-          <ProfileSection metrics={metrics} prevMetrics={prevMetrics} />
+          <ProfileSection metrics={metrics} prevMetrics={prevMetrics} navigation={navigation} />
           <TrendSection metricsHistory={metricsHistory} />
           <ActivitySection userActivity={userActivity} />
           <View style={styles.bottomPad} />
