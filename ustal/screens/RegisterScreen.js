@@ -149,7 +149,10 @@ export default function RegisterScreen({ navigation }) {
             autoCorrect={false}
           />
         </View>
-        {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+        {errors.email
+          ? <Text style={styles.errorText}>{errors.email}</Text>
+          : <Text style={styles.hintText}>Используй настоящий — понадобится если забудешь пароль</Text>
+        }
 
         {/* Пароль */}
         <View style={[styles.field, errors.password && styles.fieldError]}>
