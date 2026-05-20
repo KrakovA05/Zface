@@ -2,7 +2,8 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   ScrollView, TextInput, Linking,
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -46,6 +47,13 @@ export default function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [errors, setErrors] = useState({ name: '', email: '', password: '', labels: '' });
+  const [inviteCode, setInviteCode] = useState('');
+
+  useEffect(() => {
+    AsyncStorage.getItem('pendingInviteCode').then(code => {
+      if (code) setInviteCode(code);
+    });
+  }, []);
 
   const toggleLabel = (label) => {
     setSelected(prev => {
@@ -98,6 +106,21 @@ export default function RegisterScreen({ navigation }) {
       await supabase.auth.signOut();
       showAlert('Ошибка', insertError.message || 'Не удалось создать профиль.');
       return;
+    }
+    // Реферальная атрибуция
+    const trimmedCode = inviteCode.trim();
+    if (trimmedCode) {
+      const { data: inviter } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('username', trimmedCode)
+        .maybeSingle();
+      if (inviter && inviter.user_id !== data.user.id) {
+        await supabase.from('users')
+          .update({ referred_by: inviter.user_id })
+          .eq('user_id', data.user.id);
+      }
+      await AsyncStorage.removeItem('pendingInviteCode');
     }
     store.userId = data.user.id;
     store.username = name.trim();
@@ -192,6 +215,19 @@ export default function RegisterScreen({ navigation }) {
           ))}
         </View>
         {errors.labels ? <Text style={styles.errorText}>{errors.labels}</Text> : null}
+
+        <View style={[styles.field, { marginTop: 8 }]}>
+          <Ionicons name="person-add-outline" size={18} color={colors.muted} style={styles.fieldIcon} />
+          <TextInput
+            style={styles.fieldInput}
+            placeholder="Кто пригласил? (необязательно)"
+            placeholderTextColor={colors.muted}
+            value={inviteCode}
+            onChangeText={setInviteCode}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
 
         <TouchableOpacity
           style={styles.privacyRow}
