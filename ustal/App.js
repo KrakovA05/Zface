@@ -2,7 +2,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, useRef, useCallback } from 'react';
 
 SplashScreen.preventAutoHideAsync();
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -57,6 +57,12 @@ import AnalyticsScreen from './screens/AnalyticsScreen';
 import AchievementsScreen from './screens/AchievementsScreen';
 import AnalyticsPreviewScreen from './screens/AnalyticsPreviewScreen';
 import DimensionHistoryScreen from './screens/DimensionHistoryScreen';
+import InviteScreen from './screens/InviteScreen';
+
+function parseInviteCode(url) {
+  const match = url?.match(/invite\/([^/?#]+)/);
+  return match ? match[1] : null;
+}
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -383,6 +389,11 @@ export default function App() {
             store.status = userData.status || '';
             store.goal = userData.goal || '';
             store.isAdmin = userData.is_admin || false;
+            const { count: refCount } = await supabase
+              .from('users')
+              .select('user_id', { count: 'exact', head: true })
+              .eq('referred_by', session.user.id);
+            store.referralDiscountPct = Math.min(Math.floor((refCount || 0) / 5) * 10, 50);
           }
 
           // Проверка бана
@@ -442,6 +453,18 @@ export default function App() {
       }
     };
     init();
+
+    Linking.getInitialURL().then(url => {
+      const code = parseInviteCode(url);
+      if (code) AsyncStorage.setItem('pendingInviteCode', code);
+    });
+
+    const linkingSub = Linking.addEventListener('url', ({ url }) => {
+      const code = parseInviteCode(url);
+      if (code) AsyncStorage.setItem('pendingInviteCode', code);
+    });
+
+    return () => linkingSub.remove();
   }, []);
 
   useEffect(() => {
@@ -548,6 +571,7 @@ export default function App() {
             <Stack.Screen name="Achievements"     component={AchievementsScreen}     options={{ headerShown: false }} />
             <Stack.Screen name="AnalyticsPreview"   component={AnalyticsPreviewScreen}   options={{ headerShown: false }} />
             <Stack.Screen name="DimensionHistory"   component={DimensionHistoryScreen}   options={{ headerShown: false }} />
+            <Stack.Screen name="Invite"              component={InviteScreen}              options={{ headerShown: false }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />
