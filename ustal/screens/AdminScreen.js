@@ -360,6 +360,7 @@ function StatsTab() {
       answerData, testData, letterData, thoughtData,
       fishData, dmData,
       newUsersData, testResultsData,
+      eventsData,
     ] = await Promise.all([
       supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('level', 'green'),
       supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('level', 'yellow'),
@@ -386,6 +387,11 @@ function StatsTab() {
       supabase.from('direct_messages').select('sender_id').gte('created_at', sevenDays).not('sender_id', 'is', null),
       supabase.from('users').select('user_id, created_at, last_seen').gte('created_at', thirtyDays),
       supabase.from('test_results').select('user_id').gte('created_at', thirtyDays),
+      supabase.from('events')
+        .select('event_name, user_id')
+        .in('event_name', ['fishing_open','breathing_open','resources_open',
+                           'psych_test_start','room_join','friend_added'])
+        .gte('created_at', sevenDays),
     ])
 
     const streakValues = (streakData.data || []).map(u => u.login_streak || 0)
@@ -412,7 +418,32 @@ function StatsTab() {
       { label: 'Мысли', count: uniq(thoughtData.data, 'user_id') },
       { label: 'Рыбалка', count: uniq(fishData.data, 'user_id') },
       { label: 'DM', count: uniq(dmData.data, 'sender_id') },
-    ].sort((a, b) => b.count - a.count)
+    ]
+
+    // Дополняем events-данными (фичи без своих таблиц)
+    const eventLabels = {
+      fishing_open:     'Рыбалка',
+      breathing_open:   'Дыхание',
+      resources_open:   'Ресурсы',
+      psych_test_start: 'Псих. тест',
+      room_join:        'Комнаты',
+      friend_added:     'Друзья',
+    }
+    const eventsMap = {}
+    ;(eventsData.data || []).forEach(e => {
+      if (!eventsMap[e.event_name]) eventsMap[e.event_name] = new Set()
+      eventsMap[e.event_name].add(e.user_id)
+    })
+    Object.entries(eventLabels).forEach(([name, label]) => {
+      const count = eventsMap[name]?.size || 0
+      const existing = features.find(f => f.label === label)
+      if (existing) {
+        existing.count = Math.max(existing.count, count)
+      } else {
+        features.push({ label, count })
+      }
+    })
+    features.sort((a, b) => b.count - a.count)
     const maxFeature = Math.max(1, ...features.map(f => f.count))
 
     const funnel30 = newUsersData.data || []
