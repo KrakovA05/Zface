@@ -37,6 +37,12 @@ const WEEKLY_PHRASES = {
 
 const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' };
 
+function getMoodColor(score) {
+  if (score >= 8) return '#5DAA72';
+  if (score >= 5) return '#AA7C00';
+  return '#c0392b';
+}
+
 // ─── Хелперы ─────────────────────────────────────────────────────────────────
 
 function scoreColor(score) {
@@ -169,6 +175,47 @@ function LevelHistorySection({ testHistory }) {
           <Text style={styles.levelLegendText}>нет теста</Text>
         </View>
       </View>
+    </SectionCard>
+  );
+}
+
+// Секция 2б: Настроение за 7 дней
+function MoodSection({ moodHistory }) {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+    const entry = moodHistory.find(h => h.checkin_date === dateStr);
+    days.push({ score: entry?.score ?? null, dayNum: d.getDate() });
+  }
+
+  const hasSomeData = days.some(d => d.score !== null);
+
+  return (
+    <SectionCard title="Настроение за 7 дней">
+      {!hasSomeData ? (
+        <Text style={styles.emptyText}>Отмечай настроение каждый день, чтобы видеть динамику</Text>
+      ) : (
+        <View style={styles.moodRow}>
+          {days.map((d, i) => (
+            <View key={i} style={styles.moodItem}>
+              <View style={[
+                styles.moodBar,
+                {
+                  backgroundColor: d.score !== null ? getMoodColor(d.score) : colors.border,
+                  height: d.score !== null ? Math.max(4, (d.score / 10) * 40) : 4,
+                  opacity: d.score !== null ? 1 : 0.3,
+                }
+              ]} />
+              {d.score !== null && (
+                <Text style={[styles.moodScore, { color: getMoodColor(d.score) }]}>{d.score}</Text>
+              )}
+              <Text style={styles.moodDay}>{d.dayNum}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </SectionCard>
   );
 }
@@ -352,6 +399,7 @@ export default function AnalyticsScreen({ navigation }) {
   const [prevDimScores, setPrevDimScores] = useState({});
   const [metricsHistory, setMetricsHistory] = useState([]);
   const [testHistory, setTestHistory] = useState([]);
+  const [moodHistory, setMoodHistory] = useState([]);
   const [userActivity, setUserActivity] = useState({ streak: 0, testCount: 0, lastTest: null });
   const [loading, setLoading] = useState(true);
 
@@ -370,6 +418,7 @@ export default function AnalyticsScreen({ navigation }) {
         { data: userRow },
         { data: psychRows },
         { data: prevMetricsRow },
+        { data: moodRows },
       ] = await Promise.all([
         computeLiveProfile(uid, { updateLevel: true }),
         supabase
@@ -402,6 +451,15 @@ export default function AnalyticsScreen({ navigation }) {
           .order('week_start', { ascending: false })
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from('mood_checkins')
+          .select('score, checkin_date')
+          .eq('user_id', uid)
+          .gte('checkin_date', (() => {
+            const d = new Date(); d.setDate(d.getDate() - 6);
+            return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+          })())
+          .order('checkin_date', { ascending: true }),
       ]);
 
       // Измерения без реального поведенческого сигнала — только психотест
@@ -446,6 +504,7 @@ export default function AnalyticsScreen({ navigation }) {
       setPrevDimScores(prevScores);
       setMetricsHistory(mHistory || []);
       setTestHistory(tests || []);
+      setMoodHistory(moodRows || []);
       setUserActivity({
         streak: userRow?.login_streak || 0,
         testCount: tests?.length || 0,
@@ -481,6 +540,7 @@ export default function AnalyticsScreen({ navigation }) {
         >
           <CompositeSection metrics={metrics} />
           <LevelHistorySection testHistory={testHistory} />
+          <MoodSection moodHistory={moodHistory} />
           <ProfileSection metrics={metrics} prevDimScores={prevDimScores} navigation={navigation} />
           <TrendSection metricsHistory={metricsHistory} />
           <ActivitySection userActivity={userActivity} />
@@ -783,4 +843,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8B7355',
   },
+
+  // Секция настроения
+  moodRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 4 },
+  moodItem: { alignItems: 'center', gap: 3, flex: 1 },
+  moodBar:  { width: 8, borderRadius: 4 },
+  moodScore: { fontSize: 11, fontWeight: '700' },
+  moodDay:  { fontSize: 11, color: '#A09080' },
 });

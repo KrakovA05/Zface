@@ -165,9 +165,7 @@ const focusStyles = StyleSheet.create({
 export default function HomeScreen({ navigation }) {
   const [level,        setLevel]        = useState(store.level || 'green');
   const [history,      setHistory]      = useState([]);
-  const [allHistory,   setAllHistory]   = useState([]);
   const [loading,      setLoading]      = useState(true);
-  const [showAllChart, setShowAllChart] = useState(false);
 
   const [dailyAnswer,    setDailyAnswer]    = useState('');
   const [dailyAnswered,  setDailyAnswered]  = useState(null);
@@ -183,10 +181,8 @@ export default function HomeScreen({ navigation }) {
   const [similarUser,    setSimilarUser]    = useState(null);
   const [streak,         setStreak]         = useState(0);
   const [onlineCount,    setOnlineCount]    = useState(0);
-  const [showHistory,    setShowHistory]    = useState(false);
   const [hasUnreadLetter, setHasUnreadLetter] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
-  const [moodHistory,    setMoodHistory]    = useState([]);
   const [showStreakInfo, setShowStreakInfo]   = useState(false);
   const scrollRef    = useRef(null);
   const [moodCardY,  setMoodCardY]  = useState(0);
@@ -297,10 +293,6 @@ export default function HomeScreen({ navigation }) {
           }
         }
 
-        const { data: full } = await supabase
-          .from('test_results').select('level, created_at')
-          .eq('user_id', user.id).order('created_at', { ascending: false });
-        setAllHistory(full || []);
 
         const today = getTodayDate();
         const { count: letterCount } = await supabase
@@ -334,14 +326,6 @@ export default function HomeScreen({ navigation }) {
           setMoodCount(mc || 0);
         }
 
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-        const { data: moodHist } = await supabase
-          .from('mood_checkins').select('score, checkin_date')
-          .eq('user_id', user.id)
-          .gte('checkin_date', sevenDaysAgo.toISOString().split('T')[0])
-          .order('checkin_date', { ascending: true });
-        setMoodHistory(moodHist || []);
 
         if (wordTapCacheDate !== today) {
           Object.keys(wordTapCache).forEach(k => delete wordTapCache[k]);
@@ -687,7 +671,6 @@ export default function HomeScreen({ navigation }) {
 
   const lvlColor    = LEVEL_COLORS[level];
   const dynamic     = getDynamic(history);
-  const chartData   = showAllChart ? allHistory : history;
   const moduleItems = getModuleItems(store.goal);
 
   return (
@@ -1142,58 +1125,6 @@ export default function HomeScreen({ navigation }) {
           ))}
         </View>
 
-        {chartData.length >= 1 && (
-          <View style={styles.section}>
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Динамика</Text>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                {!showHistory && history.length > 0 && (
-                  <TouchableOpacity onPress={() => setShowHistory(true)}>
-                    <Text style={styles.chartToggle}>Список</Text>
-                  </TouchableOpacity>
-                )}
-                {allHistory.length > 5 && (
-                  <TouchableOpacity onPress={() => setShowAllChart(v => !v)}>
-                    <Text style={styles.chartToggle}>
-                      {showAllChart ? 'Последние 5' : `Все (${allHistory.length})`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-            <TestChart history={chartData} />
-            {moodHistory.length > 0 && (
-              <View style={styles.moodMiniSection}>
-                <Text style={styles.moodMiniTitle}>настроение за 7 дней</Text>
-                <MoodMiniChart history={moodHistory} />
-              </View>
-            )}
-          </View>
-        )}
-
-        {history.length > 0 && showHistory && (
-          <View style={styles.section}>
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>История тестов</Text>
-              <TouchableOpacity onPress={() => setShowHistory(false)}>
-                <Text style={styles.chartToggle}>Скрыть</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.historyBlock}>
-              {history.map((r, i) => (
-                <View key={i} style={[styles.historyRow, i < history.length - 1 && styles.historyRowBorder]}>
-                  <View style={[styles.historyDot, { backgroundColor: LEVEL_COLORS[r.level] }]} />
-                  <Text style={[styles.historyLevel, { color: LEVEL_COLORS[r.level] }]}>
-                    {LEVEL_NAMES[r.level]}
-                  </Text>
-                  <Text style={styles.historyDate}>
-                    {new Date(r.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
 
       </ScrollView>
 
@@ -1257,130 +1188,7 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-function getMoodColorStatic(score) {
-  if (score <= 3) return '#E57373';
-  if (score <= 6) return '#FFB74D';
-  return '#81C784';
-}
 
-const CHART_H = 90;
-const PAD_X   = 16;
-const PAD_Y   = 14;
-const LEVEL_TO_VAL = { green: 1, yellow: 0.5, red: 0 };
-
-function TestChart({ history }) {
-  const [chartWidth, setChartWidth] = useState(0);
-  const data   = [...history].reverse();
-  const innerW = chartWidth - PAD_X * 2;
-  const innerH = CHART_H - PAD_Y * 2;
-
-  const points = chartWidth > 0 ? data.map((item, i) => ({
-    x:     PAD_X + (data.length > 1 ? (i / (data.length - 1)) * innerW : innerW / 2),
-    y:     PAD_Y + (1 - LEVEL_TO_VAL[item.level]) * innerH,
-    level: item.level,
-    date:  new Date(item.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-  })) : [];
-
-  return (
-    <View style={styles.chartCard}>
-      <View
-        style={{ height: CHART_H, position: 'relative' }}
-        onLayout={e => setChartWidth(e.nativeEvent.layout.width)}
-      >
-        {[0, 0.5, 1].map((val, i) => (
-          <View key={i} style={{
-            position: 'absolute', left: 0, right: 0,
-            top: PAD_Y + (1 - val) * innerH, height: 1,
-            backgroundColor: val === 1 ? '#4CAF5033' : val === 0.5 ? '#AA7C0033' : '#F4433633',
-          }} />
-        ))}
-
-        {points.slice(0, -1).map((p, i) => {
-          const next  = points[i + 1];
-          const dx    = next.x - p.x;
-          const dy    = next.y - p.y;
-          const len   = Math.sqrt(dx * dx + dy * dy);
-          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-          return (
-            <View key={i} style={{
-              position: 'absolute',
-              width: len, height: 2,
-              backgroundColor: LEVEL_COLORS[p.level],
-              left: (p.x + next.x) / 2 - len / 2,
-              top:  (p.y + next.y) / 2 - 1,
-              transform: [{ rotate: `${angle}deg` }],
-              opacity: 0.8,
-            }} />
-          );
-        })}
-
-        {points.map((p, i) => (
-          <View key={i} style={{
-            position: 'absolute',
-            width: 10, height: 10, borderRadius: 5,
-            backgroundColor: LEVEL_COLORS[p.level],
-            left: p.x - 5, top: p.y - 5,
-            borderWidth: 2, borderColor: colors.card,
-          }} />
-        ))}
-
-        {points.length > 0 && [points[0], points[points.length - 1]].map((p, i) => (
-          <Text key={i} style={{
-            position: 'absolute', fontSize: 9, color: colors.muted,
-            left: p.x - 18, top: CHART_H - 12, width: 36, textAlign: 'center',
-          }}>
-            {p.date}
-          </Text>
-        ))}
-
-        {chartWidth > 0 && [
-          { val: 1, color: '#4CAF50' },
-          { val: 0.5, color: '#AA7C00' },
-          { val: 0, color: '#F44336' },
-        ].map((item, i) => (
-          <View key={i} style={{
-            position: 'absolute', right: 2,
-            top: PAD_Y + (1 - item.val) * innerH - 4,
-            width: 8, height: 8, borderRadius: 4,
-            backgroundColor: item.color, opacity: 0.7,
-          }} />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function MoodMiniChart({ history }) {
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
-    const entry = history.find(h => h.checkin_date === dateStr);
-    days.push({ score: entry?.score ?? null, dayNum: d.getDate() });
-  }
-
-  return (
-    <View style={styles.moodMiniWrap}>
-      {days.map((d, i) => (
-        <View key={i} style={styles.moodMiniItem}>
-          <View style={[
-            styles.moodMiniBar,
-            {
-              backgroundColor: d.score !== null ? getMoodColorStatic(d.score) : colors.border,
-              height: d.score !== null ? Math.max(4, (d.score / 10) * 36) : 4,
-              opacity: d.score !== null ? 1 : 0.3,
-            }
-          ]} />
-          {d.score !== null && (
-            <Text style={[styles.moodMiniScore, { color: getMoodColorStatic(d.score) }]}>{d.score}</Text>
-          )}
-          <Text style={styles.moodMiniDay}>{d.dayNum}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   safeArea:  { flex: 1, backgroundColor: colors.background },
@@ -1651,8 +1459,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 14,
   },
   section:    { marginBottom: 28 },
-  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  chartToggle:{ color: colors.accent, fontSize: 12, fontWeight: '600' },
 
   // Modules grid
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
@@ -1688,20 +1494,6 @@ const styles = StyleSheet.create({
   testPromptTitle: { fontSize: 15, fontWeight: '600', color: colors.white },
   testPromptSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
   testPromptRefresh: { fontSize: 11, color: colors.muted, fontStyle: 'italic', marginTop: 4 },
-
-  // Chart
-  chartCard: { backgroundColor: colors.card, borderRadius: 14, padding: 14 },
-
-  moodMiniSection: { marginTop: 12 },
-  moodMiniTitle: {
-    fontSize: 10, fontWeight: '700', color: colors.muted,
-    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8,
-  },
-  moodMiniWrap: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 4 },
-  moodMiniItem: { alignItems: 'center', gap: 3, flex: 1 },
-  moodMiniBar:  { width: 8, borderRadius: 4 },
-  moodMiniScore:{ fontSize: 11, fontWeight: '700' },
-  moodMiniDay:  { fontSize: 11, color: colors.muted },
 
   // Moderation notice modal
   modOverlay: {
@@ -1773,13 +1565,6 @@ const styles = StyleSheet.create({
     fontSize: 12, color: colors.muted,
   },
 
-  // History
-  historyBlock: { backgroundColor: colors.card, borderRadius: 14, overflow: 'hidden' },
-  historyRow:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 16, gap: 12 },
-  historyRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  historyDot:   { width: 8, height: 8, borderRadius: 4 },
-  historyLevel: { fontSize: 14, fontWeight: '600', flex: 1 },
-  historyDate:  { fontSize: 12, color: colors.muted },
 });
 
 const hintStyles = StyleSheet.create({
