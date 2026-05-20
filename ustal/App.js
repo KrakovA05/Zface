@@ -396,13 +396,13 @@ export default function App() {
             }
           }
 
-          // Стрик по дням входа
-          const today = new Date().toISOString().split('T')[0];
+          // Стрик по дням входа (локальная дата, не UTC)
+          const _d = new Date();
+          const today = [_d.getFullYear(), String(_d.getMonth()+1).padStart(2,'0'), String(_d.getDate()).padStart(2,'0')].join('-');
           const lastDate = userData?.last_login_date;
           if (lastDate !== today) {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yStr = yesterday.toISOString().split('T')[0];
+            const _y = new Date(); _y.setDate(_y.getDate() - 1);
+            const yStr = [_y.getFullYear(), String(_y.getMonth()+1).padStart(2,'0'), String(_y.getDate()).padStart(2,'0')].join('-');
             const prevStreak = userData?.login_streak || 1;
             const newStreak = lastDate === yStr ? prevStreak + 1 : 1;
             await supabase.from('users').update({ login_streak: newStreak, last_login_date: today }).eq('user_id', session.user.id);

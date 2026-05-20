@@ -152,9 +152,18 @@ export async function computeLiveProfile(uid, { updateLevel = false } = {}) {
     const ds = dailyScores[dim];  // ежедневный пак
     const bs = behavioral[dim];   // поведение
 
+    // Для self_esteem/social_anxiety/attachment нет реального поведенческого сигнала —
+    // behavioral всегда 50 (заглушка). Если есть психотест — используем его напрямую.
+    const noRealBehavioral = new Set(['self_esteem', 'social_anxiety', 'attachment']);
+
     if (ps !== undefined) {
-      // Психотест есть — самый надёжный. Смешиваем с ближайшим сигналом актуальности.
-      dimensionScores[dim] = Math.round(ps * 0.6 + (ds !== undefined ? ds : bs) * 0.4);
+      if (noRealBehavioral.has(dim)) {
+        // Только психотест — поведенческая заглушка не даёт информации
+        dimensionScores[dim] = ps;
+      } else {
+        // Психотест + реальный поведенческий сигнал
+        dimensionScores[dim] = Math.round(ps * 0.6 + (ds !== undefined ? ds : bs) * 0.4);
+      }
     } else if (ds !== undefined) {
       // Пак-тест без психотеста
       dimensionScores[dim] = Math.round(ds * 0.6 + bs * 0.4);
