@@ -52,6 +52,7 @@ export default function UserProfileScreen({ route, navigation }) {
   const [hasHelped, setHasHelped] = useState(false);
   const [helpLoading, setHelpLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+  const [isTargetAdmin, setIsTargetAdmin] = useState(false);
 
   useEffect(() => {
     if (isMe) return;
@@ -60,7 +61,7 @@ export default function UserProfileScreen({ route, navigation }) {
     loadHelpData();
     supabase
       .from('users')
-      .select('status, avatar_url, last_seen')
+      .select('status, avatar_url, last_seen, is_admin')
       .eq('user_id', user.user_id)
       .single()
       .then(({ data }) => {
@@ -68,6 +69,7 @@ export default function UserProfileScreen({ route, navigation }) {
           setLiveStatus(data.status || '');
           setLiveAvatarUrl(data.avatar_url || null);
           setIsOnline(data.last_seen && (Date.now() - new Date(data.last_seen).getTime()) < 3 * 60 * 1000);
+          setIsTargetAdmin(data.is_admin || false);
         }
       });
   }, []);
@@ -216,7 +218,11 @@ export default function UserProfileScreen({ route, navigation }) {
       reporter_id: store.userId, reported_user_id: user.user_id, reason,
     });
     setReportLoading(false);
-    if (!error) showAlert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время');
+    if (!error) {
+      showAlert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время');
+    } else if (error.code === '23505') {
+      showAlert('Уже отправлено', 'Ты уже жаловался на этого пользователя');
+    }
   };
 
   const openDm = () => {
@@ -226,6 +232,8 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const renderActions = () => {
+    if (isTargetAdmin) return null;
+
     if (friendStatus === null || actionLoading) {
       return <ActivityIndicator color={colors.accent} style={{ marginVertical: 8 }} />;
     }
@@ -241,9 +249,11 @@ export default function UserProfileScreen({ route, navigation }) {
             ? <ActivityIndicator color={colors.muted} />
             : <ActionBtn icon="checkmark-circle-outline" label="Разблокировать" onPress={unblockUser} variant="outline" />
           }
-          <TouchableOpacity style={styles.linkBtn} onPress={reportUser}>
-            <Text style={styles.linkBtnText}>Пожаловаться</Text>
-          </TouchableOpacity>
+          {user.user_id && (
+            <TouchableOpacity style={styles.linkBtn} onPress={reportUser}>
+              <Text style={styles.linkBtnText}>Пожаловаться</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     }
@@ -254,11 +264,11 @@ export default function UserProfileScreen({ route, navigation }) {
       : <TouchableOpacity style={styles.linkBtn} onPress={blockUser}>
           <Text style={styles.linkBtnText}>Заблокировать</Text>
         </TouchableOpacity>;
-    const reportBtn = (
+    const reportBtn = user.user_id ? (
       <TouchableOpacity style={styles.linkBtn} onPress={reportUser}>
         <Text style={styles.linkBtnText}>Пожаловаться</Text>
       </TouchableOpacity>
-    );
+    ) : null;
 
     switch (friendStatus) {
       case STATUS_FRIENDS:

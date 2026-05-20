@@ -120,7 +120,8 @@ export default function RoomsScreen({ route, navigation }) {
     const { data } = await supabase
       .from('users')
       .select('user_id, username, level, avatar_url, status, last_seen')
-      .eq('level', roomId);
+      .eq('level', roomId)
+      .neq('is_admin', true);
     setParticipants(data || []);
   };
 
