@@ -176,7 +176,7 @@ function LevelHistorySection({ testHistory }) {
 // Секция 3: Психометрический профиль
 const DIMENSION_ORDER = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment'];
 
-function ProfileSection({ metrics, prevMetrics, navigation }) {
+function ProfileSection({ metrics, prevDimScores, navigation }) {
   if (!metrics) {
     return (
       <SectionCard title="Психометрический профиль">
@@ -193,7 +193,7 @@ function ProfileSection({ metrics, prevMetrics, navigation }) {
         const key = `${dim}_score`;
         const score = metrics[key];
         if (score === undefined || score === null) return null;
-        const prevScore = prevMetrics?.[key];
+        const prevScore = prevDimScores?.[dim];
         const delta = prevScore !== undefined ? score - prevScore : 0;
         const barColor = dimBarColor(score);
 
@@ -349,7 +349,7 @@ function ActivitySection({ userActivity }) {
 
 export default function AnalyticsScreen({ navigation }) {
   const [metrics, setMetrics] = useState(null);
-  const [prevMetrics, setPrevMetrics] = useState(null);
+  const [prevDimScores, setPrevDimScores] = useState({});
   const [metricsHistory, setMetricsHistory] = useState([]);
   const [testHistory, setTestHistory] = useState([]);
   const [userActivity, setUserActivity] = useState({ streak: 0, testCount: 0, lastTest: null });
@@ -368,7 +368,7 @@ export default function AnalyticsScreen({ navigation }) {
         { data: mHistory },
         { data: tests },
         { data: userRow },
-        { data: prevMetricsRow },
+        { data: psychRows },
       ] = await Promise.all([
         computeLiveProfile(uid, { updateLevel: true }),
         supabase
@@ -389,17 +389,28 @@ export default function AnalyticsScreen({ navigation }) {
           .eq('user_id', uid)
           .maybeSingle(),
         supabase
-          .from('user_metrics')
-          .select('*')
+          .from('psych_test_results')
+          .select('dimension, normalized_score, created_at')
           .eq('user_id', uid)
-          .order('week_start', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+          .order('created_at', { ascending: false })
+          .limit(32),
       ]);
+
+      // Для каждого измерения: пропускаем первое вхождение (текущее),
+      // берём второе (предыдущий результат) — именно от него считаем дельту
+      const prevScores = {};
+      const seenDims = new Set();
+      for (const r of psychRows ?? []) {
+        if (!seenDims.has(r.dimension)) {
+          seenDims.add(r.dimension);
+        } else if (prevScores[r.dimension] === undefined) {
+          prevScores[r.dimension] = r.normalized_score;
+        }
+      }
 
       if (!active) return;
       setMetrics(liveMetrics);
-      setPrevMetrics(prevMetricsRow);
+      setPrevDimScores(prevScores);
       setMetricsHistory(mHistory || []);
       setTestHistory(tests || []);
       setUserActivity({
@@ -437,7 +448,7 @@ export default function AnalyticsScreen({ navigation }) {
         >
           <CompositeSection metrics={metrics} />
           <LevelHistorySection testHistory={testHistory} />
-          <ProfileSection metrics={metrics} prevMetrics={prevMetrics} navigation={navigation} />
+          <ProfileSection metrics={metrics} prevDimScores={prevDimScores} navigation={navigation} />
           <TrendSection metricsHistory={metricsHistory} />
           <ActivitySection userActivity={userActivity} />
           <View style={styles.bottomPad} />
