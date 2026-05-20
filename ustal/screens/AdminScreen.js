@@ -361,6 +361,7 @@ function StatsTab() {
       fishData, dmData,
       newUsersData, testResultsData,
       eventsData,
+      cohortsData,
     ] = await Promise.all([
       supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('level', 'green'),
       supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('level', 'yellow'),
@@ -392,6 +393,10 @@ function StatsTab() {
         .in('event_name', ['fishing_open','breathing_open','resources_open',
                            'psych_test_start','room_join','friend_added'])
         .gte('created_at', sevenDays),
+      supabase.from('retention_cohorts')
+        .select('cohort_week, week_offset, cohort_size, retained')
+        .order('cohort_week', { ascending: false })
+        .limit(50),
     ])
 
     const streakValues = (streakData.data || []).map(u => u.login_streak || 0)
@@ -446,6 +451,19 @@ function StatsTab() {
     features.sort((a, b) => b.count - a.count)
     const maxFeature = Math.max(1, ...features.map(f => f.count))
 
+    // Когортная сетка
+    const cohortMap = {}
+    ;(cohortsData.data || []).forEach(row => {
+      const wk = row.cohort_week
+      if (!cohortMap[wk]) cohortMap[wk] = { size: 0, w1: null, w2: null, w4: null, w8: null }
+      if (row.week_offset === 0) cohortMap[wk].size = row.cohort_size
+      else cohortMap[wk][`w${row.week_offset}`] = row.retained
+    })
+    const cohortRows = Object.entries(cohortMap)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 8)
+      .map(([week, data]) => ({ week, ...data }))
+
     const funnel30 = newUsersData.data || []
     const testedIds = new Set((testResultsData.data || []).map(t => t.user_id))
     const fRegistered = funnel30.length
@@ -466,7 +484,7 @@ function StatsTab() {
       totalReports: totalR.count||0, pendingReports: pendingR.count||0,
       features, maxFeature,
       funnel: { registered: fRegistered, tested: fTested, day2: fDay2, day7: fDay7, day30: fDay30 },
-      cohortRows: [],
+      cohortRows,
     })
     setLoading(false)
   }
@@ -537,6 +555,38 @@ function StatsTab() {
         <FunnelRow label="Вернулись день 30" value={stats.funnel.day30} total={stats.funnel.registered} />
       </View>
 
+      <Text style={s.statSection}>Когорты удержания</Text>
+      <View style={s.statCard}>
+        <View style={s.cohortHeader}>
+          <Text style={[s.cohortCell, s.cohortLabelCell]}>Неделя</Text>
+          {['W1','W2','W4','W8'].map(w => (
+            <Text key={w} style={[s.cohortCell, s.cohortPctCell]}>{w}</Text>
+          ))}
+        </View>
+        {stats.cohortRows.map(row => (
+          <View key={row.week} style={s.cohortRow}>
+            <Text style={[s.cohortCell, s.cohortLabelCell]}>
+              {new Date(row.week).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
+              {' '}({row.size})
+            </Text>
+            {[row.w1, row.w2, row.w4, row.w8].map((retained, i) => {
+              const pct = retained != null && row.size ? Math.round(retained / row.size * 100) : null
+              const color = pct == null ? colors.muted : pct >= 50 ? '#5DAA72' : pct >= 30 ? '#AA7C00' : '#c0392b'
+              return (
+                <Text key={i} style={[s.cohortCell, s.cohortPctCell, { color }]}>
+                  {pct != null ? `${pct}%` : '—'}
+                </Text>
+              )
+            })}
+          </View>
+        ))}
+        {stats.cohortRows.length === 0 && (
+          <Text style={[s.statLabel, { padding: 8, color: colors.muted }]}>
+            Данных пока нет — появятся в следующий понедельник
+          </Text>
+        )}
+      </View>
+
       <Text style={s.statSection}>Модерация</Text>
       <View style={s.statCard}>
         <StatRow label="Всего жалоб" value={stats.totalReports} />
@@ -604,4 +654,9 @@ const s = StyleSheet.create({
   featureBarBg: { flex: 1, height: 6, backgroundColor: '#F0E8D8', borderRadius: 3 },
   featureBarFill: { height: 6, backgroundColor: colors.accent, borderRadius: 3 },
   featureCount: { fontSize: 12, fontWeight: '700', color: colors.white, width: 24, textAlign: 'right' },
+  cohortHeader: { flexDirection: 'row', paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8' },
+  cohortRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8' },
+  cohortCell: { fontSize: 12, color: colors.white },
+  cohortLabelCell: { flex: 2 },
+  cohortPctCell: { flex: 1, textAlign: 'center', fontWeight: '600' },
 })
