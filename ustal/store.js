@@ -7,4 +7,5 @@ export const store = {
   status: '',
   goal: '',
   isAdmin: false,
+  referralDiscountPct: 0,
 };
