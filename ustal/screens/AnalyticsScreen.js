@@ -369,6 +369,7 @@ export default function AnalyticsScreen({ navigation }) {
         { data: tests },
         { data: userRow },
         { data: psychRows },
+        { data: prevMetricsRow },
       ] = await Promise.all([
         computeLiveProfile(uid, { updateLevel: true }),
         supabase
@@ -394,17 +395,49 @@ export default function AnalyticsScreen({ navigation }) {
           .eq('user_id', uid)
           .order('created_at', { ascending: false })
           .limit(32),
+        supabase
+          .from('user_metrics')
+          .select('*')
+          .eq('user_id', uid)
+          .order('week_start', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
-      // Для каждого измерения: пропускаем первое вхождение (текущее),
-      // берём второе (предыдущий результат) — именно от него считаем дельту
-      const prevScores = {};
+      // Измерения без реального поведенческого сигнала — только психотест
+      const noRealBehavioral = new Set(['self_esteem', 'social_anxiety', 'attachment']);
+
+      // Для каждого измерения строим prevScores:
+      //   - если ≥2 психотеста → сравниваем с предыдущим психотестом
+      //   - если 1 психотест и dim из noRealBehavioral → сравниваем с базовым значением (50)
+      //   - иначе → сравниваем с предыдущим user_metrics снэпшотом
       const seenDims = new Set();
+      const hasPsychTest = new Set();
+      const prevPsychScores = {};
       for (const r of psychRows ?? []) {
         if (!seenDims.has(r.dimension)) {
           seenDims.add(r.dimension);
-        } else if (prevScores[r.dimension] === undefined) {
-          prevScores[r.dimension] = r.normalized_score;
+          hasPsychTest.add(r.dimension);
+        } else if (prevPsychScores[r.dimension] === undefined) {
+          prevPsychScores[r.dimension] = r.normalized_score;
+        }
+      }
+
+      const prevScores = {};
+      for (const dim of Object.keys({
+        anxiety: 1, stress: 1, apathy: 1, loneliness: 1,
+        burnout: 1, self_esteem: 1, social_anxiety: 1, attachment: 1,
+      })) {
+        const key = `${dim}_score`;
+        if (prevPsychScores[dim] !== undefined) {
+          // Есть второй психотест — точное сравнение
+          prevScores[dim] = prevPsychScores[dim];
+        } else if (noRealBehavioral.has(dim) && hasPsychTest.has(dim)) {
+          // Первый психотест по этому измерению — сравниваем с базовым (50)
+          prevScores[dim] = 50;
+        } else if (prevMetricsRow?.[key] !== undefined) {
+          // Поведенческое измерение — сравниваем с предыдущим снэпшотом
+          prevScores[dim] = prevMetricsRow[key];
         }
       }
 
