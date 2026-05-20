@@ -11,6 +11,7 @@ import { store } from '../store';
 import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { hasCrisis } from '../utils/crisis';
+import { showAlert } from '../utils/alert';
 
 const REACTIONS = [
   { type: 'understand', label: 'я понимаю', icon: 'heart-outline' },
@@ -109,7 +110,7 @@ export default function ThoughtsScreen({ navigation }) {
       .insert({ user_id: store.userId, text: trimmed, level: store.level || 'green', thought_date: getTodayDate() })
       .select().single();
     if (error || !data) {
-      Alert.alert('Ошибка', 'Не удалось отправить мысль. Попробуй ещё раз.');
+      showAlert('Ошибка', 'Не удалось отправить мысль. Попробуй ещё раз.');
     } else {
       setMyThought(data);
       setMyReactions({ understand: 0, same: 0, hold_on: 0 });

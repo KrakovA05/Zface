@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  ScrollView, TextInput, ActivityIndicator, Alert,
+  ScrollView, TextInput, ActivityIndicator,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { store } from '../store';
 import { LABELS, LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
+import { showAlert } from '../utils/alert';
 
 export default function FriendsScreen({ navigation }) {
   const [tab, setTab] = useState('friends');
@@ -74,7 +75,7 @@ export default function FriendsScreen({ navigation }) {
       .update({ status: 'accepted' })
       .eq('requester_id', user.user_id)
       .eq('receiver_id', store.userId);
-    if (error) { Alert.alert('Ошибка', 'Не удалось принять заявку'); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось принять заявку'); return; }
     loadFriends();
     store.refreshBadges?.();
   };
@@ -84,7 +85,7 @@ export default function FriendsScreen({ navigation }) {
       .delete()
       .eq('requester_id', user.user_id)
       .eq('receiver_id', store.userId);
-    if (error) { Alert.alert('Ошибка', 'Не удалось отклонить заявку'); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось отклонить заявку'); return; }
     loadFriends();
     store.refreshBadges?.();
   };
@@ -99,7 +100,7 @@ export default function FriendsScreen({ navigation }) {
     const nick = searchNick.trim();
     if (!nick && selectedLabels.length === 0) return;
     if (nick && nick.length < 2) {
-      Alert.alert('Слишком короткий запрос', 'Введи минимум 2 символа для поиска по нику');
+      showAlert('Слишком короткий запрос', 'Введи минимум 2 символа для поиска по нику');
       return;
     }
     setSearching(true);
@@ -125,7 +126,7 @@ export default function FriendsScreen({ navigation }) {
     const { data, error } = await query;
     setSearching(false);
     setSearched(true);
-    if (error) { Alert.alert('Ошибка', 'Не удалось выполнить поиск'); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось выполнить поиск'); return; }
     setResults(data || []);
   };
 

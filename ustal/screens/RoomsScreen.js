@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, ScrollView, Alert, Keyboard, Platform, Linking,
+  TextInput, ActivityIndicator, ScrollView, Keyboard, Platform, Linking,
 } from 'react-native';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { hasSeenHint, markHintSeen } from '../utils/onboarding';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 import { hasCrisis } from '../utils/crisis';
+import { showAlert } from '../utils/alert';
 
 function groupReactions(list) {
   const g = {};
@@ -124,7 +125,7 @@ export default function RoomsScreen({ route, navigation }) {
 
   const promptEnterRoom = (roomId) => {
     if (roomId === 'night') {
-      Alert.alert(
+      showAlert(
         'Ночная комната',
         'Здесь все анонимны — никто не узнает кто ты.',
         [
@@ -134,7 +135,7 @@ export default function RoomsScreen({ route, navigation }) {
       );
       return;
     }
-    Alert.alert(
+    showAlert(
       'Как зайти?',
       'Можно участвовать в разговоре или просто посидеть молча',
       [
@@ -277,7 +278,7 @@ export default function RoomsScreen({ route, navigation }) {
     const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id').single();
     if (error) {
       setSending(false);
-      Alert.alert('Ошибка', 'Не удалось отправить сообщение');
+      showAlert('Ошибка', 'Не удалось отправить сообщение');
       return;
     }
     if (isNightRoom && inserted?.id) myNightMsgIds.current.add(inserted.id);
@@ -290,7 +291,7 @@ export default function RoomsScreen({ route, navigation }) {
     if (!trimmed || !editing) return;
     const { error } = await supabase.from('messages').update({ text: trimmed, edited_at: new Date().toISOString() })
       .eq('id', editing.id).eq('sender_id', store.userId);
-    if (error) { Alert.alert('Ошибка', 'Не удалось сохранить изменения'); setSending(false); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось сохранить изменения'); setSending(false); return; }
     setMessages(prev => prev.map(m => m.id === editing.id ? { ...m, text: trimmed, edited_at: new Date().toISOString() } : m));
     setText2(''); setEditing(null); setSending(false);
   };
@@ -303,7 +304,7 @@ export default function RoomsScreen({ route, navigation }) {
   };
 
   const adminDeleteMessage = (msg) => {
-    Alert.alert(
+    showAlert(
       'Удалить сообщение?',
       `"${msg.text?.slice(0, 60)}${msg.text?.length > 60 ? '…' : ''}"`,
       [
@@ -346,11 +347,11 @@ export default function RoomsScreen({ route, navigation }) {
   const cancelContext = () => { setEditing(null); setReplyTo(null); setText2(''); };
 
   const reportMessage = (item) => {
-    Alert.alert('Пожаловаться на сообщение?', 'Мы получим уведомление и проверим его.', [
+    showAlert('Пожаловаться на сообщение?', 'Мы получим уведомление и проверим его.', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Пожаловаться', style: 'destructive', onPress: async () => {
         await supabase.from('reports').insert({ reporter_id: store.userId, reported_user_id: item.sender_id, message_id: item.id, message_text: item.text, message_table: 'messages' });
-        Alert.alert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время.');
+        showAlert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время.');
       }},
     ]);
   };

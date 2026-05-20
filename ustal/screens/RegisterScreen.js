@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  ScrollView, TextInput, Alert, Linking,
+  ScrollView, TextInput, Linking,
 } from 'react-native';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { store } from '../store';
 import { LABELS } from '../constants';
 import { colors } from '../theme';
 import { EMAIL_CONFIRM_ENABLED } from '../config';
+import { showAlert } from '../utils/alert';
 
 const validateName = (v) => {
   if (!v.trim()) return 'Введи имя';
@@ -71,7 +72,7 @@ export default function RegisterScreen({ navigation }) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       setLoading(false);
-      Alert.alert('Ошибка регистрации', error.message);
+      showAlert('Ошибка регистрации', error.message);
       return;
     }
 
@@ -95,7 +96,7 @@ export default function RegisterScreen({ navigation }) {
     setLoading(false);
     if (insertError) {
       await supabase.auth.signOut();
-      Alert.alert('Ошибка', insertError.message || 'Не удалось создать профиль.');
+      showAlert('Ошибка', insertError.message || 'Не удалось создать профиль.');
       return;
     }
     store.userId = data.user.id;

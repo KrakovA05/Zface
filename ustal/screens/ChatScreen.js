@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  FlatList, Alert, Keyboard, Platform, Linking,
+  FlatList, Keyboard, Platform, Linking,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { colors } from '../theme';
 import { markRead } from '../utils/unread';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
+import { showAlert } from '../utils/alert';
 
 function formatTime(dateStr) {
   if (!dateStr) return '';
@@ -138,7 +139,7 @@ function GlobalChat({ navigation }) {
       setReplyTo(null);
     }
     const { error } = await supabase.from('messages').insert(payload);
-    if (error) { setText(trimmed); Alert.alert('Ошибка', 'Не удалось отправить сообщение'); }
+    if (error) { setText(trimmed); showAlert('Ошибка', 'Не удалось отправить сообщение'); }
   };
 
   const saveEdit = async () => {
@@ -156,7 +157,7 @@ function GlobalChat({ navigation }) {
   };
 
   const adminDeleteMessage = (msg) => {
-    Alert.alert(
+    showAlert(
       'Удалить сообщение?',
       `"${msg.text?.slice(0, 60)}${msg.text?.length > 60 ? '…' : ''}"`,
       [
@@ -199,11 +200,11 @@ function GlobalChat({ navigation }) {
   const cancelContext = () => { setEditing(null); setReplyTo(null); setText(''); };
 
   const reportMessage = (item) => {
-    Alert.alert('Пожаловаться на сообщение?', 'Мы получим уведомление и проверим его.', [
+    showAlert('Пожаловаться на сообщение?', 'Мы получим уведомление и проверим его.', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Пожаловаться', style: 'destructive', onPress: async () => {
         await supabase.from('reports').insert({ reporter_id: store.userId, reported_user_id: item.sender_id, message_id: item.id, message_text: item.text, message_table: 'messages' });
-        Alert.alert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время.');
+        showAlert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время.');
       }},
     ]);
   };

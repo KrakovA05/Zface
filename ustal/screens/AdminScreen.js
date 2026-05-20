@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  TextInput, Alert, ActivityIndicator, ScrollView, Modal, KeyboardAvoidingView, Platform
+  TextInput, ActivityIndicator, ScrollView, Modal, KeyboardAvoidingView, Platform
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -9,6 +9,7 @@ import { supabase } from '../supabase'
 import { store } from '../store'
 import { colors } from '../theme'
 import BanModal from '../components/BanModal'
+import { showAlert } from '../utils/alert';
 
 const TABS = ['Жалобы', 'Письма', 'Пользователи', 'Статистика']
 const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' }
@@ -93,7 +94,7 @@ function ReportsTab({ navigation }) {
     const msg = !bannedUntil ? `@${username} разбанен` :
       bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
       `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`
-    Alert.alert('Готово', msg)
+    showAlert('Готово', msg)
   }
 
   if (loading) return <View style={s.center}><ActivityIndicator color={colors.accent} /></View>
@@ -236,7 +237,7 @@ function UsersTab({ navigation }) {
     const newVal = !currentAdmin
     await supabase.from('users').update({ is_admin: newVal }).eq('user_id', userId)
     setAllUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_admin: newVal } : u))
-    Alert.alert('Готово', `@${username} ${newVal ? 'получил права модератора' : 'лишён прав модератора'}`)
+    showAlert('Готово', `@${username} ${newVal ? 'получил права модератора' : 'лишён прав модератора'}`)
   }
 
   async function applyBan(userId, username, { bannedUntil, reason }) {
@@ -245,7 +246,7 @@ function UsersTab({ navigation }) {
     const msg = !bannedUntil ? `@${username} разбанен` :
       bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
       `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`
-    Alert.alert('Готово', msg)
+    showAlert('Готово', msg)
   }
 
   return (

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { ACHIEVEMENT_GROUPS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
+import { showAlert } from '../utils/alert';
 
 function calcDateStreak(rows, dateField) {
   if (!rows || rows.length === 0) return 0;
@@ -140,7 +141,7 @@ export default function AchievementsScreen({ navigation }) {
                     <TouchableOpacity
                       key={a.id}
                       style={[styles.item, !isEarned && styles.itemLocked]}
-                      onPress={() => !isEarned && Alert.alert(a.label, `Как получить:\n${a.desc}`)}
+                      onPress={() => !isEarned && showAlert(a.label, `Как получить:\n${a.desc}`)}
                       activeOpacity={isEarned ? 1 : 0.7}
                     >
                       <Ionicons name={a.icon} size={22} color={isEarned ? colors.accent : colors.muted} />

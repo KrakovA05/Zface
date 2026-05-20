@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TouchableOpacity, Share,
-  ScrollView, Alert, TextInput, ActivityIndicator, Linking, Switch,
+  ScrollView, TextInput, ActivityIndicator, Linking, Switch,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import { store } from '../store';
 import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
+import { showAlert } from '../utils/alert';
 
 
 const ALL_FISH = [
@@ -309,7 +310,7 @@ export default function ProfileScreen({ navigation }) {
       .single();
     setSavingStatus(false);
     if (error || !data) {
-      Alert.alert('Ошибка', 'Не удалось сохранить статус. Попробуй ещё раз.');
+      showAlert('Ошибка', 'Не удалось сохранить статус. Попробуй ещё раз.');
       return;
     }
     store.status = data.status;
@@ -319,7 +320,7 @@ export default function ProfileScreen({ navigation }) {
   const pickAvatar = async () => {
     const { status: permStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permStatus !== 'granted') {
-      Alert.alert('Нет доступа', 'Разреши доступ к фото в настройках телефона');
+      showAlert('Нет доступа', 'Разреши доступ к фото в настройках телефона');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -334,12 +335,12 @@ export default function ProfileScreen({ navigation }) {
     const asset = result.assets[0];
     const mimeType = asset.mimeType || '';
     if (!mimeType.startsWith('image/')) {
-      Alert.alert('Ошибка', 'Можно загружать только изображения');
+      showAlert('Ошибка', 'Можно загружать только изображения');
       return;
     }
     const base64Size = (asset.base64?.length || 0) * 0.75;
     if (base64Size > 2 * 1024 * 1024) {
-      Alert.alert('Файл слишком большой', 'Максимальный размер аватара — 2 МБ. Выбери другое фото.');
+      showAlert('Файл слишком большой', 'Максимальный размер аватара — 2 МБ. Выбери другое фото.');
       return;
     }
 
@@ -371,7 +372,7 @@ export default function ProfileScreen({ navigation }) {
       store.avatarUrl = avatarUrl;
       setAvatarUri(avatarUrl);
     } catch {
-      Alert.alert('Ошибка', 'Не удалось сохранить аватар. Попробуй ещё раз.');
+      showAlert('Ошибка', 'Не удалось сохранить аватар. Попробуй ещё раз.');
     }
     setUploadingAvatar(false);
   };
@@ -383,7 +384,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const deleteAccount = () => {
-    Alert.alert(
+    showAlert(
       'Удалить аккаунт',
       'Это действие необратимо. Все твои данные, сообщения и история будут удалены навсегда.',
       [
@@ -395,7 +396,7 @@ export default function ProfileScreen({ navigation }) {
             if (!session) return;
             const { error } = await supabase.rpc('delete_user');
             if (error) {
-              Alert.alert('Ошибка', error.message || 'Не удалось удалить аккаунт.');
+              showAlert('Ошибка', error.message || 'Не удалось удалить аккаунт.');
               return;
             }
             const channels = supabase.getChannels();
@@ -414,7 +415,7 @@ export default function ProfileScreen({ navigation }) {
     await Promise.all(channels.map(ch => supabase.removeChannel(ch)));
     const { error } = await supabase.auth.signOut();
     if (error) {
-      Alert.alert('Ошибка', 'Не удалось выйти. Попробуй ещё раз.');
+      showAlert('Ошибка', 'Не удалось выйти. Попробуй ещё раз.');
       return;
     }
     store.username = ''; store.email = ''; store.level = 'green';
@@ -524,7 +525,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <Text style={styles.rowLabel}>Участвовать в «похожих людях»</Text>
             <TouchableOpacity
-              onPress={() => Alert.alert(
+              onPress={() => showAlert(
                 'Похожие люди',
                 'Когда включено — алгоритм может предложить тебя другим пользователям как «похожего человека» на основе ответов на вопрос дня.\n\nЕсли хочешь, чтобы тебя не рекомендовали — выключи.'
               )}

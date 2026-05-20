@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase';
@@ -7,6 +7,7 @@ import { store } from '../store';
 import { colors, shared } from '../theme';
 import { PSYCH_TESTS } from '../utils/psychTests';
 import { computeLiveProfile } from '../utils/computeLiveProfile';
+import { showAlert } from '../utils/alert';
 
 export default function PsychTestScreen({ route, navigation }) {
   const { testId, onComplete } = route.params;
@@ -46,7 +47,7 @@ export default function PsychTestScreen({ route, navigation }) {
     const userId = store.userId || (await supabase.auth.getUser())?.data?.user?.id;
     if (!userId) {
       setSaving(false);
-      Alert.alert('Ошибка', 'Сессия истекла. Войди снова.');
+      showAlert('Ошибка', 'Сессия истекла. Войди снова.');
       return;
     }
     const { error } = await supabase.from('psych_test_results').insert({
@@ -59,7 +60,7 @@ export default function PsychTestScreen({ route, navigation }) {
     });
     if (error) {
       setSaving(false);
-      Alert.alert('Ошибка', 'Не удалось сохранить результат. Попробуй ещё раз.');
+      showAlert('Ошибка', 'Не удалось сохранить результат. Попробуй ещё раз.');
       return;
     }
     setSaving(false);

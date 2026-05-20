@@ -1,9 +1,10 @@
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+import { showAlert } from '../utils/alert';
 
 export default function EmailConfirmScreen({ route, navigation }) {
   const { email, password, username, labels } = route.params;
@@ -26,16 +27,16 @@ export default function EmailConfirmScreen({ route, navigation }) {
         store.email = email;
         navigation.navigate('Test');
       } else if (error?.message?.toLowerCase().includes('email')) {
-        Alert.alert(
+        showAlert(
           'Письмо ещё не подтверждено',
           'Открой письмо от нас и нажми на ссылку подтверждения.',
           [{ text: 'Понятно' }]
         );
       } else {
-        Alert.alert('Ошибка', error?.message || 'Попробуй ещё раз.');
+        showAlert('Ошибка', error?.message || 'Попробуй ещё раз.');
       }
     } catch {
-      Alert.alert('Ошибка', 'Не удалось проверить. Попробуй ещё раз.');
+      showAlert('Ошибка', 'Не удалось проверить. Попробуй ещё раз.');
     }
     setChecking(false);
   };
@@ -45,9 +46,9 @@ export default function EmailConfirmScreen({ route, navigation }) {
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setResending(false);
     if (error) {
-      Alert.alert('Ошибка', error.message);
+      showAlert('Ошибка', error.message);
     } else {
-      Alert.alert('Готово', 'Письмо отправлено повторно.');
+      showAlert('Готово', 'Письмо отправлено повторно.');
     }
   };
 

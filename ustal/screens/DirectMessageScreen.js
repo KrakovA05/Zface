@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  FlatList, Alert, Keyboard, Platform, Linking,
+  FlatList, Keyboard, Platform, Linking,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import { markRead } from '../utils/unread';
 import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
+import { showAlert } from '../utils/alert';
 
 
 function groupReactions(list) {
@@ -117,7 +118,7 @@ export default function DirectMessageScreen({ route, navigation }) {
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .limit(50);
-    if (error) { Alert.alert('Ошибка', 'Не удалось загрузить сообщения'); return null; }
+    if (error) { showAlert('Ошибка', 'Не удалось загрузить сообщения'); return null; }
     const filtered = (data || []).filter(m => !blockedIds.has(m.sender_id) || m.sender_id === store.userId);
     if (filtered) setMessages(filtered);
     return filtered;
@@ -155,11 +156,11 @@ export default function DirectMessageScreen({ route, navigation }) {
   const cancelContext = () => { setEditing(null); setReplyTo(null); setText(''); };
 
   const reportMessage = (item) => {
-    Alert.alert('Пожаловаться на сообщение?', 'Мы получим уведомление и проверим его.', [
+    showAlert('Пожаловаться на сообщение?', 'Мы получим уведомление и проверим его.', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Пожаловаться', style: 'destructive', onPress: async () => {
         await supabase.from('reports').insert({ reporter_id: store.userId, reported_user_id: item.sender_id, message_id: item.id, message_text: item.text, message_table: 'direct_messages' });
-        Alert.alert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время.');
+        showAlert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время.');
       }},
     ]);
   };
@@ -174,7 +175,7 @@ export default function DirectMessageScreen({ route, navigation }) {
     const { data: block } = await supabase
       .from('blocks').select('id')
       .eq('blocker_id', store.userId).eq('blocked_id', friend.userId).maybeSingle();
-    if (block) { setSending(false); Alert.alert('Недоступно', 'Вы заблокировали этого пользователя'); return; }
+    if (block) { setSending(false); showAlert('Недоступно', 'Вы заблокировали этого пользователя'); return; }
 
     setText('');
     const payload = { conversation_id: conversationId, sender_id: store.userId, sender_username: store.username, text: trimmed };
@@ -186,7 +187,7 @@ export default function DirectMessageScreen({ route, navigation }) {
     }
     const { error } = await supabase.from('direct_messages').insert(payload);
     setSending(false);
-    if (error) { setText(trimmed); Alert.alert('Ошибка', 'Не удалось отправить сообщение'); return; }
+    if (error) { setText(trimmed); showAlert('Ошибка', 'Не удалось отправить сообщение'); return; }
     const { data: friendData } = await supabase.from('users').select('push_token').eq('user_id', friend.userId).maybeSingle();
     if (friendData?.push_token) sendPushNotification(friendData.push_token, store.username, trimmed, {
       screen: 'DirectMessage',

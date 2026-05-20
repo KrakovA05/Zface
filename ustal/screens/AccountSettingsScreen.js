@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, Alert,
+  View, Text, TextInput, TouchableOpacity,
   StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '../supabase'
 import { store } from '../store'
 import { colors, shared } from '../theme'
+import { showAlert } from '../utils/alert';
 
 export default function AccountSettingsScreen({ navigation }) {
   const [newUsername, setNewUsername] = useState('')
@@ -19,15 +20,15 @@ export default function AccountSettingsScreen({ navigation }) {
   async function saveNickname() {
     const trimmed = newUsername.trim()
     if (trimmed.length < 3 || trimmed.length > 20) {
-      Alert.alert('Ошибка', 'Ник должен быть от 3 до 20 символов')
+      showAlert('Ошибка', 'Ник должен быть от 3 до 20 символов')
       return
     }
     if (!/^[a-zA-Zа-яА-ЯёЁ0-9_]+$/.test(trimmed)) {
-      Alert.alert('Ошибка', 'Только буквы, цифры и _')
+      showAlert('Ошибка', 'Только буквы, цифры и _')
       return
     }
     if (trimmed === store.username) {
-      Alert.alert('Ошибка', 'Ник не изменился')
+      showAlert('Ошибка', 'Ник не изменился')
       return
     }
     setSavingNick(true)
@@ -38,7 +39,7 @@ export default function AccountSettingsScreen({ navigation }) {
         .eq('username', trimmed)
         .neq('user_id', store.userId)
         .maybeSingle()
-      if (existing) { Alert.alert('Занято', 'Этот ник уже занят'); return }
+      if (existing) { showAlert('Занято', 'Этот ник уже занят'); return }
       const { error } = await supabase
         .from('users')
         .update({ username: trimmed })
@@ -46,26 +47,26 @@ export default function AccountSettingsScreen({ navigation }) {
       if (error) throw error
       store.username = trimmed
       setNewUsername('')
-      Alert.alert('Готово', 'Ник изменён')
+      showAlert('Готово', 'Ник изменён')
     } catch (e) {
-      Alert.alert('Ошибка', e.message || 'Не удалось изменить ник')
+      showAlert('Ошибка', e.message || 'Не удалось изменить ник')
     } finally {
       setSavingNick(false)
     }
   }
 
   async function savePassword() {
-    if (newPassword.length < 6) { Alert.alert('Ошибка', 'Пароль минимум 6 символов'); return }
-    if (newPassword !== confirmPassword) { Alert.alert('Ошибка', 'Пароли не совпадают'); return }
+    if (newPassword.length < 6) { showAlert('Ошибка', 'Пароль минимум 6 символов'); return }
+    if (newPassword !== confirmPassword) { showAlert('Ошибка', 'Пароли не совпадают'); return }
     setSavingPass(true)
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
       setNewPassword('')
       setConfirmPassword('')
-      Alert.alert('Готово', 'Пароль изменён')
+      showAlert('Готово', 'Пароль изменён')
     } catch (e) {
-      Alert.alert('Ошибка', e.message || 'Не удалось изменить пароль')
+      showAlert('Ошибка', e.message || 'Не удалось изменить пароль')
     } finally {
       setSavingPass(false)
     }

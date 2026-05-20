@@ -1,6 +1,6 @@
 import {
   View, StyleSheet, Text, TouchableOpacity,
-  TextInput, Alert, KeyboardAvoidingView, Platform, ScrollView,
+  TextInput, KeyboardAvoidingView, Platform, ScrollView,
   Image, Modal,
 } from 'react-native';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+import { showAlert } from '../utils/alert';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -32,9 +33,9 @@ export default function LoginScreen({ navigation }) {
       setSupportTopic('');
       setSupportText('');
       setShowSupport(false);
-      Alert.alert('Отправлено', 'Мы получили твоё сообщение и ответим на почту.');
+      showAlert('Отправлено', 'Мы получили твоё сообщение и ответим на почту.');
     } catch {
-      Alert.alert('Ошибка', 'Не удалось отправить. Попробуй позже.');
+      showAlert('Ошибка', 'Не удалось отправить. Попробуй позже.');
     }
     setSupportLoading(false);
   };
@@ -45,7 +46,7 @@ export default function LoginScreen({ navigation }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setLoading(false);
-      Alert.alert('Ошибка', 'Неверный email или пароль');
+      showAlert('Ошибка', 'Неверный email или пароль');
       return;
     }
     const { data: userData, error: userError } = await supabase
@@ -55,7 +56,7 @@ export default function LoginScreen({ navigation }) {
       .single();
     setLoading(false);
     if (userError || !userData) {
-      Alert.alert('Ошибка', 'Не удалось загрузить профиль');
+      showAlert('Ошибка', 'Не удалось загрузить профиль');
       return;
     }
     store.userId = data.user.id;
@@ -75,7 +76,7 @@ export default function LoginScreen({ navigation }) {
         : `Ваш аккаунт заблокирован до ${until.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}.`
       if (until > new Date()) {
         await supabase.auth.signOut()
-        Alert.alert('Аккаунт заблокирован', msg)
+        showAlert('Аккаунт заблокирован', msg)
         return
       }
     }

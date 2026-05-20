@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, ScrollView,
-  TouchableOpacity, ActivityIndicator, Alert,
+  TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { LEVEL_DATA, LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
+import { showAlert } from '../utils/alert';
 
 const STATUS_NONE     = 'none';
 const STATUS_SENT     = 'sent';
@@ -108,7 +109,7 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const blockUser = () => {
-    Alert.alert(
+    showAlert(
       'Заблокировать',
       `Заблокировать ${user.username}? Вы не сможете писать друг другу.`,
       [
@@ -155,7 +156,7 @@ export default function UserProfileScreen({ route, navigation }) {
     setActionLoading(true);
     const { error } = await supabase.from('friendships').insert({ requester_id: store.userId, receiver_id: user.user_id, status: 'pending' });
     setActionLoading(false);
-    if (error) { Alert.alert('Ошибка', 'Не удалось отправить заявку'); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось отправить заявку'); return; }
     setFriendStatus(STATUS_SENT);
     const { data } = await supabase.from('users').select('push_token').eq('user_id', user.user_id).maybeSingle();
     if (data?.push_token) {
@@ -168,7 +169,7 @@ export default function UserProfileScreen({ route, navigation }) {
     const { error } = await supabase.from('friendships').update({ status: 'accepted' })
       .eq('requester_id', user.user_id).eq('receiver_id', store.userId);
     setActionLoading(false);
-    if (error) { Alert.alert('Ошибка', 'Не удалось принять заявку'); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось принять заявку'); return; }
     setFriendStatus(STATUS_FRIENDS);
   };
 
@@ -177,12 +178,12 @@ export default function UserProfileScreen({ route, navigation }) {
     const { error } = await supabase.from('friendships').delete()
       .eq('requester_id', user.user_id).eq('receiver_id', store.userId);
     setActionLoading(false);
-    if (error) { Alert.alert('Ошибка', 'Не удалось отклонить заявку'); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось отклонить заявку'); return; }
     setFriendStatus(STATUS_NONE);
   };
 
   const removeFriend = () => {
-    Alert.alert('Удалить из друзей', `Удалить ${user.username} из друзей?`, [
+    showAlert('Удалить из друзей', `Удалить ${user.username} из друзей?`, [
       { text: 'Отмена', style: 'cancel' },
       {
         text: 'Удалить', style: 'destructive',
@@ -200,7 +201,7 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const reportUser = () => {
-    Alert.alert('Пожаловаться', `Пожаловаться на ${user.username}?`, [
+    showAlert('Пожаловаться', `Пожаловаться на ${user.username}?`, [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Спам', onPress: () => sendReport('spam') },
       { text: 'Оскорбления', onPress: () => sendReport('abuse') },
@@ -215,7 +216,7 @@ export default function UserProfileScreen({ route, navigation }) {
       reporter_id: store.userId, reported_user_id: user.user_id, reason,
     });
     setReportLoading(false);
-    if (!error) Alert.alert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время');
+    if (!error) showAlert('Жалоба отправлена', 'Мы рассмотрим её в ближайшее время');
   };
 
   const openDm = () => {

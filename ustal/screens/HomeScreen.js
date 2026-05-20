@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Modal, Pressable } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Modal, Pressable } from 'react-native';
 import { useState, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import { logEvent } from '../utils/analytics';
 import { getNextTestId } from '../utils/psychScheduler';
 import { PSYCH_TESTS, WEEKLY_PHRASES } from '../utils/psychTests';
 import { computeLiveProfile } from '../utils/computeLiveProfile';
+import { showAlert } from '../utils/alert';
 
 const LEVEL_NAMES  = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' };
 const LEVEL_ICONS  = { green: 'leaf-outline', yellow: 'partly-sunny-outline', red: 'thunderstorm-outline' };
@@ -284,7 +285,7 @@ export default function HomeScreen({ navigation }) {
             const days = (Date.now() - new Date(recent[0].created_at).getTime()) / 86400000;
             if (days > 3) {
               await AsyncStorage.setItem(reminderKey, '1');
-              Alert.alert(
+              showAlert(
                 'Как ты сейчас?',
                 `Последний раз ты проверял состояние ${Math.floor(days)} дн. назад. Пройдём тест?`,
                 [
@@ -1100,7 +1101,7 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.testPromptHelp}
-              onPress={() => Alert.alert('зачем тесты?', 'короткие вопросы — честные ответы. для себя: чтобы замечать то, что обычно не замечаешь. для приложения: чтобы оно лучше понимало тебя и показывало то, что сейчас нужно')}
+              onPress={() => showAlert('зачем тесты?', 'короткие вопросы — честные ответы. для себя: чтобы замечать то, что обычно не замечаешь. для приложения: чтобы оно лучше понимало тебя и показывало то, что сейчас нужно')}
               hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
             >
               <Ionicons name="help-circle-outline" size={18} color={colors.muted} />
@@ -1118,7 +1119,7 @@ export default function HomeScreen({ navigation }) {
             </View>
             <TouchableOpacity
               style={styles.testPromptHelp}
-              onPress={() => Alert.alert('зачем тесты?', 'короткие вопросы — честные ответы. для себя: чтобы замечать то, что обычно не замечаешь. для приложения: чтобы оно лучше понимало тебя и показывало то, что сейчас нужно')}
+              onPress={() => showAlert('зачем тесты?', 'короткие вопросы — честные ответы. для себя: чтобы замечать то, что обычно не замечаешь. для приложения: чтобы оно лучше понимало тебя и показывало то, что сейчас нужно')}
               hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
             >
               <Ionicons name="help-circle-outline" size={18} color={colors.muted} />

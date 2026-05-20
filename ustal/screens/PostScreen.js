@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Platform, Keyboard, Image,
+  TextInput, ActivityIndicator, Platform, Keyboard, Image,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
 import { colors } from '../theme';
 import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
+import { showAlert } from '../utils/alert';
 
 function formatDate(str) {
   return new Date(str).toLocaleDateString('ru-RU', {
@@ -92,7 +93,7 @@ export default function PostScreen({ route, navigation }) {
       text: trimmed,
     });
     if (error) {
-      Alert.alert('Ошибка', 'Не удалось отправить комментарий');
+      showAlert('Ошибка', 'Не удалось отправить комментарий');
     } else {
       setText('');
       await loadComments();
@@ -107,7 +108,7 @@ export default function PostScreen({ route, navigation }) {
 
   const deleteComment = (comment) => {
     if (comment.author_id !== store.userId) return;
-    Alert.alert('Удалить комментарий?', '', [
+    showAlert('Удалить комментарий?', '', [
       { text: 'Отмена', style: 'cancel' },
       {
         text: 'Удалить', style: 'destructive',
@@ -120,7 +121,7 @@ export default function PostScreen({ route, navigation }) {
   };
 
   const adminDeleteComment = (comment) => {
-    Alert.alert(
+    showAlert(
       'Удалить комментарий?',
       `"${comment.text?.slice(0, 60)}${comment.text?.length > 60 ? '…' : ''}"`,
       [

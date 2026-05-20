@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, Keyboard, TouchableWithoutFeedback, Image,
+  ActivityIndicator, Keyboard, TouchableWithoutFeedback, Image,
   Platform, Modal, Linking,
 } from 'react-native';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -14,6 +14,7 @@ import { LEVEL_COLORS, LEVEL_DATA } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 import { SYSTEM_AVATAR_URI } from '../systemAssets';
+import { showAlert } from '../utils/alert';
 
 const PAGE_SIZE = 20;
 const SUPABASE_URL = 'https://yincycmdsdluueqsxtwn.supabase.co';
@@ -150,7 +151,7 @@ export default function FeedScreen({ navigation }) {
     if (!reset && cursorRef.current) query = query.lt('created_at', cursorRef.current);
 
     const { data, error } = await query;
-    if (error) Alert.alert('Ошибка', 'Не удалось загрузить ленту');
+    if (error) showAlert('Ошибка', 'Не удалось загрузить ленту');
     const rawPosts = data || [];
     const newPosts = rawPosts.filter(p => !blockedIdsRef.current.has(p.author_id));
     if (rawPosts.length > 0) cursorRef.current = rawPosts[rawPosts.length - 1].created_at;
@@ -184,13 +185,13 @@ export default function FeedScreen({ navigation }) {
     const response = await fetch(uri);
     const arrayBuffer = await response.arrayBuffer();
     const { error } = await supabase.storage.from('post-media').upload(path, arrayBuffer, { contentType });
-    if (error) { Alert.alert('Ошибка загрузки', error.message); return null; }
+    if (error) { showAlert('Ошибка загрузки', error.message); return null; }
     return `${SUPABASE_URL}/storage/v1/object/public/post-media/${path}`;
   };
 
   const pickMedia = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Нужен доступ к галерее'); return; }
+    if (status !== 'granted') { showAlert('Нужен доступ к галерее'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.7, allowsEditing: false,
     });
@@ -212,7 +213,7 @@ export default function FeedScreen({ navigation }) {
 
   const post = async () => {
     if (!text.trim() && !mediaUri) return;
-    if (mediaUploading) { Alert.alert('Подожди', 'Медиафайл ещё загружается...'); return; }
+    if (mediaUploading) { showAlert('Подожди', 'Медиафайл ещё загружается...'); return; }
     setPosting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -221,7 +222,7 @@ export default function FeedScreen({ navigation }) {
         author_id: user.id, author_username: store.username || 'Аноним',
         author_level: level, text: text.trim(), target_levels: targetLevels, media_url: mediaUrl,
       });
-      if (error) { Alert.alert('Ошибка', 'Не удалось опубликовать пост'); setPosting(false); return; }
+      if (error) { showAlert('Ошибка', 'Не удалось опубликовать пост'); setPosting(false); return; }
       setText(''); setMediaUri(null); setMediaType(null); setMediaUrl(null); setMediaUploading(false);
       fetchedAuthors.current.delete(store.userId);
       await loadPosts(true);
@@ -254,7 +255,7 @@ export default function FeedScreen({ navigation }) {
   };
 
   const adminDeletePost = (item) => {
-    Alert.alert(
+    showAlert(
       'Удалить пост?',
       `"${item.text?.slice(0, 60)}${item.text?.length > 60 ? '…' : ''}"`,
       [
@@ -279,11 +280,11 @@ export default function FeedScreen({ navigation }) {
 
   const onLongPressPost = (item) => {
     if (item.author_id !== store.userId) return;
-    Alert.alert('Действия с постом', '', [
+    showAlert('Действия с постом', '', [
       { text: 'Редактировать', onPress: () => { setEditPost(item); setEditText(item.text || ''); } },
       {
         text: 'Удалить', style: 'destructive', onPress: () => {
-          Alert.alert('Удалить пост?', 'Это действие необратимо', [
+          showAlert('Удалить пост?', 'Это действие необратимо', [
             { text: 'Отмена', style: 'cancel' },
             {
               text: 'Удалить', style: 'destructive', onPress: async () => {
@@ -302,7 +303,7 @@ export default function FeedScreen({ navigation }) {
     if (!editPost || !editText.trim()) return;
     const { error } = await supabase.from('feed_posts').update({ text: editText.trim() })
       .eq('id', editPost.id).eq('author_id', store.userId);
-    if (error) { Alert.alert('Ошибка', 'Не удалось сохранить изменения'); return; }
+    if (error) { showAlert('Ошибка', 'Не удалось сохранить изменения'); return; }
     setPosts(prev => prev.map(p => p.id === editPost.id ? { ...p, text: editText.trim() } : p));
     setEditPost(null);
   };

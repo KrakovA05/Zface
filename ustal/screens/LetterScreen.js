@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Linking,
+  ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import { store } from '../store';
 import { colors } from '../theme';
 import { sendPushNotification } from '../utils/notifications';
 import { hasCrisis } from '../utils/crisis';
+import { showAlert } from '../utils/alert';
 
 let reviewRequested = false;
 
@@ -90,7 +91,7 @@ export default function LetterScreen({ navigation, route }) {
 
     if (!recipients || recipients.length === 0) {
       setSending(false);
-      Alert.alert('Пока некому отправить', 'Нет других пользователей с твоим уровнем. Попробуй позже.');
+      showAlert('Пока некому отправить', 'Нет других пользователей с твоим уровнем. Попробуй позже.');
       return;
     }
 
@@ -114,7 +115,7 @@ export default function LetterScreen({ navigation, route }) {
 
     setSending(false);
     if (error) {
-      Alert.alert('Ошибка', 'Не удалось отправить. Попробуй ещё раз.');
+      showAlert('Ошибка', 'Не удалось отправить. Попробуй ещё раз.');
       return;
     }
 

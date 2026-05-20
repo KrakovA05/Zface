@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from '@react-navigation/native'
@@ -10,6 +10,7 @@ import { store } from '../store'
 import { colors } from '../theme'
 import Avatar from '../components/Avatar'
 import BanModal from '../components/BanModal'
+import { showAlert } from '../utils/alert';
 
 const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' }
 const LEVEL_LABELS = { green: 'Зелёный', yellow: 'Жёлтый', red: 'Красный' }
@@ -104,7 +105,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
     const msg = !bannedUntil ? `@${username} разбанен` :
       bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
       `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`
-    Alert.alert('Готово', msg)
+    showAlert('Готово', msg)
     loadAll()
   }
 
@@ -124,7 +125,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
     })
     setWarningText('')
     setShowWarning(false)
-    Alert.alert('Отправлено', 'Предупреждение доставлено пользователю')
+    showAlert('Отправлено', 'Предупреждение доставлено пользователю')
     loadAll()
   }
 
@@ -138,12 +139,12 @@ export default function AdminUserProfileScreen({ route, navigation }) {
       details: { old_level: oldLevel, new_level: newLevel },
     })
     setShowLevelModal(false)
-    Alert.alert('Готово', `Уровень изменён: ${oldLevel} → ${newLevel}`)
+    showAlert('Готово', `Уровень изменён: ${oldLevel} → ${newLevel}`)
     loadAll()
   }
 
   function confirmDelete() {
-    Alert.alert(
+    showAlert(
       `Удалить аккаунт @${profile?.username}?`,
       'Это действие необратимо. Все данные пользователя будут удалены.',
       [
@@ -151,7 +152,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
         {
           text: 'Удалить', style: 'destructive',
           onPress: () => {
-            Alert.alert(
+            showAlert(
               'Подтвердить удаление',
               `Аккаунт @${profile?.username} и все его данные будут уничтожены навсегда.`,
               [
@@ -160,7 +161,7 @@ export default function AdminUserProfileScreen({ route, navigation }) {
                   text: 'Да, удалить', style: 'destructive',
                   onPress: async () => {
                     const { error } = await supabase.rpc('admin_delete_user', { target_id: userId })
-                    if (error) { Alert.alert('Ошибка', 'Не удалось удалить пользователя'); return; }
+                    if (error) { showAlert('Ошибка', 'Не удалось удалить пользователя'); return; }
                     await supabase.from('admin_actions').insert({
                       admin_id: store.userId,
                       target_id: userId,

@@ -2,7 +2,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, useRef, useCallback } from 'react';
 
 SplashScreen.preventAutoHideAsync();
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -19,6 +19,8 @@ import { getLastRead } from './utils/unread';
 import { initCrashReporting } from './utils/crashReporting';
 import { createNavigationListener } from './utils/analytics';
 import StreakModal from './components/StreakModal';
+import GlobalAlert from './components/GlobalAlert';
+import { showAlert } from './utils/alert';
 
 initCrashReporting();
 
@@ -481,7 +483,7 @@ export default function App() {
   useEffect(() => {
     if (!showFeedbackAlert || !navigationRef.current) return;
     const timer = setTimeout(() => {
-      Alert.alert(
+      showAlert(
         'Привет!',
         'Всё ли тебя устраивает в приложении? Если есть идея или замечание — будем рады услышать.\n\nВ дальнейшем можешь написать нам из профиля.',
         [
@@ -549,6 +551,7 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />
+        <GlobalAlert />
         </SafeAreaView>
       </SafeAreaProvider>
     </GestureHandlerRootView>
