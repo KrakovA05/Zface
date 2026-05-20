@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, ScrollView, ActivityIndicator, TouchableOpacity
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Polyline, Circle, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
@@ -37,60 +37,69 @@ function formatWeek(dateStr) {
 }
 
 function LineChart({ data }) {
-  if (!data || data.length < 2) {
+  if (!data || data.length === 0) {
     return (
       <View style={styles.chartEmpty}>
-        <Text style={styles.chartEmptyText}>Нужно минимум 2 недели данных</Text>
+        <Text style={styles.chartEmptyText}>Пройди тест ещё раз, чтобы увидеть динамику</Text>
       </View>
     );
   }
 
-  const chartW = SCREEN_WIDTH - 32 - CHART_PADDING.left - CHART_PADDING.right;
+  const svgW = SCREEN_WIDTH - 32;
+  const chartW = svgW - CHART_PADDING.left - CHART_PADDING.right;
   const innerH = CHART_H - CHART_PADDING.top - CHART_PADDING.bottom;
 
-  const xStep = chartW / (data.length - 1);
   const points = data.map((d, i) => ({
-    x: CHART_PADDING.left + i * xStep,
+    x: CHART_PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * chartW : chartW / 2),
     y: CHART_PADDING.top + innerH - (d.score / 100) * innerH,
     score: d.score,
-    label: formatWeek(d.week_start),
+    label: d.label,
+    isLive: d.isLive,
   }));
 
-  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-
-  // Линии сетки на 33 и 66
   const y33 = CHART_PADDING.top + innerH - (33 / 100) * innerH;
   const y66 = CHART_PADDING.top + innerH - (66 / 100) * innerH;
-  const svgW = SCREEN_WIDTH - 32;
 
   return (
     <View style={styles.chartWrap}>
       <Svg width={svgW} height={CHART_H}>
-        {/* Сетка */}
+        {/* Зоны сетки */}
         <Line x1={CHART_PADDING.left} y1={y66} x2={svgW - CHART_PADDING.right} y2={y66}
           stroke="#E8DFD0" strokeWidth="1" strokeDasharray="4,4" />
         <Line x1={CHART_PADDING.left} y1={y33} x2={svgW - CHART_PADDING.right} y2={y33}
           stroke="#E8DFD0" strokeWidth="1" strokeDasharray="4,4" />
+        <SvgText x={CHART_PADDING.left - 4} y={y66 + 4} fontSize="9" fill="#C8BFB0" textAnchor="end">66</SvgText>
+        <SvgText x={CHART_PADDING.left - 4} y={y33 + 4} fontSize="9" fill="#C8BFB0" textAnchor="end">33</SvgText>
 
-        {/* Метки сетки */}
-        <SvgText x={CHART_PADDING.left - 4} y={y66 + 4} fontSize="9" fill="#A09080" textAnchor="end">66</SvgText>
-        <SvgText x={CHART_PADDING.left - 4} y={y33 + 4} fontSize="9" fill="#A09080" textAnchor="end">33</SvgText>
-
-        {/* Линия */}
-        <Polyline points={polylinePoints} fill="none" stroke={colors.accent} strokeWidth="2" strokeLinejoin="round" />
+        {/* Цветные отрезки между точками */}
+        {points.slice(0, -1).map((p, i) => {
+          const next = points[i + 1];
+          return (
+            <Line key={i}
+              x1={p.x} y1={p.y} x2={next.x} y2={next.y}
+              stroke={scoreColor(p.score)} strokeWidth="2.5" strokeLinecap="round"
+              opacity={0.85}
+            />
+          );
+        })}
 
         {/* Точки */}
         {points.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={4}
-            fill={scoreColor(p.score)} stroke={colors.background} strokeWidth="1.5" />
+          <Circle key={i} cx={p.x} cy={p.y} r={p.isLive ? 5 : 4}
+            fill={scoreColor(p.score)}
+            stroke={colors.background} strokeWidth="2"
+          />
         ))}
 
-        {/* Подписи дат */}
+        {/* Подписи дат — первая, последняя и каждая вторая при >5 точках */}
         {points.map((p, i) => {
-          // Показываем каждую вторую метку если точек много
-          if (data.length > 6 && i % 2 !== 0) return null;
+          const isFirst = i === 0;
+          const isLast = i === points.length - 1;
+          if (!isFirst && !isLast && data.length > 5 && i % 2 !== 0) return null;
+          if (!isFirst && !isLast && data.length <= 5) return null;
           return (
-            <SvgText key={i} x={p.x} y={CHART_H - 4} fontSize="9" fill="#A09080" textAnchor="middle">
+            <SvgText key={i} x={p.x} y={CHART_H - 2} fontSize="9" fill="#A09080"
+              textAnchor={isFirst ? 'start' : isLast ? 'end' : 'middle'}>
               {p.label}
             </SvgText>
           );
@@ -104,8 +113,9 @@ export default function DimensionHistoryScreen({ route, navigation }) {
   const { dimension, label } = route.params;
   const scoreKey = `${dimension}_score`;
 
-  const [history, setHistory] = useState([]);
+  const [chartPoints, setChartPoints] = useState([]);
   const [liveScore, setLiveScore] = useState(null);
+  const [testCount, setTestCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
@@ -115,19 +125,37 @@ export default function DimensionHistoryScreen({ route, navigation }) {
       const uid = store.userId;
       if (!uid) { setLoading(false); return; }
 
-      const [{ data }, liveProfile] = await Promise.all([
+      const [{ data: psychRows }, liveProfile] = await Promise.all([
         supabase
-          .from('user_metrics')
-          .select(`week_start, ${scoreKey}`)
+          .from('psych_test_results')
+          .select('normalized_score, created_at')
           .eq('user_id', uid)
-          .order('week_start', { ascending: true })
-          .limit(12),
+          .eq('dimension', dimension)
+          .order('created_at', { ascending: true }),
         computeLiveProfile(uid),
       ]);
 
       if (!active) return;
-      setHistory((data || []).map(r => ({ week_start: r.week_start, score: r[scoreKey] ?? 0 })));
-      setLiveScore(liveProfile[scoreKey] ?? null);
+
+      const live = liveProfile[scoreKey] ?? null;
+      setLiveScore(live);
+      setTestCount(psychRows?.length ?? 0);
+
+      const points = (psychRows || []).map(r => ({
+        score: r.normalized_score,
+        label: formatWeek(r.created_at),
+        isLive: false,
+      }));
+
+      // Добавляем текущий балл как последнюю точку если он отличается от последнего теста
+      if (live !== null) {
+        const lastTestScore = points.length > 0 ? points[points.length - 1].score : null;
+        if (lastTestScore === null || lastTestScore !== live) {
+          points.push({ score: live, label: 'сейчас', isLive: true });
+        }
+      }
+
+      setChartPoints(points);
       setLoading(false);
     }
     load();
@@ -135,8 +163,8 @@ export default function DimensionHistoryScreen({ route, navigation }) {
   }, [dimension]));
 
   const current = liveScore;
-  const first = history.length > 1 ? history[0].score : null;
-  const totalDelta = current !== null && first !== null ? current - first : null;
+  const firstScore = chartPoints.length > 1 ? chartPoints[0].score : null;
+  const totalDelta = current !== null && firstScore !== null ? current - firstScore : null;
 
   return (
     <View style={styles.safeArea}>
@@ -172,10 +200,10 @@ export default function DimensionHistoryScreen({ route, navigation }) {
                   <Text style={styles.summaryCaption}>за всё время</Text>
                 </View>
               )}
-              {history.length > 0 && (
+              {testCount > 0 && (
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>{history.length}</Text>
-                  <Text style={styles.summaryCaption}>{history.length === 1 ? 'неделя' : history.length < 5 ? 'недели' : 'недель'}</Text>
+                  <Text style={styles.summaryValue}>{testCount}</Text>
+                  <Text style={styles.summaryCaption}>{testCount === 1 ? 'тест' : testCount < 5 ? 'теста' : 'тестов'}</Text>
                 </View>
               )}
             </View>
@@ -199,8 +227,8 @@ export default function DimensionHistoryScreen({ route, navigation }) {
 
           {/* График */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Динамика по неделям</Text>
-            <LineChart data={history} />
+            <Text style={styles.cardTitle}>Динамика</Text>
+            <LineChart data={chartPoints} />
             <View style={styles.legendRow}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#5DAA72' }]} />
