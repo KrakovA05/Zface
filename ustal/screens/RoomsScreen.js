@@ -16,6 +16,7 @@ import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 import { hasCrisis } from '../utils/crisis';
 import { showAlert } from '../utils/alert';
+import { logEvent } from '../utils/analytics';
 
 function groupReactions(list) {
   const g = {};
@@ -147,6 +148,7 @@ export default function RoomsScreen({ route, navigation }) {
   };
 
   const enterRoom = async (roomId, anonymous = false) => {
+    logEvent('room_join', { room: roomId })
     if (roomId !== userLevel && roomId !== 'night' && !isAdmin) return;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
@@ -536,7 +538,7 @@ export default function RoomsScreen({ route, navigation }) {
                 <TouchableOpacity onLongPress={() => !(isAnonymous && room !== 'night') && setMenuMsg(item)} activeOpacity={0.8} delayLongPress={350}>
                   <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
                     <TouchableOpacity
-                      onPress={() => room !== 'night' && navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}
+                      onPress={() => room !== 'night' && item.sender_id && navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: null, status: '' } })}
                       activeOpacity={room === 'night' ? 1 : 0.7}
                     >
                       <Avatar uri={room !== 'night' && isMe ? store.avatarUrl : null} username={room === 'night' ? '?' : item.username} level={room === 'night' ? null : item.level} size={30} />

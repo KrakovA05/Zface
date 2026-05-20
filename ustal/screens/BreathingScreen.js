@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
+import { logEvent } from '../utils/analytics';
 
 const PHASES = [
   { label: 'Вдох',    duration: 4000, toScale: 1.35 },
@@ -20,6 +21,8 @@ export default function BreathingScreen({ navigation }) {
   const [phaseIdx, setPhaseIdx] = useState(0);
   const [secs, setSecs]         = useState(PHASES[0].duration / 1000);
   const scale = useRef(new Animated.Value(1.0)).current;
+
+  useEffect(() => { logEvent('breathing_open') }, [])
 
   useEffect(() => {
     AsyncStorage.setItem('last_breathing_visit', new Date().toISOString()).catch(() => {});

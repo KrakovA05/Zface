@@ -13,6 +13,7 @@ import { colors } from '../theme';
 import { sendPushNotification } from '../utils/notifications';
 import { hasCrisis } from '../utils/crisis';
 import { showAlert } from '../utils/alert';
+import { logEvent } from '../utils/analytics';
 
 let reviewRequested = false;
 
@@ -119,6 +120,7 @@ export default function LetterScreen({ navigation, route }) {
       return;
     }
 
+    logEvent('letter_sent')
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setText('');
     setSentToday(true);

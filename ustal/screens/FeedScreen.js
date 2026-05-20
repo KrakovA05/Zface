@@ -15,6 +15,7 @@ import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 import { SYSTEM_AVATAR_URI } from '../systemAssets';
 import { showAlert } from '../utils/alert';
+import { logEvent } from '../utils/analytics';
 
 const PAGE_SIZE = 20;
 const SUPABASE_URL = 'https://yincycmdsdluueqsxtwn.supabase.co';
@@ -223,6 +224,7 @@ export default function FeedScreen({ navigation }) {
         author_level: level, text: text.trim(), target_levels: targetLevels, media_url: mediaUrl,
       });
       if (error) { showAlert('Ошибка', 'Не удалось опубликовать пост'); setPosting(false); return; }
+      logEvent('post_created')
       setText(''); setMediaUri(null); setMediaType(null); setMediaUrl(null); setMediaUploading(false);
       fetchedAuthors.current.delete(store.userId);
       await loadPosts(true);

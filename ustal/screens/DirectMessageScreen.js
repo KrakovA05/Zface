@@ -16,6 +16,7 @@ import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 import ChatActionMenu from '../components/ChatActionMenu';
 import { showAlert } from '../utils/alert';
+import { logEvent } from '../utils/analytics';
 
 
 function groupReactions(list) {
@@ -188,6 +189,7 @@ export default function DirectMessageScreen({ route, navigation }) {
     const { error } = await supabase.from('direct_messages').insert(payload);
     setSending(false);
     if (error) { setText(trimmed); showAlert('Ошибка', 'Не удалось отправить сообщение'); return; }
+    logEvent('dm_sent')
     const { data: friendData } = await supabase.from('users').select('push_token').eq('user_id', friend.userId).maybeSingle();
     if (friendData?.push_token) sendPushNotification(friendData.push_token, store.username, trimmed, {
       screen: 'DirectMessage',

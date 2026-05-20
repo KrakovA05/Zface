@@ -11,6 +11,7 @@ import { LABELS, LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
 import { showAlert } from '../utils/alert';
+import { logEvent } from '../utils/analytics';
 
 export default function FriendsScreen({ navigation }) {
   const [tab, setTab] = useState('friends');
@@ -76,6 +77,7 @@ export default function FriendsScreen({ navigation }) {
       .eq('requester_id', user.user_id)
       .eq('receiver_id', store.userId);
     if (error) { showAlert('Ошибка', 'Не удалось принять заявку'); return; }
+    logEvent('friend_added')
     loadFriends();
     store.refreshBadges?.();
   };

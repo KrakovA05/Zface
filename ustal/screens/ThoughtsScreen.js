@@ -12,6 +12,7 @@ import { LEVEL_COLORS } from '../constants';
 import { colors } from '../theme';
 import { hasCrisis } from '../utils/crisis';
 import { showAlert } from '../utils/alert';
+import { logEvent } from '../utils/analytics';
 
 const REACTIONS = [
   { type: 'understand', label: 'я понимаю', icon: 'heart-outline' },
@@ -109,6 +110,7 @@ export default function ThoughtsScreen({ navigation }) {
       .from('anonymous_thoughts')
       .insert({ user_id: store.userId, text: trimmed, level: store.level || 'green', thought_date: getTodayDate() })
       .select().single();
+    logEvent('thought_posted')
     if (error || !data) {
       showAlert('Ошибка', 'Не удалось отправить мысль. Попробуй ещё раз.');
     } else {

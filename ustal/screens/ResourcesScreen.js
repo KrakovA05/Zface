@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { colors } from '../theme';
+import { logEvent } from '../utils/analytics';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -30,6 +31,7 @@ export default function ResourcesScreen() {
   const [openTopics, setOpenTopics] = useState({});
 
   useFocusEffect(useCallback(() => {
+    logEvent('resources_open');
     loadResources();
   }, []));
 

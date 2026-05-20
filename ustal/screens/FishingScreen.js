@@ -6,6 +6,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
 import { hasSeenHint, markHintSeen } from '../utils/onboarding';
+import { logEvent } from '../utils/analytics';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -133,6 +134,8 @@ export default function FishingScreen() {
   const [waitMsg, setWaitMsg] = useState('');
   const [collection, setCollection] = useState([]);
   const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => { logEvent('fishing_open') }, [])
 
   useEffect(() => {
     if (!store.userId) return;

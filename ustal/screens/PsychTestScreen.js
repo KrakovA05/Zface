@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,6 +8,7 @@ import { colors, shared } from '../theme';
 import { PSYCH_TESTS } from '../utils/psychTests';
 import { computeLiveProfile } from '../utils/computeLiveProfile';
 import { showAlert } from '../utils/alert';
+import { logEvent } from '../utils/analytics';
 
 export default function PsychTestScreen({ route, navigation }) {
   const { testId, onComplete } = route.params;
@@ -27,6 +28,8 @@ export default function PsychTestScreen({ route, navigation }) {
   const [answers, setAnswers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => { logEvent('psych_test_start', { test_id: route.params?.testId }) }, [])
 
   const scaleOptions = [];
   for (let v = test.scale.min; v <= test.scale.max; v++) scaleOptions.push(v);
