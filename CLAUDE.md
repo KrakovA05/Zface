@@ -117,9 +117,13 @@ Stack.Navigator
 ### Global state (`store.js`)
 Простой мутируемый объект — **не реактивный**. Компоненты не ре-рендерятся при изменении store автоматически. Используется только для данных текущего пользователя:
 ```js
-store = { username, email, level, userId, avatarUrl, status }
+store = { username, email, level, userId, avatarUrl, status, goal, isAdmin, referralDiscountPct }
 ```
 Поля заполняются при логине/регистрации и при восстановлении сессии в App.js. Для отображения актуальных данных в экранах с профилем используется `useFocusEffect`.
+
+`isAdmin` — флаг администратора. Аккаунт с `is_admin = true` в БД: имеет доступ во все цветовые комнаты, невидим в списке участников комнаты, невидим в поиске, при открытии его UserProfileScreen не показываются никакие кнопки действий (DM, добавить в друзья, заблокировать, пожаловаться).
+
+`referralDiscountPct` — текущая реферальная скидка (0–50%, шаг 10% за каждые 5 приглашённых). Вычисляется при старте из таблицы `users`. Используется PremiumScreen для применения скидки.
 
 ### Shared resources
 - `constants.js` — `LABELS`, `LEVEL_COLORS`, `LEVEL_DATA`, `PHRASES`, `MOTIVATORS`, `DAILY_QUESTIONS`, `ACHIEVEMENTS`, `DAILY_WORDS`; `LEVEL_COLORS.yellow = '#AA7C00'` (контрастный золотисто-жёлтый на светлом фоне)
