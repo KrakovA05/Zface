@@ -91,6 +91,8 @@ function ReportsTab({ navigation }) {
 
   async function applyBan(userId, username, { bannedUntil, reason }) {
     await supabase.from('users').update({ banned_until: bannedUntil, ban_reason: reason || null }).eq('user_id', userId)
+    const { error: fnErr } = await supabase.functions.invoke('ban-notify', { body: { userId, bannedUntil, reason } })
+    if (fnErr) console.warn('ban-notify error:', fnErr)
     const msg = !bannedUntil ? `@${username} разбанен` :
       bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
       `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`
@@ -243,6 +245,8 @@ function UsersTab({ navigation }) {
   async function applyBan(userId, username, { bannedUntil, reason }) {
     await supabase.from('users').update({ banned_until: bannedUntil, ban_reason: reason || null }).eq('user_id', userId)
     setAllUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: bannedUntil } : u))
+    const { error: fnErr } = await supabase.functions.invoke('ban-notify', { body: { userId, bannedUntil, reason } })
+    if (fnErr) console.warn('ban-notify error:', fnErr)
     const msg = !bannedUntil ? `@${username} разбанен` :
       bannedUntil.startsWith('2099') ? `@${username} забанен навсегда` :
       `@${username} забанен до ${new Date(bannedUntil).toLocaleDateString('ru-RU')}`
@@ -340,22 +344,98 @@ function StatsTab() {
 
   async function loadStats() {
     setLoading(true)
-    const [green, yellow, red, totalR, pendingR, posts] = await Promise.all([
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+    const tomorrow = new Date(todayStart); tomorrow.setDate(tomorrow.getDate() + 1)
+    const sevenDays = new Date(Date.now() - 7*24*60*60*1000).toISOString()
+    const thirtyDays = new Date(Date.now() - 30*24*60*60*1000).toISOString()
+
+    const [
+      green, yellow, red,
+      dau, wau, mau,
+      new7, new30,
+      streakData,
+      totalR, pendingR,
+      friendsData,
+      msgData, checkinData, postData, commentData,
+      answerData, testData, letterData, thoughtData,
+      fishData, dmData,
+      newUsersData, testResultsData,
+    ] = await Promise.all([
       supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('level', 'green'),
       supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('level', 'yellow'),
       supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('level', 'red'),
+      supabase.from('users').select('user_id', { count: 'exact', head: true })
+        .gte('last_seen', todayStart.toISOString()).lt('last_seen', tomorrow.toISOString()),
+      supabase.from('users').select('user_id', { count: 'exact', head: true }).gte('last_seen', sevenDays),
+      supabase.from('users').select('user_id', { count: 'exact', head: true }).gte('last_seen', thirtyDays),
+      supabase.from('users').select('user_id', { count: 'exact', head: true }).gte('created_at', sevenDays),
+      supabase.from('users').select('user_id', { count: 'exact', head: true }).gte('created_at', thirtyDays),
+      supabase.from('users').select('login_streak'),
       supabase.from('reports').select('id', { count: 'exact', head: true }),
       supabase.from('reports').select('id', { count: 'exact', head: true }).eq('resolved', false),
-      supabase.from('feed_posts').select('id', { count: 'exact', head: true }),
+      supabase.from('friendships').select('requester_id, receiver_id').eq('status', 'accepted'),
+      supabase.from('messages').select('sender_id').gte('created_at', sevenDays).not('sender_id', 'is', null),
+      supabase.from('mood_checkins').select('user_id').gte('created_at', sevenDays),
+      supabase.from('feed_posts').select('author_id').gte('created_at', sevenDays),
+      supabase.from('post_comments').select('author_id').gte('created_at', sevenDays),
+      supabase.from('daily_answers').select('user_id').gte('created_at', sevenDays),
+      supabase.from('test_results').select('user_id').gte('created_at', sevenDays),
+      supabase.from('anonymous_letters').select('author_id').gte('created_at', sevenDays),
+      supabase.from('anonymous_thoughts').select('user_id').gte('created_at', sevenDays),
+      supabase.from('caught_fish').select('user_id').gte('created_at', sevenDays),
+      supabase.from('direct_messages').select('sender_id').gte('created_at', sevenDays).not('sender_id', 'is', null),
+      supabase.from('users').select('user_id, created_at, last_seen').gte('created_at', thirtyDays),
+      supabase.from('test_results').select('user_id').gte('created_at', thirtyDays),
     ])
+
+    const streakValues = (streakData.data || []).map(u => u.login_streak || 0)
+    const avgStreak = streakValues.length
+      ? (streakValues.reduce((a, b) => a + b, 0) / streakValues.length).toFixed(1)
+      : 0
+
+    const totalUsers = (green.count||0) + (yellow.count||0) + (red.count||0)
+    const usersWithFriends = new Set([
+      ...(friendsData.data || []).map(f => f.requester_id),
+      ...(friendsData.data || []).map(f => f.receiver_id),
+    ]).size
+    const friendsPct = totalUsers ? Math.round(usersWithFriends / totalUsers * 100) : 0
+
+    const uniq = (arr, key) => new Set((arr || []).map(r => r[key])).size
+    const features = [
+      { label: 'Чат', count: uniq(msgData.data, 'sender_id') },
+      { label: 'Чекин', count: uniq(checkinData.data, 'user_id') },
+      { label: 'Посты', count: uniq(postData.data, 'author_id') },
+      { label: 'Комменты', count: uniq(commentData.data, 'author_id') },
+      { label: 'Вопрос дня', count: uniq(answerData.data, 'user_id') },
+      { label: 'Тест уровня', count: uniq(testData.data, 'user_id') },
+      { label: 'Письма', count: uniq(letterData.data, 'author_id') },
+      { label: 'Мысли', count: uniq(thoughtData.data, 'user_id') },
+      { label: 'Рыбалка', count: uniq(fishData.data, 'user_id') },
+      { label: 'DM', count: uniq(dmData.data, 'sender_id') },
+    ].sort((a, b) => b.count - a.count)
+    const maxFeature = Math.max(1, ...features.map(f => f.count))
+
+    const funnel30 = newUsersData.data || []
+    const testedIds = new Set((testResultsData.data || []).map(t => t.user_id))
+    const fRegistered = funnel30.length
+    const fTested = funnel30.filter(u => testedIds.has(u.user_id)).length
+    const ms = (days) => days * 24 * 60 * 60 * 1000
+    const fDay2 = funnel30.filter(u => u.last_seen &&
+      new Date(u.last_seen) > new Date(new Date(u.created_at).getTime() + ms(1))).length
+    const fDay7 = funnel30.filter(u => u.last_seen &&
+      new Date(u.last_seen) > new Date(new Date(u.created_at).getTime() + ms(6))).length
+    const fDay30 = funnel30.filter(u => u.last_seen &&
+      new Date(u.last_seen) > new Date(new Date(u.created_at).getTime() + ms(29))).length
+
     setStats({
-      green: green.count || 0,
-      yellow: yellow.count || 0,
-      red: red.count || 0,
-      totalUsers: (green.count || 0) + (yellow.count || 0) + (red.count || 0),
-      totalReports: totalR.count || 0,
-      pendingReports: pendingR.count || 0,
-      totalPosts: posts.count || 0,
+      green: green.count||0, yellow: yellow.count||0, red: red.count||0, totalUsers,
+      dau: dau.count||0, wau: wau.count||0, mau: mau.count||0,
+      new7: new7.count||0, new30: new30.count||0,
+      avgStreak, friendsPct,
+      totalReports: totalR.count||0, pendingReports: pendingR.count||0,
+      features, maxFeature,
+      funnel: { registered: fRegistered, tested: fTested, day2: fDay2, day7: fDay7, day30: fDay30 },
+      cohortRows: [],
     })
     setLoading(false)
   }
@@ -370,23 +450,67 @@ function StatsTab() {
     </View>
   )
 
+  const FunnelRow = ({ label, value, total }) => {
+    const pct = total ? Math.round(value / total * 100) : 0
+    return (
+      <View style={s.statRow}>
+        <Text style={s.statLabel}>{label}</Text>
+        <Text style={s.statValue}>
+          {value}{' '}
+          <Text style={{ color: colors.muted, fontWeight: '400' }}>({pct}%)</Text>
+        </Text>
+      </View>
+    )
+  }
+
+  const FeatureBar = ({ label, count, max }) => (
+    <View style={s.featureRow}>
+      <Text style={s.featureLabel} numberOfLines={1}>{label}</Text>
+      <View style={s.featureBarBg}>
+        <View style={[s.featureBarFill, { width: `${Math.round(count / max * 100)}%` }]} />
+      </View>
+      <Text style={s.featureCount}>{count}</Text>
+    </View>
+  )
+
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }}>
       <Text style={s.statSection}>Пользователи</Text>
       <View style={s.statCard}>
         <StatRow label="Всего" value={stats.totalUsers} />
+        <StatRow label="DAU (сегодня)" value={stats.dau} />
+        <StatRow label="WAU (7 дней)" value={stats.wau} />
+        <StatRow label="MAU (30 дней)" value={stats.mau} />
+        <StatRow label="Новых за 7 дней" value={stats.new7} />
+        <StatRow label="Новых за 30 дней" value={stats.new30} />
+        <StatRow label="С другом (>=1)" value={`${stats.friendsPct}%`} />
+        <StatRow label="Средний стрик" value={stats.avgStreak} />
         <StatRow label="Зелёный" value={stats.green} color="#5DAA72" />
         <StatRow label="Жёлтый" value={stats.yellow} color="#AA7C00" />
         <StatRow label="Красный" value={stats.red} color="#c0392b" />
       </View>
+
+      <Text style={s.statSection}>Активность фич — 7 дней</Text>
+      <View style={s.statCard}>
+        {stats.features.map(f => (
+          <FeatureBar key={f.label} label={f.label} count={f.count} max={stats.maxFeature} />
+        ))}
+      </View>
+
+      <Text style={s.statSection}>Воронка онбординга — 30 дней</Text>
+      <View style={s.statCard}>
+        <FunnelRow label="Зарегистрировались" value={stats.funnel.registered} total={stats.funnel.registered} />
+        <FunnelRow label="Прошли тест" value={stats.funnel.tested} total={stats.funnel.registered} />
+        <FunnelRow label="Вернулись день 2" value={stats.funnel.day2} total={stats.funnel.registered} />
+        <FunnelRow label="Вернулись день 7" value={stats.funnel.day7} total={stats.funnel.registered} />
+        <FunnelRow label="Вернулись день 30" value={stats.funnel.day30} total={stats.funnel.registered} />
+      </View>
+
       <Text style={s.statSection}>Модерация</Text>
       <View style={s.statCard}>
         <StatRow label="Всего жалоб" value={stats.totalReports} />
-        <StatRow label="Необработанных" value={stats.pendingReports} color={stats.pendingReports > 0 ? '#c0392b' : colors.white} />
-      </View>
-      <Text style={s.statSection}>Контент</Text>
-      <View style={s.statCard}>
-        <StatRow label="Постов в ленте" value={stats.totalPosts} />
+        <StatRow label="Необработанных" value={stats.pendingReports}
+          color={stats.pendingReports > 0 ? '#c0392b' : colors.white} />
       </View>
     </ScrollView>
   )
@@ -441,4 +565,12 @@ const s = StyleSheet.create({
   statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8' },
   statLabel: { fontSize: 14, color: colors.white },
   statValue: { fontSize: 14, fontWeight: '700', color: colors.white },
+  featureRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8', gap: 8,
+  },
+  featureLabel: { fontSize: 12, color: colors.white, width: 90 },
+  featureBarBg: { flex: 1, height: 6, backgroundColor: '#F0E8D8', borderRadius: 3 },
+  featureBarFill: { height: 6, backgroundColor: colors.accent, borderRadius: 3 },
+  featureCount: { fontSize: 12, fontWeight: '700', color: colors.white, width: 24, textAlign: 'right' },
 })
