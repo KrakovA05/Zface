@@ -132,16 +132,18 @@ export default function ProfileScreen({ navigation }) {
           { count: helpCount },
           { count: ansCount },
           { data: firstTest },
+          { count: invitedCount },
         ] = await Promise.all([
           supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', store.userId),
           supabase.from('daily_answers').select('*', { count: 'exact', head: true }).eq('user_id', store.userId),
           supabase.from('test_results').select('created_at').eq('user_id', store.userId)
             .order('created_at', { ascending: true }).limit(1).maybeSingle(),
+          supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('referred_by', store.userId),
         ]);
         const daysHere = firstTest
           ? Math.max(1, Math.floor((Date.now() - new Date(firstTest.created_at)) / 86400000) + 1)
           : 1;
-        setPresenceStats({ daysHere, helpedCount: helpCount || 0, answersGiven: ansCount || 0 });
+        setPresenceStats({ daysHere, helpedCount: helpCount || 0, answersGiven: ansCount || 0, invitedCount: invitedCount || 0 });
 
         // 7-дневный тренд настроения
         const sevenAgo = new Date();
@@ -377,10 +379,8 @@ export default function ProfileScreen({ navigation }) {
     setUploadingAvatar(false);
   };
 
-  const inviteFriend = async () => {
-    await Share.share({
-      message: 'Я в приложении "Устал" — там можно просто быть, без дедлайнов и forced happiness 🖤 Присоединяйся!',
-    });
+  const inviteFriend = () => {
+    navigation.navigate('Invite');
   };
 
   const deleteAccount = () => {
@@ -503,6 +503,11 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.presenceNum}>{presenceStats.answersGiven}</Text>
               <Text style={styles.presenceLabel}>{presenceStats.answersGiven === 1 ? 'ответ' : presenceStats.answersGiven < 5 ? 'ответа' : 'ответов'}{'\n'}на вопрос дня</Text>
             </View>
+            <View style={styles.presenceDivider} />
+            <View style={styles.presenceStat}>
+              <Text style={styles.presenceNum}>{presenceStats.invitedCount}</Text>
+              <Text style={styles.presenceLabel}>{'пригласил'}{'\n'}{'друзей'}</Text>
+            </View>
           </View>
         )}
 
@@ -510,6 +515,7 @@ export default function ProfileScreen({ navigation }) {
         {/* Аккаунт */}
         <Section title="Аккаунт">
           <Row icon="person-outline" label="Ник" value={store.username} valueColor={level.color} onPress={() => navigation.navigate('AccountSettings')} last={false} />
+          <Row icon="lock-closed-outline" label="Сменить пароль" onPress={() => navigation.navigate('AccountSettings')} last={false} />
           <Row icon="mail-outline" label="Email" value={store.email} last={false} />
           <Row icon="stats-chart-outline" label="Моя аналитика" onPress={() => navigation.navigate('Analytics')} last={false} />
           <Row
