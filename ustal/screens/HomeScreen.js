@@ -251,12 +251,56 @@ export default function HomeScreen({ navigation }) {
         if (v === 'true') setProfileUpdated(true);
       });
       try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: recent } = await supabase
-          .from('test_results').select('level, created_at')
-          .eq('user_id', user.id).order('created_at', { ascending: false }).limit(5);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
 
+        const today = getTodayDate();
+        const word = getTodayWord();
+        const thirtyAgoStr = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const cacheKey = `${today}_${user.id}`;
+
+        if (wordTapCacheDate !== today) {
+          Object.keys(wordTapCache).forEach(k => delete wordTapCache[k]);
+          wordTapCacheDate = today;
+        }
+
+        // Фаза 1: все независимые запросы параллельно
+        const [
+          { data: recent },
+          { count: letterCount },
+          { count: notifCount },
+          { data: ans },
+          { data: myMood },
+          wordTapRes,
+          { count: wordCountVal },
+          { data: streakData },
+          { count: onlineC },
+          { data: focusData },
+          { data: metrics },
+          { data: proactive },
+          { data: notice },
+          testIdResult,
+        ] = await Promise.all([
+          supabase.from('test_results').select('level, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+          supabase.from('anonymous_letters').select('*', { count: 'exact', head: true }).eq('recipient_id', user.id).eq('opened', false),
+          supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false),
+          supabase.from('daily_answers').select('answer').eq('user_id', user.id).eq('question_date', today).maybeSingle(),
+          supabase.from('mood_checkins').select('score, note').eq('user_id', user.id).eq('checkin_date', today).maybeSingle(),
+          wordTapCache[cacheKey] !== undefined
+            ? Promise.resolve(null)
+            : supabase.from('daily_word_taps').select('reaction').eq('user_id', user.id).eq('word_date', today).eq('word', word).limit(1),
+          supabase.from('daily_word_taps').select('*', { count: 'exact', head: true }).eq('word_date', today).eq('word', word).eq('reaction', 'yes'),
+          supabase.from('daily_answers').select('question_date').eq('user_id', user.id).gte('question_date', thirtyAgoStr),
+          supabase.from('users').select('*', { count: 'exact', head: true }).gte('last_seen', tenMinAgo).neq('user_id', user.id),
+          supabase.from('users').select('focus_updated_at').eq('user_id', user.id).maybeSingle(),
+          supabase.from('user_metrics').select('dominant_dimension, composite_score').eq('user_id', user.id).order('week_start', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('ai_proactive_messages').select('id, text, created_at').eq('user_id', user.id).is('read_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('moderation_notices').select('id, message_preview, created_at, type').eq('user_id', user.id).is('read_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          testJustDoneRef.current ? Promise.resolve(null) : getNextTestId(user.id),
+        ]);
+
+        // Уровень из последнего теста
         let currentLevel = store.level || 'green';
         if (recent?.length) {
           currentLevel = recent[0].level;
@@ -264,181 +308,84 @@ export default function HomeScreen({ navigation }) {
           store.level = currentLevel;
           setHistory(recent);
           checkNavHint(recent);
-
-          const todayStart = new Date();
-          todayStart.setHours(0, 0, 0, 0);
-          const { count: cc } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('level', currentLevel)
-            .gte('last_seen', todayStart.toISOString())
-            .neq('user_id', user.id);
-          setCommunityCount(cc || 0);
-
-          const reminderKey = `test_reminder_${getTodayDate()}`;
-          const alreadyShown = await AsyncStorage.getItem(reminderKey);
-          if (!alreadyShown) {
-            const days = (Date.now() - new Date(recent[0].created_at).getTime()) / 86400000;
-            if (days > 3) {
-              await AsyncStorage.setItem(reminderKey, '1');
-              showAlert(
-                'Как ты сейчас?',
-                `Последний раз ты проверял состояние ${Math.floor(days)} дн. назад. Пройдём тест?`,
-                [
-                  { text: 'Позже', style: 'cancel' },
-                  { text: 'Пройти тест', onPress: () => navigation.navigate('Test') },
-                ]
-              );
-            }
-          }
         }
 
-
-        const today = getTodayDate();
-        const { count: letterCount } = await supabase
-          .from('anonymous_letters').select('*', { count: 'exact', head: true })
-          .eq('recipient_id', user.id).eq('opened', false);
+        // Простые состояния
         setHasUnreadLetter((letterCount || 0) > 0);
-
-        const { count: notifCount } = await supabase
-          .from('notifications').select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id).eq('read', false);
         setUnreadNotifCount(notifCount || 0);
-
-        const { data: ans } = await supabase
-          .from('daily_answers').select('answer')
-          .eq('user_id', user.id).eq('question_date', today).maybeSingle();
         setDailyAnswered(ans ? ans.answer : false);
         if (ans) fetchOtherAnswers(user.id);
 
-        await findSimilarUser(user.id, currentLevel);
-
-        const { data: myMood } = await supabase
-          .from('mood_checkins').select('score, note')
-          .eq('user_id', user.id).eq('checkin_date', today).maybeSingle();
-        if (myMood) {
-          setMoodScore(myMood.score);
-          setMoodNote(myMood.note ?? '');
-          setMoodSuggested(getMoodSuggestion(myMood.score));
-          const { count: mc } = await supabase
-            .from('mood_checkins').select('*', { count: 'exact', head: true })
-            .eq('checkin_date', today).eq('score', myMood.score);
-          setMoodCount(mc || 0);
-        }
-
-
-        if (wordTapCacheDate !== today) {
-          Object.keys(wordTapCache).forEach(k => delete wordTapCache[k]);
-          wordTapCacheDate = today;
-        }
-
-        const word = getTodayWord();
-        const cacheKey = `${today}_${user.id}`;
-        if (wordTapCache[cacheKey] !== undefined) {
+        if (wordTapRes === null) {
           setWordTapped(wordTapCache[cacheKey]);
         } else {
-          const { data: taps } = await supabase
-            .from('daily_word_taps').select('reaction')
-            .eq('user_id', user.id).eq('word_date', today).eq('word', word).limit(1);
-          const tapVal = taps?.[0]?.reaction || false;
+          const tapVal = wordTapRes?.data?.[0]?.reaction || false;
           wordTapCache[cacheKey] = tapVal;
           setWordTapped(tapVal);
         }
-        const { count } = await supabase
-          .from('daily_word_taps').select('*', { count: 'exact', head: true })
-          .eq('word_date', today).eq('word', word).eq('reaction', 'yes');
-        setWordCount(count || 0);
-
-        // Стрик: последовательные дни с ответом на вопрос дня
-        const thirtyAgo = new Date();
-        thirtyAgo.setDate(thirtyAgo.getDate() - 30);
-        const { data: streakData } = await supabase
-          .from('daily_answers').select('question_date')
-          .eq('user_id', user.id)
-          .gte('question_date', thirtyAgo.toISOString().split('T')[0]);
+        setWordCount(wordCountVal || 0);
         setStreak(calcStreak(streakData));
-
-        // Онлайн-счётчик: кто был активен последние 10 минут
-        const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-        const { count: onlineC } = await supabase
-          .from('users').select('*', { count: 'exact', head: true })
-          .gte('last_seen', tenMinAgo).neq('user_id', user.id);
         setOnlineCount(onlineC || 0);
 
-        // Re-ask про фокус раз в 30 дней
-        const { data: focusData } = await supabase
-          .from('users')
-          .select('focus_updated_at')
-          .eq('user_id', user.id)
-          .maybeSingle();
         if (focusData) {
           const lastSet = focusData.focus_updated_at;
-          const daysSince = lastSet
-            ? Math.floor((Date.now() - new Date(lastSet).getTime()) / 86400000)
-            : 999;
+          const daysSince = lastSet ? Math.floor((Date.now() - new Date(lastSet).getTime()) / 86400000) : 999;
           if (daysSince >= 30) setShowFocusAsk(true);
         }
 
-        // Следующий психологический тест
+        if (metrics) setWeeklyInsight(WEEKLY_PHRASES[metrics.dominant_dimension] || WEEKLY_PHRASES.ok);
+        setProactiveMsg(proactive || null);
+        setModNotice(notice || null);
+
+        // Тест
         if (testJustDoneRef.current) {
           testJustDoneRef.current = false;
           setNextTestId(null);
-          // lastDoneTestId уже установлен в onComplete
         } else {
-          const testId = await getNextTestId(user.id);
-          setNextTestId(testId);
-          if (!testId) {
-            const startOfToday = new Date();
-            startOfToday.setHours(0, 0, 0, 0);
+          setNextTestId(testIdResult);
+          if (!testIdResult) {
+            const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
             const { data: todayResult } = await supabase
-              .from('psych_test_results')
-              .select('test_id')
-              .eq('user_id', user.id)
-              .gte('created_at', startOfToday.toISOString())
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+              .from('psych_test_results').select('test_id').eq('user_id', user.id)
+              .gte('created_at', startOfToday.toISOString()).order('created_at', { ascending: false }).limit(1).maybeSingle();
             setLastDoneTestId(todayResult?.test_id || null);
           } else {
             setLastDoneTestId(null);
           }
         }
 
-        // Еженедельная карточка состояния
-        const { data: metrics } = await supabase
-          .from('user_metrics')
-          .select('dominant_dimension, composite_score')
-          .eq('user_id', user.id)
-          .order('week_start', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (metrics) {
-          const dim = metrics.dominant_dimension;
-          setWeeklyInsight(WEEKLY_PHRASES[dim] || WEEKLY_PHRASES.ok);
-        }
-
-        // Проактивное сообщение от @одного
-        const { data: proactive } = await supabase
-          .from('ai_proactive_messages')
-          .select('id, text, created_at')
-          .eq('user_id', user.id)
-          .is('read_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        setProactiveMsg(proactive || null);
-
-        // Уведомление о модерации
-        const { data: notice } = await supabase
-          .from('moderation_notices')
-          .select('id, message_preview, created_at, type')
-          .eq('user_id', user.id)
-          .is('read_at', null)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        setModNotice(notice || null);
-      }
+        // Фаза 2: уровень-зависимые запросы параллельно
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        await Promise.all([
+          recent?.length
+            ? supabase.from('users').select('*', { count: 'exact', head: true })
+                .eq('level', currentLevel).gte('last_seen', todayStart.toISOString()).neq('user_id', user.id)
+                .then(({ count: cc }) => setCommunityCount(cc || 0))
+            : Promise.resolve(),
+          findSimilarUser(user.id, currentLevel),
+          myMood
+            ? (setMoodScore(myMood.score),
+               setMoodNote(myMood.note ?? ''),
+               setMoodSuggested(getMoodSuggestion(myMood.score)),
+               supabase.from('mood_checkins').select('*', { count: 'exact', head: true })
+                 .eq('checkin_date', today).eq('score', myMood.score)
+                 .then(({ count: mc }) => setMoodCount(mc || 0)))
+            : Promise.resolve(),
+          recent?.length
+            ? AsyncStorage.getItem(`test_reminder_${today}`).then(async alreadyShown => {
+                if (!alreadyShown) {
+                  const days = (Date.now() - new Date(recent[0].created_at).getTime()) / 86400000;
+                  if (days > 3) {
+                    await AsyncStorage.setItem(`test_reminder_${today}`, '1');
+                    showAlert('Как ты сейчас?', `Последний раз ты проверял состояние ${Math.floor(days)} дн. назад. Пройдём тест?`, [
+                      { text: 'Позже', style: 'cancel' },
+                      { text: 'Пройти тест', onPress: () => navigation.navigate('Test') },
+                    ]);
+                  }
+                }
+              })
+            : Promise.resolve(),
+        ]);
       } catch (e) {
         console.error('HomeScreen load error', e);
       }
