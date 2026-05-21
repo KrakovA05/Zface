@@ -15,7 +15,7 @@
 
 - [x] **Firebase FCM для Android** — `google-services.json` есть, `app.json` подключён.
 
-- [ ] **Почта в политике конфиденциальности** — в `docs/index.html` стоит `support@odin.app` как заглушка. Перед релизом: создать реальный ящик (например на домене приложения или отдельный Gmail/Yandex) и обновить адрес в файле.
+- [x] **Почта в политике конфиденциальности** — в `docs/index.html` вписана `support@notalone-support.ru`.
 
 - [ ] **Возрастная категория 17+** — выставить в App Store Connect (Rating → 17+) и Google Play Console (Content Rating → Mature 17+). Контент о депрессии/суициде требует этой отметки.
 
