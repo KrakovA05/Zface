@@ -440,48 +440,40 @@ function makeSvgLine(points, w, h) {
   </svg>`;
 }
 
-function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, allPsychRows }) {
+function buildPdfHtml({ metrics, testHistory, moodHistory, metricsHistory, userActivity, presence, allPsychRows }) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Строим историю по каждому измерению из psych_test_results (приоритет) + user_metrics
-  const dimHistory = {};
+  // Ежедневные точки для графиков из user_metrics (один день = одна точка)
+  const compositePoints = (metricsHistory || [])
+    .map(r => ({ t: new Date(r.week_start).getTime(), v: r.composite_score }))
+    .filter(p => p.v !== null && p.v !== undefined);
 
-  // psych_test_results — прямые измерения по каждому измерению (allPsychRows приходит DESC, реверсим в ASC)
-  for (const row of [...(allPsychRows || [])].reverse()) {
-    const dim = row.dimension;
-    if (!DIMENSION_ORDER_PDF.includes(dim)) continue;
-    const t = new Date(row.created_at).getTime();
-    const v = row.normalized_score;
-    if (!dimHistory[dim]) dimHistory[dim] = [];
-    dimHistory[dim].push({ t, v });
-  }
-
-  // user_metrics — добавляем только если у измерения ещё нет точек (поведенческие без тестов)
-  for (const row of (metricsHistory || [])) {
-    const t = new Date(row.week_start).getTime();
-    for (const dim of DIMENSION_ORDER_PDF) {
-      const v = row[`${dim}_score`];
-      if (v === undefined || v === null) continue;
-      if (dimHistory[dim]?.length) continue; // уже есть данные из psych_test_results
-      if (!dimHistory[dim]) dimHistory[dim] = [];
-      dimHistory[dim].push({ t, v });
-    }
-  }
-
-  // Сортируем по времени
+  const dimPoints = {};
   for (const dim of DIMENSION_ORDER_PDF) {
-    if (dimHistory[dim]) dimHistory[dim].sort((a, b) => a.t - b.t);
+    dimPoints[dim] = (metricsHistory || [])
+      .map(r => ({ t: new Date(r.week_start).getTime(), v: r[`${dim}_score`] }))
+      .filter(p => p.v !== null && p.v !== undefined);
   }
+
+  // Счётчик валидированных психотестов по каждому измерению
+  const psychCountByDim = {};
+  for (const row of allPsychRows || []) {
+    psychCountByDim[row.dimension] = (psychCountByDim[row.dimension] || 0) + 1;
+  }
+
+  const compositeChart = makeSvgLine(compositePoints, 320, 72);
+  const compositeColor = metrics?.composite_score !== undefined ? pdfColor(metrics.composite_score) : '#1a1a1a';
 
   const dimBlocks = DIMENSION_ORDER_PDF.map(dim => {
     const score = metrics?.[`${dim}_score`];
     if (score === undefined || score === null) return '';
     const color = pdfColor(score);
-    const history = dimHistory[dim] || [];
-    const sparkline = history.length >= 2 ? makeSvgLine(history, 220, 44) : '';
+    const sparkline = makeSvgLine(dimPoints[dim], 300, 48);
+    const pCount = psychCountByDim[dim] || 0;
+    const pLabel = pCount === 1 ? 'валидированный тест' : pCount < 5 ? 'валидированных теста' : 'валидированных тестов';
     return `
-      <div style="padding:10px 0;border-bottom:1px solid #F0ECE6">
+      <div style="padding:12px 0;border-bottom:1px solid #F0ECE6">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:14px;color:#1a1a1a;font-weight:500">${DIMENSION_LABELS[dim]}</span>
           <span style="font-size:16px;font-weight:800;color:${color}">${score}</span>
@@ -489,7 +481,8 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
         <div style="background:#EDE8E0;border-radius:5px;height:8px;overflow:hidden;margin-bottom:${sparkline ? '8px' : '0'}">
           <div style="background:${color};width:${score}%;height:100%;border-radius:5px"></div>
         </div>
-        ${sparkline ? `<div style="margin-top:2px">${sparkline}</div>` : ''}
+        ${sparkline ? `<div>${sparkline}</div>` : ''}
+        ${pCount > 0 ? `<div style="font-size:10px;color:#A09080;margin-top:4px">${pCount} ${pLabel}</div>` : ''}
       </div>`;
   }).join('');
 
@@ -509,22 +502,6 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
     </tr>`;
   }).join('');
 
-  const trendRows = [...metricsHistory].map((m, i) => {
-    const c = pdfColor(m.composite_score);
-    const bg = i % 2 === 0 ? '#FAFAFA' : '#fff';
-    return `<tr style="background:${bg}">
-      <td style="padding:7px 8px;font-size:13px;color:#555">${new Date(m.week_start).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</td>
-      <td style="padding:7px 16px;width:180px">
-        <div style="background:#EDE8E0;border-radius:5px;height:8px;overflow:hidden">
-          <div style="background:${c};width:${m.composite_score}%;height:100%;border-radius:5px"></div>
-        </div>
-      </td>
-      <td style="padding:7px 8px;text-align:right;font-weight:800;color:${c};font-size:14px">${m.composite_score}</td>
-    </tr>`;
-  }).join('');
-
-  const compositeColor = metrics?.composite_score !== undefined ? pdfColor(metrics.composite_score) : '#1a1a1a';
-
   return `<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -532,8 +509,8 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, Helvetica Neue, Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 24px; }
-  h1 { font-size: 24px; font-weight: 900; color: #1a1a1a; margin-bottom: 3px; border: none; }
-  .subtitle { font-size: 13px; color: #777; margin-bottom: 20px; border: none; }
+  h1 { font-size: 24px; font-weight: 900; color: #1a1a1a; margin-bottom: 3px; }
+  .subtitle { font-size: 13px; color: #777; margin-bottom: 20px; }
   .card { background: #fff; border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; border: 1px solid #E8E2DA; }
   .card-title { font-size: 11px; font-weight: 800; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
   .stat-row { display: flex; }
@@ -541,11 +518,8 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
   .stat-num { font-size: 30px; font-weight: 900; color: #1a1a1a; line-height: 1; }
   .stat-label { font-size: 11px; color: #555; margin-top: 4px; line-height: 1.4; }
   .vdiv { width: 1px; background: #DDD8D0; flex-shrink: 0; margin: 0 4px; }
-  .composite-num { font-size: 56px; font-weight: 900; text-align: center; line-height: 1; padding: 8px 0 4px; }
-  .composite-sub { text-align: center; font-size: 13px; color: #666; }
   table { width: 100%; border-collapse: separate; border-spacing: 0; }
   .note { font-size: 11px; color: #888; margin-top: 12px; text-align: center; }
-  .dim-block:last-child { border-bottom: none !important; }
   .footer { font-size: 11px; color: #999; text-align: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid #E8E0D8; }
 </style>
 </head>
@@ -568,22 +542,22 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
 
   ${metrics?.composite_score !== undefined ? `
   <div class="card">
-    <div class="card-title">Индекс состояния</div>
-    <div class="composite-num" style="color:${compositeColor}">${metrics.composite_score}</div>
-    <div class="composite-sub">из 100 · выше = хуже</div>
+    <div class="card-title">Общее состояние — динамика по дням</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:${compositeChart ? '12px' : '0'}">
+      <div>
+        <div style="font-size:52px;font-weight:900;color:${compositeColor};line-height:1">${metrics.composite_score}</div>
+        <div style="font-size:11px;color:#888;margin-top:4px">из 100 · выше = хуже</div>
+      </div>
+      ${compositeChart ? `<div style="flex:1">${compositeChart}</div>` : ''}
+    </div>
+    <div style="font-size:10px;color:#aaa">0–33 = зелёный &nbsp;·&nbsp; 34–66 = жёлтый &nbsp;·&nbsp; 67–100 = красный</div>
   </div>` : ''}
 
   ${dimBlocks ? `
   <div class="card">
-    <div class="card-title">Психометрический профиль</div>
+    <div class="card-title">Психометрический профиль — динамика по дням</div>
     ${dimBlocks}
     <div class="note">0–33 = норма &nbsp;·&nbsp; 34–66 = умеренно &nbsp;·&nbsp; 67–100 = выражено</div>
-  </div>` : ''}
-
-  ${trendRows ? `
-  <div class="card">
-    <div class="card-title">Тренд состояния по неделям</div>
-    <table>${trendRows}</table>
   </div>` : ''}
 
   ${moodChips ? `
@@ -632,7 +606,7 @@ export default function AnalyticsScreen({ navigation }) {
   const exportPdf = async () => {
     setExporting(true);
     try {
-      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, allPsychRows });
+      const html = buildPdfHtml({ metrics, testHistory, moodHistory, metricsHistory, userActivity, presence, allPsychRows });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       const filename = `аналитика_${store.username}.pdf`;
       const namedUri = FileSystem.cacheDirectory + filename;
