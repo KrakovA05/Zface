@@ -83,6 +83,7 @@ export default function RoomsScreen({ route, navigation }) {
   const channelRef = useRef(null);
   const participantsChannelRef = useRef(null);
   const myNightMsgIds = useRef(new Set());
+  const enteringRoomRef = useRef(null);
 
   useEffect(() => {
     if (store.userId) {
@@ -151,6 +152,7 @@ export default function RoomsScreen({ route, navigation }) {
   const enterRoom = async (roomId, anonymous = false) => {
     logEvent('room_join', { room: roomId })
     if (roomId !== userLevel && roomId !== 'night' && !isAdmin) return;
+    enteringRoomRef.current = roomId;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -179,6 +181,10 @@ export default function RoomsScreen({ route, navigation }) {
       .eq('level', roomId)
       .order('created_at', { ascending: false })
       .limit(50);
+
+    // Пользователь уже переключился на другую комнату — игнорируем устаревший ответ
+    if (enteringRoomRef.current !== roomId) return;
+
     const msgs = (data || []).reverse();
     setMessages(msgs);
     loadReactions(msgs);
