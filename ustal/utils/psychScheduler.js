@@ -41,12 +41,12 @@ export async function getNextTestId(userId) {
   const passedThisMonth = new Set((results || []).map(r => r.test_id));
   const passedThisWeek = new Set(
     (results || [])
-      .filter(r => new Date(r.created_at) >= startOfWeek)
+      .filter(r => r.created_at && new Date(r.created_at) >= startOfWeek)
       .map(r => r.test_id)
   );
 
   // Уже прошёл тест сегодня — не показываем ничего до завтра
-  const passedToday = (results || []).some(r => new Date(r.created_at) >= today);
+  const passedToday = (results || []).some(r => r.created_at && new Date(r.created_at) >= today);
   if (passedToday) return null;
 
   // Профильные — если ни разу не проходил (приоритет выше всего)
@@ -85,7 +85,7 @@ export async function getNextTestId(userId) {
 
   const lastPassed = {};
   for (const r of allWeekly || []) {
-    if (!lastPassed[r.test_id]) lastPassed[r.test_id] = new Date(r.created_at);
+    if (!lastPassed[r.test_id] && r.created_at) lastPassed[r.test_id] = new Date(r.created_at);
   }
 
   const sorted = [...WEEKLY_TEST_ROTATION]

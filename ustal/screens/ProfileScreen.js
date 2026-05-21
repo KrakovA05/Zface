@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
-import { store } from '../store';
+import { store, clearStore } from '../store';
 import { LEVEL_DATA, MOTIVATORS, ACHIEVEMENTS } from '../constants';
 import { colors } from '../theme';
 import Avatar from '../components/Avatar';
@@ -383,8 +383,7 @@ export default function ProfileScreen({ navigation }) {
             }
             const channels = supabase.getChannels();
             await Promise.all(channels.map(ch => supabase.removeChannel(ch)));
-            store.username = ''; store.email = ''; store.level = 'green';
-            store.userId = ''; store.avatarUrl = ''; store.status = '';
+            clearStore();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           },
         },
@@ -400,8 +399,7 @@ export default function ProfileScreen({ navigation }) {
       showAlert('Ошибка', 'Не удалось выйти. Попробуй ещё раз.');
       return;
     }
-    store.username = ''; store.email = ''; store.level = 'green';
-    store.userId = ''; store.avatarUrl = ''; store.status = '';
+    clearStore();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 

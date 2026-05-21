@@ -11,7 +11,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from './supabase';
-import { store } from './store';
+import { store, clearStore } from './store';
 import { colors } from './theme';
 import * as Notifications from 'expo-notifications';
 import { registerForPushNotifications, scheduleQuestNotifications, scheduleReturnReminder, scheduleWeeklyReport, scheduleRoomDigestPush } from './utils/notifications';
@@ -401,7 +401,7 @@ export default function App() {
             const until = new Date(userData.banned_until)
             if (until > new Date()) {
               await supabase.auth.signOut()
-              store.userId = null
+              clearStore()
               setInitialRoute('Login')
               return
             }
