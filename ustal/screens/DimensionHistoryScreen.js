@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, ScrollView, ActivityIndicator, TouchableOpacity
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Polyline, Line, Text as SvgText } from 'react-native-svg';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
@@ -71,25 +71,15 @@ function LineChart({ data }) {
         <SvgText x={CHART_PADDING.left - 4} y={y66 + 4} fontSize="9" fill="#C8BFB0" textAnchor="end">66</SvgText>
         <SvgText x={CHART_PADDING.left - 4} y={y33 + 4} fontSize="9" fill="#C8BFB0" textAnchor="end">33</SvgText>
 
-        {/* Цветные отрезки между точками */}
-        {points.slice(0, -1).map((p, i) => {
-          const next = points[i + 1];
-          return (
-            <Line key={i}
-              x1={p.x} y1={p.y} x2={next.x} y2={next.y}
-              stroke={scoreColor(p.score)} strokeWidth="2.5" strokeLinecap="round"
-              opacity={0.85}
-            />
-          );
-        })}
-
-        {/* Точки */}
-        {points.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={p.isLive ? 5 : 4}
-            fill={scoreColor(p.score)}
-            stroke={colors.background} strokeWidth="2"
-          />
-        ))}
+        {/* Ломаная линия без точек */}
+        <Polyline
+          points={points.map(p => `${p.x},${p.y}`).join(' ')}
+          fill="none"
+          stroke={colors.accent}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
         {/* Подписи дат — первая, последняя и каждая вторая при >5 точках */}
         {points.map((p, i) => {

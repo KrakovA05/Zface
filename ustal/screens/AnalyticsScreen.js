@@ -664,7 +664,7 @@ export default function AnalyticsScreen({ navigation }) {
         { data: tests },
         { data: userRow },
         { data: psychRows },
-        { data: prevMetricsRow },
+        { data: prevMetricsRows },
         { data: moodRows },
         { count: helpCount },
         { count: ansCount },
@@ -700,8 +700,7 @@ export default function AnalyticsScreen({ navigation }) {
           .select('*')
           .eq('user_id', uid)
           .order('week_start', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+          .limit(2),
         supabase
           .from('mood_checkins')
           .select('score, checkin_date')
@@ -749,9 +748,9 @@ export default function AnalyticsScreen({ navigation }) {
         } else if (noRealBehavioral.has(dim) && hasPsychTest.has(dim)) {
           // Первый психотест по этому измерению — сравниваем с базовым (50)
           prevScores[dim] = 50;
-        } else if (prevMetricsRow?.[key] !== undefined) {
-          // Поведенческое измерение — сравниваем с предыдущим снэпшотом
-          prevScores[dim] = prevMetricsRow[key];
+        } else if (prevMetricsRows?.[1]?.[key] !== undefined) {
+          // Поведенческое измерение — сравниваем со вторым по счёту снапшотом (предыдущий день)
+          prevScores[dim] = prevMetricsRows[1][key];
         }
       }
 
