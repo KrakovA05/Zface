@@ -229,7 +229,7 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
     attachment_score:     dimensionScores.attachment,
     composite_score:      composite,
     dominant_dimension:   dominant,
-    week_start:           sevenDaysAgoStr,
+    week_start:           getTodayStr(),
     level,
   };
 }

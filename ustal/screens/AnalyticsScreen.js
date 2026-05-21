@@ -322,7 +322,7 @@ function TrendSection({ metricsHistory }) {
         <View style={styles.trendEmptyRow}>
           <Ionicons name="time-outline" size={16} color="#C8BFB0" />
           <Text style={styles.trendEmptyText}>
-            Появится после второй недели использования
+            Появится после двух дней использования
           </Text>
         </View>
       </SectionCard>
