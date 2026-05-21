@@ -29,7 +29,7 @@ function scoreColor(score) {
   return '#c0392b';
 }
 
-function formatWeek(dateStr) {
+function formatDay(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
@@ -40,7 +40,19 @@ function LineChart({ data }) {
   if (!data || data.length === 0) {
     return (
       <View style={styles.chartEmpty}>
-        <Text style={styles.chartEmptyText}>Пройди тест ещё раз, чтобы увидеть динамику</Text>
+        <Text style={styles.chartEmptyText}>Данные появятся после нескольких дней использования</Text>
+      </View>
+    );
+  }
+
+  // При одной точке рисуем горизонтальную линию посередине
+  if (data.length === 1) {
+    return (
+      <View style={styles.chartEmpty}>
+        <Text style={[styles.chartEmptyText, { color: scoreColor(data[0].score) }]}>
+          {data[0].score}
+        </Text>
+        <Text style={styles.chartEmptyText}>Открывай аналитику каждый день, чтобы видеть динамику</Text>
       </View>
     );
   }
@@ -50,20 +62,21 @@ function LineChart({ data }) {
   const innerH = CHART_H - CHART_PADDING.top - CHART_PADDING.bottom;
 
   const points = data.map((d, i) => ({
-    x: CHART_PADDING.left + (data.length > 1 ? (i / (data.length - 1)) * chartW : chartW / 2),
+    x: CHART_PADDING.left + (i / (data.length - 1)) * chartW,
     y: CHART_PADDING.top + innerH - (d.score / 100) * innerH,
     score: d.score,
     label: d.label,
-    isLive: d.isLive,
   }));
 
   const y33 = CHART_PADDING.top + innerH - (33 / 100) * innerH;
   const y66 = CHART_PADDING.top + innerH - (66 / 100) * innerH;
 
+  // Подписи дат: первая, последняя, промежуточные каждые 7 дней при > 10 точках
+  const labelStep = data.length > 10 ? 7 : data.length > 5 ? 2 : 1;
+
   return (
     <View style={styles.chartWrap}>
       <Svg width={svgW} height={CHART_H}>
-        {/* Зоны сетки */}
         <Line x1={CHART_PADDING.left} y1={y66} x2={svgW - CHART_PADDING.right} y2={y66}
           stroke="#E8DFD0" strokeWidth="1" strokeDasharray="4,4" />
         <Line x1={CHART_PADDING.left} y1={y33} x2={svgW - CHART_PADDING.right} y2={y33}
@@ -71,7 +84,6 @@ function LineChart({ data }) {
         <SvgText x={CHART_PADDING.left - 4} y={y66 + 4} fontSize="9" fill="#C8BFB0" textAnchor="end">66</SvgText>
         <SvgText x={CHART_PADDING.left - 4} y={y33 + 4} fontSize="9" fill="#C8BFB0" textAnchor="end">33</SvgText>
 
-        {/* Ломаная линия без точек */}
         <Polyline
           points={points.map(p => `${p.x},${p.y}`).join(' ')}
           fill="none"
@@ -81,12 +93,11 @@ function LineChart({ data }) {
           strokeLinejoin="round"
         />
 
-        {/* Подписи дат — первая, последняя и каждая вторая при >5 точках */}
         {points.map((p, i) => {
           const isFirst = i === 0;
           const isLast = i === points.length - 1;
-          if (!isFirst && !isLast && data.length > 5 && i % 2 !== 0) return null;
-          if (!isFirst && !isLast && data.length <= 5) return null;
+          const isStep = i % labelStep === 0;
+          if (!isFirst && !isLast && !isStep) return null;
           return (
             <SvgText key={i} x={p.x} y={CHART_H - 2} fontSize="9" fill="#A09080"
               textAnchor={isFirst ? 'start' : isLast ? 'end' : 'middle'}>
@@ -105,7 +116,8 @@ export default function DimensionHistoryScreen({ route, navigation }) {
 
   const [chartPoints, setChartPoints] = useState([]);
   const [liveScore, setLiveScore] = useState(null);
-  const [testCount, setTestCount] = useState(0);
+  const [daysCount, setDaysCount] = useState(0);
+  const [psychTestCount, setPsychTestCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
@@ -115,13 +127,20 @@ export default function DimensionHistoryScreen({ route, navigation }) {
       const uid = store.userId;
       if (!uid) { setLoading(false); return; }
 
-      const [{ data: psychRows }, liveProfile] = await Promise.all([
+      const [{ data: metricsRows }, { count: psychCount }, liveProfile] = await Promise.all([
+        // Ежедневные снапшоты — основной источник для графика
+        supabase
+          .from('user_metrics')
+          .select(`week_start, ${scoreKey}`)
+          .eq('user_id', uid)
+          .order('week_start', { ascending: true })
+          .limit(90),
+        // Сколько валидированных психотестов по этому измерению
         supabase
           .from('psych_test_results')
-          .select('normalized_score, created_at')
+          .select('*', { count: 'exact', head: true })
           .eq('user_id', uid)
-          .eq('dimension', dimension)
-          .order('created_at', { ascending: true }),
+          .eq('dimension', dimension),
         computeLiveProfile(uid),
       ]);
 
@@ -129,27 +148,28 @@ export default function DimensionHistoryScreen({ route, navigation }) {
 
       const live = liveProfile[scoreKey] ?? null;
       setLiveScore(live);
-      setTestCount(psychRows?.length ?? 0);
+      setPsychTestCount(psychCount ?? 0);
 
-      const points = (psychRows || []).map(r => ({
-        score: r.normalized_score,
-        label: formatWeek(r.created_at),
-        isLive: false,
-      }));
+      const points = (metricsRows || [])
+        .filter(r => r[scoreKey] !== null && r[scoreKey] !== undefined)
+        .map(r => ({
+          score: r[scoreKey],
+          label: formatDay(r.week_start),
+          isLive: false,
+        }));
 
-      // Добавляем текущий балл как точку «сейчас» только если:
-      // 1. Есть живой балл
-      // 2. Последний тест был не сегодня (чтобы не дублировать)
-      // 3. Балл заметно отличается (≥2 пункта) — мелкий шум не интересен
+      setDaysCount(points.length);
+
+      // Добавляем живую точку «сейчас» если сегодня ещё нет снапшота
       if (live !== null) {
-        const lastRow = (psychRows || []).length > 0 ? psychRows[psychRows.length - 1] : null;
-        const lastTestDate = lastRow ? lastRow.created_at?.split('T')[0] : null;
         const today = new Date().toISOString().split('T')[0];
-        const lastTestScore = points.length > 0 ? points[points.length - 1].score : null;
-        const differentDay = lastTestDate !== today;
-        const meaningfulDiff = lastTestScore === null || Math.abs(live - lastTestScore) >= 2;
-        if (differentDay && meaningfulDiff) {
-          points.push({ score: live, label: 'сейчас', isLive: true });
+        const todayExists = (metricsRows || []).some(r => r.week_start === today);
+        if (!todayExists) {
+          const lastScore = points.length > 0 ? points[points.length - 1].score : null;
+          const meaningfulDiff = lastScore === null || Math.abs(live - lastScore) >= 2;
+          if (meaningfulDiff) {
+            points.push({ score: live, label: 'сейчас', isLive: true });
+          }
         }
       }
 
@@ -161,7 +181,9 @@ export default function DimensionHistoryScreen({ route, navigation }) {
   }, [dimension]));
 
   const current = liveScore;
-  const firstScore = chartPoints.length > 1 ? chartPoints[0].score : null;
+  const firstScore = chartPoints.filter(p => !p.isLive).length > 1
+    ? chartPoints.filter(p => !p.isLive)[0].score
+    : null;
   const totalDelta = current !== null && firstScore !== null ? current - firstScore : null;
 
   return (
@@ -198,10 +220,16 @@ export default function DimensionHistoryScreen({ route, navigation }) {
                   <Text style={styles.summaryCaption}>за всё время</Text>
                 </View>
               )}
-              {testCount > 0 && (
+              {daysCount > 0 && (
                 <View style={styles.summaryItem}>
-                  <Text style={styles.summaryValue}>{testCount}</Text>
-                  <Text style={styles.summaryCaption}>{testCount === 1 ? 'тест' : testCount < 5 ? 'теста' : 'тестов'}</Text>
+                  <Text style={styles.summaryValue}>{daysCount}</Text>
+                  <Text style={styles.summaryCaption}>{daysCount === 1 ? 'день' : daysCount < 5 ? 'дня' : 'дней'}</Text>
+                </View>
+              )}
+              {psychTestCount > 0 && (
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryValue}>{psychTestCount}</Text>
+                  <Text style={styles.summaryCaption}>{psychTestCount === 1 ? 'тест' : psychTestCount < 5 ? 'теста' : 'тестов'}</Text>
                 </View>
               )}
             </View>
@@ -225,7 +253,7 @@ export default function DimensionHistoryScreen({ route, navigation }) {
 
           {/* График */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Динамика</Text>
+            <Text style={styles.cardTitle}>Динамика — один день, одна точка</Text>
             <LineChart data={chartPoints} />
             <View style={styles.legendRow}>
               <View style={styles.legendItem}>
@@ -293,7 +321,7 @@ const styles = StyleSheet.create({
   insightText: { fontSize: 13, flex: 1, lineHeight: 18 },
 
   chartWrap: { alignItems: 'center' },
-  chartEmpty: { height: CHART_H, alignItems: 'center', justifyContent: 'center' },
+  chartEmpty: { height: CHART_H, alignItems: 'center', justifyContent: 'center', gap: 8 },
   chartEmptyText: { fontSize: 13, color: '#A09080', textAlign: 'center' },
 
   legendRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', marginTop: 8 },
