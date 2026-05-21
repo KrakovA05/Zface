@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'onboarding@resend.dev',
-        to: ['krakov.arseniy@icloud.com'],
+        to: [Deno.env.get('ALERT_EMAIL') ?? 'support@notalone-support.ru'],
         subject: `[!один] Новая жалоба: ${record.reason}`,
         html: `
           <h2>Новая жалоба в приложении</h2>

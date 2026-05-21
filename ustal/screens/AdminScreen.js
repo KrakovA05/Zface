@@ -16,6 +16,28 @@ const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' }
 
 export default function AdminScreen({ navigation }) {
   const [tab, setTab] = useState(0)
+  const [verified, setVerified] = useState(false)
+
+  useFocusEffect(useCallback(() => {
+    let active = true
+    async function checkAdmin() {
+      const { data } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('user_id', store.userId)
+        .single()
+      if (!active) return
+      if (!data?.is_admin) {
+        navigation.goBack()
+        return
+      }
+      setVerified(true)
+    }
+    checkAdmin()
+    return () => { active = false }
+  }, []))
+
+  if (!verified) return null
 
   return (
     <View style={s.safe}>
