@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
@@ -630,11 +631,14 @@ export default function AnalyticsScreen({ navigation }) {
     try {
       const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const filename = `аналитика_${store.username}.pdf`;
+      const namedUri = FileSystem.cacheDirectory + filename;
+      await FileSystem.copyAsync({ from: uri, to: namedUri });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Психоаналитика' });
+        await Sharing.shareAsync(namedUri, { mimeType: 'application/pdf', dialogTitle: 'Психоаналитика', UTI: 'com.adobe.pdf' });
       } else {
-        Alert.alert('Готово', `Файл сохранён: ${uri}`);
+        Alert.alert('Готово', `Файл сохранён: ${namedUri}`);
       }
     } catch {
       Alert.alert('Ошибка', 'Не удалось создать PDF');
