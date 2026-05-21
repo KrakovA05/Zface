@@ -328,7 +328,7 @@ function TrendSection({ metricsHistory }) {
     );
   }
 
-  const ordered = [...metricsHistory].reverse();
+  const ordered = [...metricsHistory];
   const first = ordered[0].composite_score ?? 0;
   const last = ordered[ordered.length - 1].composite_score ?? 0;
   const delta = last - first;
@@ -425,7 +425,7 @@ function ActivitySection({ userActivity }) {
 const DIMENSION_ORDER_PDF = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment'];
 
 function pdfColor(score) {
-  return score <= 33 ? '#16A34A' : score <= 66 ? '#D97706' : '#DC2626';
+  return score <= 33 ? '#166534' : score <= 66 ? '#B45309' : '#B91C1C';
 }
 
 function makeSvgLine(points, w, h) {
@@ -452,18 +452,20 @@ function makeSvgLine(points, w, h) {
   </svg>`;
 }
 
-function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, psychRows }) {
+function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence }) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Группируем историю психотестов по измерениям, сортируем по дате (старые→новые)
+  // Строим историю по каждому измерению из user_metrics (понедельные снапшоты, уже ASC)
   const dimHistory = {};
-  for (const r of (psychRows || [])) {
-    if (!dimHistory[r.dimension]) dimHistory[r.dimension] = [];
-    dimHistory[r.dimension].push({ t: new Date(r.created_at).getTime(), v: r.normalized_score });
-  }
-  for (const dim of Object.keys(dimHistory)) {
-    dimHistory[dim].sort((a, b) => a.t - b.t);
+  for (const row of (metricsHistory || [])) {
+    const t = new Date(row.week_start).getTime();
+    for (const dim of DIMENSION_ORDER_PDF) {
+      const v = row[`${dim}_score`];
+      if (v === undefined || v === null) continue;
+      if (!dimHistory[dim]) dimHistory[dim] = [];
+      dimHistory[dim].push({ t, v });
+    }
   }
 
   const dimBlocks = DIMENSION_ORDER_PDF.map(dim => {
@@ -506,7 +508,7 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
     </tr>`;
   }).join('');
 
-  const trendRows = [...metricsHistory].reverse().map((m, i) => {
+  const trendRows = [...metricsHistory].map((m, i) => {
     const c = pdfColor(m.composite_score);
     const bg = i % 2 === 0 ? '#FAFAFA' : '#fff';
     return `<tr style="background:${bg}">
@@ -532,7 +534,7 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
   h1 { font-size: 24px; font-weight: 900; color: #1a1a1a; margin-bottom: 3px; }
   .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
   .card { background: #fff; border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
-  .card-title { font-size: 10px; font-weight: 800; color: #999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .card-title { font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
   .stat-row { display: flex; }
   .stat-cell { flex: 1; text-align: center; }
   .stat-num { font-size: 30px; font-weight: 900; color: #1a1a1a; line-height: 1; }
@@ -626,7 +628,7 @@ export default function AnalyticsScreen({ navigation }) {
   const exportPdf = async () => {
     setExporting(true);
     try {
-      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, psychRows: allPsychRows });
+      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -665,10 +667,10 @@ export default function AnalyticsScreen({ navigation }) {
         computeLiveProfile(uid, { updateLevel: true }),
         supabase
           .from('user_metrics')
-          .select('composite_score, week_start')
+          .select('composite_score, anxiety_score, stress_score, apathy_score, loneliness_score, burnout_score, self_esteem_score, social_anxiety_score, attachment_score, week_start')
           .eq('user_id', uid)
-          .order('week_start', { ascending: false })
-          .limit(4),
+          .order('week_start', { ascending: true })
+          .limit(16),
         supabase
           .from('test_results')
           .select('level, score, created_at')
