@@ -492,9 +492,20 @@ function StatsTab() {
   if (loading) return <View style={s.center}><ActivityIndicator color={colors.accent} /></View>
   if (!stats) return null
 
-  const StatRow = ({ label, value, color }) => (
+  const StatRow = ({ label, value, color, hint }) => (
     <View style={s.statRow}>
-      <Text style={s.statLabel}>{label}</Text>
+      <View style={s.statLabelRow}>
+        <Text style={s.statLabel}>{label}</Text>
+        {hint && (
+          <TouchableOpacity
+            onPress={() => showAlert(label, hint)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={s.hintBtn}
+          >
+            <Text style={s.hintText}>?</Text>
+          </TouchableOpacity>
+        )}
+      </View>
       <Text style={[s.statValue, color && { color }]}>{value}</Text>
     </View>
   )
@@ -526,17 +537,17 @@ function StatsTab() {
     <ScrollView contentContainerStyle={{ padding: 16 }}>
       <Text style={s.statSection}>Пользователи</Text>
       <View style={s.statCard}>
-        <StatRow label="Всего" value={stats.totalUsers} />
-        <StatRow label="DAU (сегодня)" value={stats.dau} />
-        <StatRow label="WAU (7 дней)" value={stats.wau} />
-        <StatRow label="MAU (30 дней)" value={stats.mau} />
-        <StatRow label="Новых за 7 дней" value={stats.new7} />
-        <StatRow label="Новых за 30 дней" value={stats.new30} />
-        <StatRow label="С другом (>=1)" value={`${stats.friendsPct}%`} />
-        <StatRow label="Средний стрик" value={stats.avgStreak} />
-        <StatRow label="Зелёный" value={stats.green} color="#5DAA72" />
-        <StatRow label="Жёлтый" value={stats.yellow} color="#AA7C00" />
-        <StatRow label="Красный" value={stats.red} color="#c0392b" />
+        <StatRow label="Всего" value={stats.totalUsers} hint="Общее количество зарегистрированных пользователей." />
+        <StatRow label="DAU (сегодня)" value={stats.dau} hint="Daily Active Users — пользователи, которые заходили сегодня (last_seen = сегодня)." />
+        <StatRow label="WAU (7 дней)" value={stats.wau} hint="Weekly Active Users — пользователи, которые заходили хотя бы раз за последние 7 дней." />
+        <StatRow label="MAU (30 дней)" value={stats.mau} hint="Monthly Active Users — пользователи, которые заходили хотя бы раз за последние 30 дней." />
+        <StatRow label="Новых за 7 дней" value={stats.new7} hint="Зарегистрировались за последние 7 дней." />
+        <StatRow label="Новых за 30 дней" value={stats.new30} hint="Зарегистрировались за последние 30 дней." />
+        <StatRow label="С другом (>=1)" value={`${stats.friendsPct}%`} hint="Доля пользователей, у которых есть хотя бы один принятый друг." />
+        <StatRow label="Средний стрик" value={stats.avgStreak} hint="Среднее количество дней подряд, в которые пользователи заходили в приложение." />
+        <StatRow label="Зелёный" value={stats.green} color="#5DAA72" hint="Пользователи с уровнем «зелёный» — чувствуют себя относительно нормально." />
+        <StatRow label="Жёлтый" value={stats.yellow} color="#AA7C00" hint="Пользователи с уровнем «жёлтый» — сейчас непросто." />
+        <StatRow label="Красный" value={stats.red} color="#c0392b" hint="Пользователи с уровнем «красный» — сейчас совсем тяжело." />
       </View>
 
       <Text style={s.statSection}>Активность фич — 7 дней</Text>
@@ -589,7 +600,7 @@ function StatsTab() {
 
       <Text style={s.statSection}>Модерация</Text>
       <View style={s.statCard}>
-        <StatRow label="Всего жалоб" value={stats.totalReports} />
+        <StatRow label="Всего жалоб" value={stats.totalReports} hint="Общее количество жалоб на пользователей за всё время." />
         <StatRow label="Необработанных" value={stats.pendingReports}
           color={stats.pendingReports > 0 ? '#c0392b' : colors.white} />
       </View>
@@ -643,9 +654,12 @@ const s = StyleSheet.create({
   usersCount: { fontSize: 12, color: colors.muted, marginBottom: 8 },
   statSection: { fontSize: 12, fontWeight: '700', color: colors.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 12 },
   statCard: { backgroundColor: 'white', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#E8DFD0' },
-  statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8' },
+  statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8' },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statLabel: { fontSize: 14, color: colors.white },
   statValue: { fontSize: 14, fontWeight: '700', color: colors.white },
+  hintBtn: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#E8DFD0', alignItems: 'center', justifyContent: 'center' },
+  hintText: { fontSize: 10, fontWeight: '700', color: colors.muted, lineHeight: 14 },
   featureRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0E8D8', gap: 8,
