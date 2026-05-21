@@ -31,8 +31,18 @@ export function scoreToLevel(score) {
   return 'red';
 }
 
+function getCurrentWeekStart() {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? 6 : day - 1; // days since Monday
+  d.setDate(d.getDate() - diff);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split('T')[0];
+}
+
 // updateLevel: true — после вычисления записать users.level + store.level
-export async function computeLiveProfile(uid, { updateLevel = false } = {}) {
+// saveMetrics: true — upsert в user_metrics (текущая неделя)
+export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics = false } = {}) {
   const now = Date.now();
   const sevenDaysAgo = new Date(now - 7 * 86400000).toISOString();
   const sevenDaysAgoStr = sevenDaysAgo.split('T')[0];
@@ -189,6 +199,26 @@ export async function computeLiveProfile(uid, { updateLevel = false } = {}) {
   if (updateLevel) {
     await supabase.from('users').update({ level }).eq('user_id', uid);
     store.level = level;
+  }
+
+  // ── Сохранение снапшота в user_metrics ────────────────────────────────────────
+  if (saveMetrics || updateLevel) {
+    const weekStart = getCurrentWeekStart();
+    await supabase.from('user_metrics').upsert({
+      user_id:              uid,
+      week_start:           weekStart,
+      anxiety_score:        dimensionScores.anxiety,
+      stress_score:         dimensionScores.stress,
+      apathy_score:         dimensionScores.apathy,
+      loneliness_score:     dimensionScores.loneliness,
+      burnout_score:        dimensionScores.burnout,
+      self_esteem_score:    dimensionScores.self_esteem,
+      social_anxiety_score: dimensionScores.social_anxiety,
+      attachment_score:     dimensionScores.attachment,
+      composite_score:      composite,
+      dominant_dimension:   dominant,
+      level,
+    }, { onConflict: 'user_id,week_start' });
   }
 
   return {
