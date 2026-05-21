@@ -440,38 +440,51 @@ function makeSvgLine(points, w, h) {
   </svg>`;
 }
 
-function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence }) {
+function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, allPsychRows }) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Строим историю по каждому измерению из user_metrics (понедельные снапшоты, уже ASC)
+  // Строим историю по каждому измерению из psych_test_results (приоритет) + user_metrics
   const dimHistory = {};
+
+  // psych_test_results — прямые измерения по каждому измерению (allPsychRows приходит DESC, реверсим в ASC)
+  for (const row of [...(allPsychRows || [])].reverse()) {
+    const dim = row.dimension;
+    if (!DIMENSION_ORDER_PDF.includes(dim)) continue;
+    const t = new Date(row.created_at).getTime();
+    const v = row.normalized_score;
+    if (!dimHistory[dim]) dimHistory[dim] = [];
+    dimHistory[dim].push({ t, v });
+  }
+
+  // user_metrics — добавляем только если у измерения ещё нет точек (поведенческие без тестов)
   for (const row of (metricsHistory || [])) {
     const t = new Date(row.week_start).getTime();
     for (const dim of DIMENSION_ORDER_PDF) {
       const v = row[`${dim}_score`];
       if (v === undefined || v === null) continue;
+      if (dimHistory[dim]?.length) continue; // уже есть данные из psych_test_results
       if (!dimHistory[dim]) dimHistory[dim] = [];
       dimHistory[dim].push({ t, v });
     }
   }
 
+  // Сортируем по времени
+  for (const dim of DIMENSION_ORDER_PDF) {
+    if (dimHistory[dim]) dimHistory[dim].sort((a, b) => a.t - b.t);
+  }
+
   const dimBlocks = DIMENSION_ORDER_PDF.map(dim => {
     const score = metrics?.[`${dim}_score`];
     if (score === undefined || score === null) return '';
-    const prev = prevDimScores?.[dim];
-    const delta = prev !== undefined ? score - prev : null;
     const color = pdfColor(score);
-    const deltaHtml = delta !== null && delta !== 0
-      ? `<span style="color:${delta > 0 ? '#DC2626' : '#16A34A'};font-size:12px;margin-left:6px;font-weight:700">${delta > 0 ? '▲' : '▼'}${Math.abs(delta)}</span>`
-      : '';
     const history = dimHistory[dim] || [];
     const sparkline = history.length >= 2 ? makeSvgLine(history, 220, 44) : '';
     return `
       <div style="padding:10px 0;border-bottom:1px solid #F0ECE6">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:14px;color:#1a1a1a;font-weight:500">${DIMENSION_LABELS[dim]}</span>
-          <span style="font-size:16px;font-weight:800;color:${color}">${score}${deltaHtml}</span>
+          <span style="font-size:16px;font-weight:800;color:${color}">${score}</span>
         </div>
         <div style="background:#EDE8E0;border-radius:5px;height:8px;overflow:hidden;margin-bottom:${sparkline ? '8px' : '0'}">
           <div style="background:${color};width:${score}%;height:100%;border-radius:5px"></div>
@@ -487,7 +500,7 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
 
   const testRows = testHistory.slice(0, 10).map((t, i) => {
     const lvl = t.level === 'green' ? 'Зелёный' : t.level === 'yellow' ? 'Жёлтый' : 'Красный';
-    const c = t.level === 'green' ? '#16A34A' : t.level === 'yellow' ? '#D97706' : '#DC2626';
+    const c = t.level === 'green' ? '#166534' : t.level === 'yellow' ? '#B45309' : '#B91C1C';
     const bg = i % 2 === 0 ? '#FAFAFA' : '#fff';
     return `<tr style="background:${bg}">
       <td style="padding:7px 8px;font-size:13px;color:#555">${new Date(t.created_at).toLocaleDateString('ru-RU')}</td>
@@ -518,9 +531,9 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
 <meta charset="utf-8">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, Helvetica Neue, Arial, sans-serif; background: #F0EBE3; color: #1a1a1a; padding: 28px; }
-  h1 { font-size: 24px; font-weight: 900; color: #1a1a1a; margin-bottom: 3px; }
-  .subtitle { font-size: 13px; color: #777; margin-bottom: 24px; }
+  body { font-family: -apple-system, Helvetica Neue, Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 24px; }
+  h1 { font-size: 24px; font-weight: 900; color: #1a1a1a; margin-bottom: 3px; border: none; }
+  .subtitle { font-size: 13px; color: #777; margin-bottom: 20px; border: none; }
   .card { background: #fff; border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; border: 1px solid #E8E2DA; }
   .card-title { font-size: 11px; font-weight: 800; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
   .stat-row { display: flex; }
@@ -594,7 +607,10 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
     </table>
   </div>
 
-  <div class="footer">Данные из приложения «не один» · Только для личного использования</div>
+  <div class="footer">
+    Данные из приложения «не один» · Только для личного использования<br>
+    <span style="font-size:10px;color:#CCC">Этот отчёт не является психологическим заключением, медицинским диагнозом или клинической оценкой. Данные носят информационный характер и не могут заменить консультацию специалиста.</span>
+  </div>
 </body>
 </html>`;
 }
@@ -616,7 +632,7 @@ export default function AnalyticsScreen({ navigation }) {
   const exportPdf = async () => {
     setExporting(true);
     try {
-      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence });
+      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, allPsychRows });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       const filename = `аналитика_${store.username}.pdf`;
       const namedUri = FileSystem.cacheDirectory + filename;
