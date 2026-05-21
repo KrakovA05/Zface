@@ -81,6 +81,32 @@ function SectionCard({ title, children }) {
   );
 }
 
+// Секция 0: Присутствие
+function PresenceSection({ presence }) {
+  const { daysHere, helpedCount, answersGiven, invitedCount } = presence;
+  const items = [
+    { num: daysHere, label: `${daysHere === 1 ? 'день' : daysHere < 5 ? 'дня' : 'дней'}\nздесь` },
+    { num: helpedCount, label: 'людей\nподдержал' },
+    { num: answersGiven, label: `${answersGiven === 1 ? 'ответ' : answersGiven < 5 ? 'ответа' : 'ответов'}\nна вопрос дня` },
+    { num: invitedCount, label: 'пригласил\nдрузей' },
+  ];
+  return (
+    <SectionCard>
+      <View style={styles.presenceRow}>
+        {items.map((item, i) => (
+          <View key={i} style={styles.presenceItem}>
+            {i > 0 && <View style={styles.presenceDivider} />}
+            <View style={styles.presenceStat}>
+              <Text style={styles.presenceNum}>{item.num}</Text>
+              <Text style={styles.presenceLabel}>{item.label}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </SectionCard>
+  );
+}
+
 // Секция 1: Индекс состояния
 function CompositeSection({ metrics }) {
   if (!metrics) {
@@ -401,6 +427,7 @@ export default function AnalyticsScreen({ navigation }) {
   const [testHistory, setTestHistory] = useState([]);
   const [moodHistory, setMoodHistory] = useState([]);
   const [userActivity, setUserActivity] = useState({ streak: 0, testCount: 0, lastTest: null });
+  const [presence, setPresence] = useState({ daysHere: 0, helpedCount: 0, answersGiven: 0, invitedCount: 0 });
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
@@ -419,6 +446,10 @@ export default function AnalyticsScreen({ navigation }) {
         { data: psychRows },
         { data: prevMetricsRow },
         { data: moodRows },
+        { count: helpCount },
+        { count: ansCount },
+        { data: firstTest },
+        { count: invitedCount },
       ] = await Promise.all([
         computeLiveProfile(uid, { updateLevel: true }),
         supabase
@@ -460,6 +491,11 @@ export default function AnalyticsScreen({ navigation }) {
             return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
           })())
           .order('checkin_date', { ascending: true }),
+        supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', uid),
+        supabase.from('daily_answers').select('*', { count: 'exact', head: true }).eq('user_id', uid),
+        supabase.from('test_results').select('created_at').eq('user_id', uid)
+          .order('created_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('referred_by', uid),
       ]);
 
       // Измерения без реального поведенческого сигнала — только психотест
@@ -510,6 +546,10 @@ export default function AnalyticsScreen({ navigation }) {
         testCount: tests?.length || 0,
         lastTest: tests?.[0]?.created_at || null,
       });
+      const daysHere = firstTest
+        ? Math.max(1, Math.floor((Date.now() - new Date(firstTest.created_at)) / 86400000) + 1)
+        : 1;
+      setPresence({ daysHere, helpedCount: helpCount || 0, answersGiven: ansCount || 0, invitedCount: invitedCount || 0 });
       setLoading(false);
     }
 
@@ -538,6 +578,7 @@ export default function AnalyticsScreen({ navigation }) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <PresenceSection presence={presence} />
           <CompositeSection metrics={metrics} />
           <LevelHistorySection testHistory={testHistory} />
           <MoodSection moodHistory={moodHistory} />
@@ -850,4 +891,10 @@ const styles = StyleSheet.create({
   moodBar:  { width: 8, borderRadius: 4 },
   moodScore: { fontSize: 11, fontWeight: '700' },
   moodDay:  { fontSize: 11, color: '#A09080' },
+  presenceRow: { flexDirection: 'row', alignItems: 'center' },
+  presenceItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  presenceStat: { flex: 1, alignItems: 'center', gap: 4 },
+  presenceNum: { fontSize: 26, fontWeight: '700', color: colors.white },
+  presenceLabel: { fontSize: 11, color: colors.muted, textAlign: 'center', lineHeight: 15 },
+  presenceDivider: { width: 1, height: 36, backgroundColor: '#E8DFD0' },
 });

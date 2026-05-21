@@ -102,7 +102,6 @@ export default function ProfileScreen({ navigation }) {
   );
   const [earnedAchievementIds, setEarnedAchievementIds] = useState(new Set());
   const [showSimilar, setShowSimilar] = useState(true);
-  const [presenceStats, setPresenceStats] = useState(null);
   const [moodHistory, setMoodHistory] = useState([]);
   const [fishCollection, setFishCollection] = useState([]);
 
@@ -127,23 +126,6 @@ export default function ProfileScreen({ navigation }) {
         } catch {
           // тихий fallback
         }
-
-        const [
-          { count: helpCount },
-          { count: ansCount },
-          { data: firstTest },
-          { count: invitedCount },
-        ] = await Promise.all([
-          supabase.from('user_helps').select('*', { count: 'exact', head: true }).eq('helper_id', store.userId),
-          supabase.from('daily_answers').select('*', { count: 'exact', head: true }).eq('user_id', store.userId),
-          supabase.from('test_results').select('created_at').eq('user_id', store.userId)
-            .order('created_at', { ascending: true }).limit(1).maybeSingle(),
-          supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('referred_by', store.userId),
-        ]);
-        const daysHere = firstTest
-          ? Math.max(1, Math.floor((Date.now() - new Date(firstTest.created_at)) / 86400000) + 1)
-          : 1;
-        setPresenceStats({ daysHere, helpedCount: helpCount || 0, answersGiven: ansCount || 0, invitedCount: invitedCount || 0 });
 
         // 7-дневный тренд настроения
         const sevenAgo = new Date();
@@ -486,30 +468,6 @@ export default function ProfileScreen({ navigation }) {
           )}
         </View>
 
-        {/* Присутствие */}
-        {presenceStats && (
-          <View style={styles.presenceCard}>
-            <View style={styles.presenceStat}>
-              <Text style={styles.presenceNum}>{presenceStats.daysHere}</Text>
-              <Text style={styles.presenceLabel}>{presenceStats.daysHere === 1 ? 'день' : presenceStats.daysHere < 5 ? 'дня' : 'дней'}{'\n'}здесь</Text>
-            </View>
-            <View style={styles.presenceDivider} />
-            <View style={styles.presenceStat}>
-              <Text style={styles.presenceNum}>{presenceStats.helpedCount}</Text>
-              <Text style={styles.presenceLabel}>людей{'\n'}поддержал</Text>
-            </View>
-            <View style={styles.presenceDivider} />
-            <View style={styles.presenceStat}>
-              <Text style={styles.presenceNum}>{presenceStats.answersGiven}</Text>
-              <Text style={styles.presenceLabel}>{presenceStats.answersGiven === 1 ? 'ответ' : presenceStats.answersGiven < 5 ? 'ответа' : 'ответов'}{'\n'}на вопрос дня</Text>
-            </View>
-            <View style={styles.presenceDivider} />
-            <View style={styles.presenceStat}>
-              <Text style={styles.presenceNum}>{presenceStats.invitedCount}</Text>
-              <Text style={styles.presenceLabel}>{'пригласил'}{'\n'}{'друзей'}</Text>
-            </View>
-          </View>
-        )}
 
 
         {/* Аккаунт */}
@@ -791,15 +749,5 @@ const styles = StyleSheet.create({
   deleteBtn: { alignItems: 'center', paddingVertical: 16 },
   deleteBtnText: { color: colors.muted, fontSize: 13 },
 
-  // Presence
-  presenceCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.card, borderRadius: 16,
-    marginHorizontal: 16, marginBottom: 8, padding: 16,
-  },
-  presenceStat: { flex: 1, alignItems: 'center', gap: 4 },
-  presenceNum: { fontSize: 26, fontWeight: '700', color: colors.white },
-  presenceLabel: { fontSize: 11, color: colors.muted, textAlign: 'center', lineHeight: 15 },
-  presenceDivider: { width: 1, height: 36, backgroundColor: colors.border },
 
 });
