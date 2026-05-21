@@ -424,139 +424,187 @@ function ActivitySection({ userActivity }) {
 
 const DIMENSION_ORDER_PDF = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment'];
 
-function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence }) {
+function pdfColor(score) {
+  return score <= 33 ? '#16A34A' : score <= 66 ? '#D97706' : '#DC2626';
+}
+
+function makeSvgLine(points, w, h) {
+  if (!points || points.length < 2) return '';
+  const minT = points[0].t, maxT = points[points.length - 1].t;
+  const rangeT = maxT - minT || 1;
+  const pts = points.map(p => {
+    const x = ((p.t - minT) / rangeT) * (w - 8) + 4;
+    const y = h - 4 - ((p.v / 100) * (h - 8));
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const circles = points.map(p => {
+    const x = ((p.t - minT) / rangeT) * (w - 8) + 4;
+    const y = h - 4 - ((p.v / 100) * (h - 8));
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${pdfColor(p.v)}"/>`;
+  }).join('');
+  const lastP = points[points.length - 1];
+  const lx = ((lastP.t - minT) / rangeT) * (w - 8) + 4;
+  const ly = h - 4 - ((lastP.v / 100) * (h - 8));
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="display:block">
+    <polyline points="${pts}" fill="none" stroke="#BC8A72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${circles}
+    <text x="${lx > w - 28 ? lx - 28 : lx + 6}" y="${ly < 12 ? ly + 14 : ly - 4}" font-size="10" fill="${pdfColor(lastP.v)}" font-weight="700">${lastP.v}</text>
+  </svg>`;
+}
+
+function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, psychRows }) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  const dimRows = DIMENSION_ORDER_PDF.map(dim => {
+  // Группируем историю психотестов по измерениям, сортируем по дате (старые→новые)
+  const dimHistory = {};
+  for (const r of (psychRows || [])) {
+    if (!dimHistory[r.dimension]) dimHistory[r.dimension] = [];
+    dimHistory[r.dimension].push({ t: new Date(r.created_at).getTime(), v: r.normalized_score });
+  }
+  for (const dim of Object.keys(dimHistory)) {
+    dimHistory[dim].sort((a, b) => a.t - b.t);
+  }
+
+  const dimBlocks = DIMENSION_ORDER_PDF.map(dim => {
     const score = metrics?.[`${dim}_score`];
     if (score === undefined || score === null) return '';
     const prev = prevDimScores?.[dim];
     const delta = prev !== undefined ? score - prev : null;
-    const color = score <= 33 ? '#5DAA72' : score <= 66 ? '#AA7C00' : '#c0392b';
+    const color = pdfColor(score);
     const deltaHtml = delta !== null && delta !== 0
-      ? `<span style="color:${delta > 0 ? '#c0392b' : '#5DAA72'};font-size:12px;margin-left:6px">${delta > 0 ? '▲' : '▼'}${Math.abs(delta)}</span>`
+      ? `<span style="color:${delta > 0 ? '#DC2626' : '#16A34A'};font-size:12px;margin-left:6px;font-weight:700">${delta > 0 ? '▲' : '▼'}${Math.abs(delta)}</span>`
       : '';
+    const history = dimHistory[dim] || [];
+    const sparkline = history.length >= 2 ? makeSvgLine(history, 220, 44) : '';
     return `
-      <tr>
-        <td style="padding:8px 0;font-size:14px;color:#2C2420">${DIMENSION_LABELS[dim]}</td>
-        <td style="padding:8px 8px;width:200px">
-          <div style="background:#F0E8D8;border-radius:4px;height:10px;overflow:hidden">
-            <div style="background:${color};width:${score}%;height:100%;border-radius:4px"></div>
-          </div>
-        </td>
-        <td style="padding:8px 0;text-align:right;font-weight:700;color:${color};font-size:14px">${score}${deltaHtml}</td>
-      </tr>`;
+      <div style="padding:10px 0;border-bottom:1px solid #F0ECE6">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:14px;color:#1a1a1a;font-weight:500">${DIMENSION_LABELS[dim]}</span>
+          <span style="font-size:16px;font-weight:800;color:${color}">${score}${deltaHtml}</span>
+        </div>
+        <div style="background:#EDE8E0;border-radius:5px;height:8px;overflow:hidden;margin-bottom:${sparkline ? '8px' : '0'}">
+          <div style="background:${color};width:${score}%;height:100%;border-radius:5px"></div>
+        </div>
+        ${sparkline ? `<div style="margin-top:2px">${sparkline}</div>` : ''}
+      </div>`;
   }).join('');
 
-  const moodRows = moodHistory.map(m => {
-    const c = m.score >= 8 ? '#5DAA72' : m.score >= 5 ? '#AA7C00' : '#c0392b';
-    return `<span style="display:inline-block;margin:2px 4px;background:${c};color:#fff;border-radius:8px;padding:2px 10px;font-size:13px">${m.checkin_date?.slice(5)} — ${m.score}/10</span>`;
+  const moodChips = moodHistory.map(m => {
+    const c = m.score >= 8 ? '#16A34A' : m.score >= 5 ? '#D97706' : '#DC2626';
+    return `<span style="display:inline-block;margin:3px 4px 3px 0;background:${c};color:#fff;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600">${m.checkin_date?.slice(5)} · ${m.score}/10</span>`;
   }).join('');
 
-  const testRows = testHistory.slice(0, 10).map(t => {
+  const testRows = testHistory.slice(0, 10).map((t, i) => {
     const lvl = t.level === 'green' ? 'Зелёный' : t.level === 'yellow' ? 'Жёлтый' : 'Красный';
-    const c = t.level === 'green' ? '#5DAA72' : t.level === 'yellow' ? '#AA7C00' : '#c0392b';
-    return `<tr>
-      <td style="padding:6px 0;font-size:13px;color:#7A6A5A">${new Date(t.created_at).toLocaleDateString('ru-RU')}</td>
-      <td style="padding:6px 0;font-weight:700;color:${c}">${lvl}</td>
-      <td style="padding:6px 0;text-align:right;color:#2C2420;font-size:13px">${t.score ?? '—'}</td>
+    const c = t.level === 'green' ? '#16A34A' : t.level === 'yellow' ? '#D97706' : '#DC2626';
+    const bg = i % 2 === 0 ? '#FAFAFA' : '#fff';
+    return `<tr style="background:${bg}">
+      <td style="padding:7px 8px;font-size:13px;color:#555">${new Date(t.created_at).toLocaleDateString('ru-RU')}</td>
+      <td style="padding:7px 8px;font-weight:700;color:${c}">${lvl}</td>
+      <td style="padding:7px 8px;text-align:right;color:#1a1a1a;font-size:13px;font-weight:600">${t.score ?? '—'}</td>
     </tr>`;
   }).join('');
 
-  const trendRows = [...metricsHistory].reverse().map(m => {
-    const c = m.composite_score <= 33 ? '#5DAA72' : m.composite_score <= 66 ? '#AA7C00' : '#c0392b';
-    return `<tr>
-      <td style="padding:6px 0;font-size:13px;color:#7A6A5A">${new Date(m.week_start).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</td>
-      <td style="padding:6px 8px;width:160px">
-        <div style="background:#F0E8D8;border-radius:4px;height:8px;overflow:hidden">
-          <div style="background:${c};width:${m.composite_score}%;height:100%;border-radius:4px"></div>
+  const trendRows = [...metricsHistory].reverse().map((m, i) => {
+    const c = pdfColor(m.composite_score);
+    const bg = i % 2 === 0 ? '#FAFAFA' : '#fff';
+    return `<tr style="background:${bg}">
+      <td style="padding:7px 8px;font-size:13px;color:#555">${new Date(m.week_start).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</td>
+      <td style="padding:7px 16px;width:180px">
+        <div style="background:#EDE8E0;border-radius:5px;height:8px;overflow:hidden">
+          <div style="background:${c};width:${m.composite_score}%;height:100%;border-radius:5px"></div>
         </div>
       </td>
-      <td style="padding:6px 0;text-align:right;font-weight:700;color:${c};font-size:13px">${m.composite_score}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:800;color:${c};font-size:14px">${m.composite_score}</td>
     </tr>`;
   }).join('');
+
+  const compositeColor = metrics?.composite_score !== undefined ? pdfColor(metrics.composite_score) : '#1a1a1a';
 
   return `<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
 <style>
-  body { font-family: -apple-system, Arial, sans-serif; background: #FAF7F2; color: #2C2420; margin: 0; padding: 32px; }
-  h1 { font-size: 22px; font-weight: 800; color: #2C2420; margin: 0 0 4px; }
-  .subtitle { font-size: 13px; color: #A09080; margin-bottom: 28px; }
-  .section { background: #fff; border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; border: 1px solid #E8DFD0; }
-  .section-title { font-size: 11px; font-weight: 700; color: #A09080; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
-  .stat-grid { display: flex; gap: 0; }
-  .stat-item { flex: 1; text-align: center; }
-  .stat-num { font-size: 28px; font-weight: 800; color: #2C2420; }
-  .stat-label { font-size: 11px; color: #A09080; margin-top: 2px; line-height: 1.4; }
-  .divider { width: 1px; background: #E8DFD0; margin: 0 4px; }
-  table { width: 100%; border-collapse: collapse; }
-  .note { font-size: 12px; color: #A09080; margin-top: 16px; text-align: center; }
-  .composite { font-size: 48px; font-weight: 900; text-align: center; margin: 4px 0; }
-  .composite-label { text-align: center; font-size: 13px; color: #A09080; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Helvetica Neue, Arial, sans-serif; background: #F5F0EB; color: #1a1a1a; padding: 28px; }
+  h1 { font-size: 24px; font-weight: 900; color: #1a1a1a; margin-bottom: 3px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+  .card-title { font-size: 10px; font-weight: 800; color: #999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .stat-row { display: flex; }
+  .stat-cell { flex: 1; text-align: center; }
+  .stat-num { font-size: 30px; font-weight: 900; color: #1a1a1a; line-height: 1; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 4px; line-height: 1.4; }
+  .vdiv { width: 1px; background: #ECEAE6; flex-shrink: 0; margin: 0 4px; }
+  .composite-num { font-size: 56px; font-weight: 900; text-align: center; line-height: 1; padding: 8px 0 4px; }
+  .composite-sub { text-align: center; font-size: 13px; color: #888; }
+  table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
+  .note { font-size: 11px; color: #AAA; margin-top: 12px; text-align: center; }
+  .dim-block:last-child { border-bottom: none !important; }
+  .footer { font-size: 11px; color: #BBB; text-align: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid #E8E0D8; }
 </style>
 </head>
 <body>
   <h1>Психоаналитика — ${store.username}</h1>
   <div class="subtitle">Сформировано ${dateStr}</div>
 
-  <div class="section">
-    <div class="section-title">Присутствие в приложении</div>
-    <div class="stat-grid">
-      <div class="stat-item"><div class="stat-num">${presence.daysHere}</div><div class="stat-label">дней<br>здесь</div></div>
-      <div class="divider"></div>
-      <div class="stat-item"><div class="stat-num">${presence.helpedCount}</div><div class="stat-label">людей<br>поддержал</div></div>
-      <div class="divider"></div>
-      <div class="stat-item"><div class="stat-num">${presence.answersGiven}</div><div class="stat-label">ответов на<br>вопрос дня</div></div>
-      <div class="divider"></div>
-      <div class="stat-item"><div class="stat-num">${presence.invitedCount}</div><div class="stat-label">пригласил<br>друзей</div></div>
+  <div class="card">
+    <div class="card-title">Присутствие в приложении</div>
+    <div class="stat-row">
+      <div class="stat-cell"><div class="stat-num">${presence.daysHere}</div><div class="stat-label">дней<br>здесь</div></div>
+      <div class="vdiv"></div>
+      <div class="stat-cell"><div class="stat-num">${presence.helpedCount}</div><div class="stat-label">людей<br>поддержал</div></div>
+      <div class="vdiv"></div>
+      <div class="stat-cell"><div class="stat-num">${presence.answersGiven}</div><div class="stat-label">ответов на<br>вопрос дня</div></div>
+      <div class="vdiv"></div>
+      <div class="stat-cell"><div class="stat-num">${presence.invitedCount}</div><div class="stat-label">пригласил<br>друзей</div></div>
     </div>
   </div>
 
   ${metrics?.composite_score !== undefined ? `
-  <div class="section">
-    <div class="section-title">Индекс состояния</div>
-    <div class="composite" style="color:${scoreColor(metrics.composite_score)}">${metrics.composite_score}</div>
-    <div class="composite-label">из 100 (выше = хуже)</div>
+  <div class="card">
+    <div class="card-title">Индекс состояния</div>
+    <div class="composite-num" style="color:${compositeColor}">${metrics.composite_score}</div>
+    <div class="composite-sub">из 100 · выше = хуже</div>
   </div>` : ''}
 
-  ${dimRows ? `
-  <div class="section">
-    <div class="section-title">Психометрический профиль</div>
-    <table>${dimRows}</table>
-    <div class="note">0–33 = норма · 34–66 = умеренно · 67–100 = выражено</div>
+  ${dimBlocks ? `
+  <div class="card">
+    <div class="card-title">Психометрический профиль</div>
+    ${dimBlocks}
+    <div class="note">0–33 = норма &nbsp;·&nbsp; 34–66 = умеренно &nbsp;·&nbsp; 67–100 = выражено</div>
   </div>` : ''}
 
   ${trendRows ? `
-  <div class="section">
-    <div class="section-title">Тренд по неделям</div>
+  <div class="card">
+    <div class="card-title">Тренд состояния по неделям</div>
     <table>${trendRows}</table>
   </div>` : ''}
 
-  ${moodRows ? `
-  <div class="section">
-    <div class="section-title">Чекин настроения — последние 7 дней</div>
-    <div>${moodRows}</div>
+  ${moodChips ? `
+  <div class="card">
+    <div class="card-title">Чекин настроения — последние 7 дней</div>
+    <div>${moodChips}</div>
   </div>` : ''}
 
   ${testRows ? `
-  <div class="section">
-    <div class="section-title">История тестов уровня</div>
-    <table>${testRows}</table>
+  <div class="card">
+    <div class="card-title">История тестов уровня</div>
+    <table style="border-radius:8px;overflow:hidden">${testRows}</table>
   </div>` : ''}
 
-  <div class="section">
-    <div class="section-title">Активность</div>
+  <div class="card">
+    <div class="card-title">Активность</div>
     <table>
-      <tr><td style="padding:6px 0;font-size:13px">Стрик входа</td><td style="text-align:right;font-weight:700;font-size:13px">${userActivity.streak} дн.</td></tr>
-      <tr><td style="padding:6px 0;font-size:13px">Тестов пройдено</td><td style="text-align:right;font-weight:700;font-size:13px">${userActivity.testCount}</td></tr>
-      ${userActivity.lastTest ? `<tr><td style="padding:6px 0;font-size:13px">Последний тест</td><td style="text-align:right;font-weight:700;font-size:13px">${new Date(userActivity.lastTest).toLocaleDateString('ru-RU')}</td></tr>` : ''}
+      <tr><td style="padding:7px 0;font-size:14px;color:#333">Стрик входа</td><td style="text-align:right;font-weight:800;font-size:14px;color:#1a1a1a">${userActivity.streak} дн.</td></tr>
+      <tr><td style="padding:7px 0;font-size:14px;color:#333;border-top:1px solid #F0ECE6">Тестов пройдено</td><td style="text-align:right;font-weight:800;font-size:14px;color:#1a1a1a;border-top:1px solid #F0ECE6">${userActivity.testCount}</td></tr>
+      ${userActivity.lastTest ? `<tr><td style="padding:7px 0;font-size:14px;color:#333;border-top:1px solid #F0ECE6">Последний тест</td><td style="text-align:right;font-weight:800;font-size:14px;color:#1a1a1a;border-top:1px solid #F0ECE6">${new Date(userActivity.lastTest).toLocaleDateString('ru-RU')}</td></tr>` : ''}
     </table>
   </div>
 
-  <div class="note" style="margin-top:24px">Данные из приложения «не один» · Только для личного использования</div>
+  <div class="footer">Данные из приложения «не один» · Только для личного использования</div>
 </body>
 </html>`;
 }
@@ -571,13 +619,14 @@ export default function AnalyticsScreen({ navigation }) {
   const [moodHistory, setMoodHistory] = useState([]);
   const [userActivity, setUserActivity] = useState({ streak: 0, testCount: 0, lastTest: null });
   const [presence, setPresence] = useState({ daysHere: 0, helpedCount: 0, answersGiven: 0, invitedCount: 0 });
+  const [allPsychRows, setAllPsychRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   const exportPdf = async () => {
     setExporting(true);
     try {
-      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence });
+      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence, psychRows: allPsychRows });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -712,6 +761,7 @@ export default function AnalyticsScreen({ navigation }) {
         ? Math.max(1, Math.floor((Date.now() - new Date(firstTest.created_at)) / 86400000) + 1)
         : 1;
       setPresence({ daysHere, helpedCount: helpCount || 0, answersGiven: ansCount || 0, invitedCount: invitedCount || 0 });
+      setAllPsychRows(psychRows || []);
       setLoading(false);
     }
 
