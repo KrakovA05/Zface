@@ -61,11 +61,9 @@ export async function getNextTestId(userId) {
     if (!passedEver.has(tid)) return tid;
   }
 
-  // Ежемесячные — в первые 3 дня месяца
-  if (now.getDate() <= 3) {
-    for (const tid of ['olbi_short', 'rosenberg']) {
-      if (!passedThisMonth.has(tid)) return tid;
-    }
+  // Ежемесячные — в любой день месяца если ещё не сданы
+  for (const tid of ['olbi_short', 'rosenberg']) {
+    if (!passedThisMonth.has(tid)) return tid;
   }
 
   // Предпочтительный тест по current_focus — если не проходил на этой неделе

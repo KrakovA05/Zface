@@ -78,7 +78,9 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
   // ── Валидированные психотесты: последний результат по каждому измерению ──────
   const psychScores = {};
   for (const r of psychResults ?? []) {
-    if (psychScores[r.dimension] === undefined) psychScores[r.dimension] = r.normalized_score;
+    if (psychScores[r.dimension] === undefined && r.normalized_score !== null && r.normalized_score !== undefined) {
+      psychScores[r.dimension] = r.normalized_score;
+    }
   }
 
   // ── Сырые поведенческие данные ───────────────────────────────────────────────
@@ -99,7 +101,7 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
 
   // Признак «есть хоть какая-то активность за 7 дней»
   // Если нет — поведенческие сигналы дефолтятся в 50, а не в 100 (новый пользователь)
-  const hasActivity = msgCount > 0 || checkinScores.length > 0 || uniqueConvs > 0;
+  const hasActivity = msgCount > 0 || checkinScores.length > 0 || uniqueConvs > 0 || (dailyTests?.length ?? 0) > 0;
 
   // ── Ежедневный тест → баллы по измерениям ────────────────────────────────────
   // Каждый пак нормализуется: pessimisticCount / 10 * 100 → 0-100

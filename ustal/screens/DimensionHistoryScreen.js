@@ -137,10 +137,18 @@ export default function DimensionHistoryScreen({ route, navigation }) {
         isLive: false,
       }));
 
-      // Добавляем текущий балл как последнюю точку если он отличается от последнего теста
+      // Добавляем текущий балл как точку «сейчас» только если:
+      // 1. Есть живой балл
+      // 2. Последний тест был не сегодня (чтобы не дублировать)
+      // 3. Балл заметно отличается (≥2 пункта) — мелкий шум не интересен
       if (live !== null) {
+        const lastRow = (psychRows || []).length > 0 ? psychRows[psychRows.length - 1] : null;
+        const lastTestDate = lastRow ? lastRow.created_at?.split('T')[0] : null;
+        const today = new Date().toISOString().split('T')[0];
         const lastTestScore = points.length > 0 ? points[points.length - 1].score : null;
-        if (lastTestScore === null || lastTestScore !== live) {
+        const differentDay = lastTestDate !== today;
+        const meaningfulDiff = lastTestScore === null || Math.abs(live - lastTestScore) >= 2;
+        if (differentDay && meaningfulDiff) {
           points.push({ score: live, label: 'сейчас', isLive: true });
         }
       }

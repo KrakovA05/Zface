@@ -146,7 +146,7 @@ function CompositeSection({ metrics }) {
         </View>
       </View>
       {metrics.week_start ? (
-        <Text style={styles.weekLabel}>Неделя от {formatDayMonth(metrics.week_start)}</Text>
+        <Text style={styles.weekLabel}>Обновлено {formatDayMonth(metrics.week_start)}</Text>
       ) : null}
     </SectionCard>
   );
@@ -336,8 +336,8 @@ function TrendSection({ metricsHistory }) {
   const improved = delta < 0;
   const deltaColor = improved ? '#5DAA72' : '#c0392b';
   const deltaText = improved
-    ? `снизился на ${Math.abs(delta)} за ${ordered.length} нед.`
-    : `вырос на ${Math.abs(delta)} за ${ordered.length} нед.`;
+    ? `снизился на ${Math.abs(delta)} за ${ordered.length} дн.`
+    : `вырос на ${Math.abs(delta)} за ${ordered.length} дн.`;
 
   // Спарклайн
   const pad = 6;
@@ -677,7 +677,7 @@ export default function AnalyticsScreen({ navigation }) {
           .select('composite_score, anxiety_score, stress_score, apathy_score, loneliness_score, burnout_score, self_esteem_score, social_anxiety_score, attachment_score, week_start')
           .eq('user_id', uid)
           .order('week_start', { ascending: true })
-          .limit(16),
+          .limit(90),
         supabase
           .from('test_results')
           .select('level, score, created_at')
@@ -694,7 +694,7 @@ export default function AnalyticsScreen({ navigation }) {
           .select('dimension, normalized_score, created_at')
           .eq('user_id', uid)
           .order('created_at', { ascending: false })
-          .limit(32),
+          .limit(100),
         supabase
           .from('user_metrics')
           .select('*')
