@@ -2,7 +2,7 @@ import {
   StyleSheet, Text, View, TouchableOpacity,
   ScrollView, ActivityIndicator, Dimensions, Alert,
 } from 'react-native';
-import Svg, { Polyline, Circle } from 'react-native-svg';
+import Svg, { Polyline } from 'react-native-svg';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -378,13 +378,10 @@ function TrendSection({ metricsHistory }) {
           points={polylineStr}
           fill="none"
           stroke={colors.accent}
-          strokeWidth="2"
+          strokeWidth="2.5"
           strokeLinejoin="round"
+          strokeLinecap="round"
         />
-        {points.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={3}
-            fill={scoreColor(p.score)} stroke={colors.background} strokeWidth="1.5" />
-        ))}
       </Svg>
 
       {/* Даты под спарклайном */}
@@ -438,18 +435,8 @@ function makeSvgLine(points, w, h) {
     const y = h - 4 - ((p.v / 100) * (h - 8));
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
-  const circles = points.map(p => {
-    const x = ((p.t - minT) / rangeT) * (w - 8) + 4;
-    const y = h - 4 - ((p.v / 100) * (h - 8));
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${pdfColor(p.v)}"/>`;
-  }).join('');
-  const lastP = points[points.length - 1];
-  const lx = ((lastP.t - minT) / rangeT) * (w - 8) + 4;
-  const ly = h - 4 - ((lastP.v / 100) * (h - 8));
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="display:block">
-    <polyline points="${pts}" fill="none" stroke="#BC8A72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    ${circles}
-    <text x="${lx > w - 28 ? lx - 28 : lx + 6}" y="${ly < 12 ? ly + 14 : ly - 4}" font-size="10" fill="${pdfColor(lastP.v)}" font-weight="700">${lastP.v}</text>
+    <polyline points="${pts}" fill="none" stroke="#BC8A72" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 }
 
@@ -531,22 +518,22 @@ function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metric
 <meta charset="utf-8">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, Helvetica Neue, Arial, sans-serif; background: #F5F0EB; color: #1a1a1a; padding: 28px; }
+  body { font-family: -apple-system, Helvetica Neue, Arial, sans-serif; background: #F0EBE3; color: #1a1a1a; padding: 28px; }
   h1 { font-size: 24px; font-weight: 900; color: #1a1a1a; margin-bottom: 3px; }
-  .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
-  .card { background: #fff; border-radius: 16px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
-  .card-title { font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .subtitle { font-size: 13px; color: #777; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; border: 1px solid #E8E2DA; }
+  .card-title { font-size: 11px; font-weight: 800; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
   .stat-row { display: flex; }
   .stat-cell { flex: 1; text-align: center; }
   .stat-num { font-size: 30px; font-weight: 900; color: #1a1a1a; line-height: 1; }
-  .stat-label { font-size: 11px; color: #888; margin-top: 4px; line-height: 1.4; }
-  .vdiv { width: 1px; background: #ECEAE6; flex-shrink: 0; margin: 0 4px; }
+  .stat-label { font-size: 11px; color: #555; margin-top: 4px; line-height: 1.4; }
+  .vdiv { width: 1px; background: #DDD8D0; flex-shrink: 0; margin: 0 4px; }
   .composite-num { font-size: 56px; font-weight: 900; text-align: center; line-height: 1; padding: 8px 0 4px; }
-  .composite-sub { text-align: center; font-size: 13px; color: #888; }
-  table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
-  .note { font-size: 11px; color: #AAA; margin-top: 12px; text-align: center; }
+  .composite-sub { text-align: center; font-size: 13px; color: #666; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .note { font-size: 11px; color: #888; margin-top: 12px; text-align: center; }
   .dim-block:last-child { border-bottom: none !important; }
-  .footer { font-size: 11px; color: #BBB; text-align: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid #E8E0D8; }
+  .footer { font-size: 11px; color: #999; text-align: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid #E8E0D8; }
 </style>
 </head>
 <body>
