@@ -1,11 +1,13 @@
 import {
   StyleSheet, Text, View, TouchableOpacity,
-  ScrollView, ActivityIndicator, Dimensions,
+  ScrollView, ActivityIndicator, Dimensions, Alert,
 } from 'react-native';
 import Svg, { Polyline, Circle } from 'react-native-svg';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
@@ -418,6 +420,147 @@ function ActivitySection({ userActivity }) {
   );
 }
 
+// ─── PDF-генерация ────────────────────────────────────────────────────────────
+
+const DIMENSION_ORDER_PDF = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment'];
+
+function buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence }) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const dimRows = DIMENSION_ORDER_PDF.map(dim => {
+    const score = metrics?.[`${dim}_score`];
+    if (score === undefined || score === null) return '';
+    const prev = prevDimScores?.[dim];
+    const delta = prev !== undefined ? score - prev : null;
+    const color = score <= 33 ? '#5DAA72' : score <= 66 ? '#AA7C00' : '#c0392b';
+    const deltaHtml = delta !== null && delta !== 0
+      ? `<span style="color:${delta > 0 ? '#c0392b' : '#5DAA72'};font-size:12px;margin-left:6px">${delta > 0 ? '▲' : '▼'}${Math.abs(delta)}</span>`
+      : '';
+    return `
+      <tr>
+        <td style="padding:8px 0;font-size:14px;color:#2C2420">${DIMENSION_LABELS[dim]}</td>
+        <td style="padding:8px 8px;width:200px">
+          <div style="background:#F0E8D8;border-radius:4px;height:10px;overflow:hidden">
+            <div style="background:${color};width:${score}%;height:100%;border-radius:4px"></div>
+          </div>
+        </td>
+        <td style="padding:8px 0;text-align:right;font-weight:700;color:${color};font-size:14px">${score}${deltaHtml}</td>
+      </tr>`;
+  }).join('');
+
+  const moodRows = moodHistory.map(m => {
+    const c = m.score >= 8 ? '#5DAA72' : m.score >= 5 ? '#AA7C00' : '#c0392b';
+    return `<span style="display:inline-block;margin:2px 4px;background:${c};color:#fff;border-radius:8px;padding:2px 10px;font-size:13px">${m.checkin_date?.slice(5)} — ${m.score}/10</span>`;
+  }).join('');
+
+  const testRows = testHistory.slice(0, 10).map(t => {
+    const lvl = t.level === 'green' ? 'Зелёный' : t.level === 'yellow' ? 'Жёлтый' : 'Красный';
+    const c = t.level === 'green' ? '#5DAA72' : t.level === 'yellow' ? '#AA7C00' : '#c0392b';
+    return `<tr>
+      <td style="padding:6px 0;font-size:13px;color:#7A6A5A">${new Date(t.created_at).toLocaleDateString('ru-RU')}</td>
+      <td style="padding:6px 0;font-weight:700;color:${c}">${lvl}</td>
+      <td style="padding:6px 0;text-align:right;color:#2C2420;font-size:13px">${t.score ?? '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const trendRows = [...metricsHistory].reverse().map(m => {
+    const c = m.composite_score <= 33 ? '#5DAA72' : m.composite_score <= 66 ? '#AA7C00' : '#c0392b';
+    return `<tr>
+      <td style="padding:6px 0;font-size:13px;color:#7A6A5A">${new Date(m.week_start).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</td>
+      <td style="padding:6px 8px;width:160px">
+        <div style="background:#F0E8D8;border-radius:4px;height:8px;overflow:hidden">
+          <div style="background:${c};width:${m.composite_score}%;height:100%;border-radius:4px"></div>
+        </div>
+      </td>
+      <td style="padding:6px 0;text-align:right;font-weight:700;color:${c};font-size:13px">${m.composite_score}</td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; background: #FAF7F2; color: #2C2420; margin: 0; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 800; color: #2C2420; margin: 0 0 4px; }
+  .subtitle { font-size: 13px; color: #A09080; margin-bottom: 28px; }
+  .section { background: #fff; border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; border: 1px solid #E8DFD0; }
+  .section-title { font-size: 11px; font-weight: 700; color: #A09080; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+  .stat-grid { display: flex; gap: 0; }
+  .stat-item { flex: 1; text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 800; color: #2C2420; }
+  .stat-label { font-size: 11px; color: #A09080; margin-top: 2px; line-height: 1.4; }
+  .divider { width: 1px; background: #E8DFD0; margin: 0 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  .note { font-size: 12px; color: #A09080; margin-top: 16px; text-align: center; }
+  .composite { font-size: 48px; font-weight: 900; text-align: center; margin: 4px 0; }
+  .composite-label { text-align: center; font-size: 13px; color: #A09080; }
+</style>
+</head>
+<body>
+  <h1>Психоаналитика — ${store.username}</h1>
+  <div class="subtitle">Сформировано ${dateStr}</div>
+
+  <div class="section">
+    <div class="section-title">Присутствие в приложении</div>
+    <div class="stat-grid">
+      <div class="stat-item"><div class="stat-num">${presence.daysHere}</div><div class="stat-label">дней<br>здесь</div></div>
+      <div class="divider"></div>
+      <div class="stat-item"><div class="stat-num">${presence.helpedCount}</div><div class="stat-label">людей<br>поддержал</div></div>
+      <div class="divider"></div>
+      <div class="stat-item"><div class="stat-num">${presence.answersGiven}</div><div class="stat-label">ответов на<br>вопрос дня</div></div>
+      <div class="divider"></div>
+      <div class="stat-item"><div class="stat-num">${presence.invitedCount}</div><div class="stat-label">пригласил<br>друзей</div></div>
+    </div>
+  </div>
+
+  ${metrics?.composite_score !== undefined ? `
+  <div class="section">
+    <div class="section-title">Индекс состояния</div>
+    <div class="composite" style="color:${scoreColor(metrics.composite_score)}">${metrics.composite_score}</div>
+    <div class="composite-label">из 100 (выше = хуже)</div>
+  </div>` : ''}
+
+  ${dimRows ? `
+  <div class="section">
+    <div class="section-title">Психометрический профиль</div>
+    <table>${dimRows}</table>
+    <div class="note">0–33 = норма · 34–66 = умеренно · 67–100 = выражено</div>
+  </div>` : ''}
+
+  ${trendRows ? `
+  <div class="section">
+    <div class="section-title">Тренд по неделям</div>
+    <table>${trendRows}</table>
+  </div>` : ''}
+
+  ${moodRows ? `
+  <div class="section">
+    <div class="section-title">Чекин настроения — последние 7 дней</div>
+    <div>${moodRows}</div>
+  </div>` : ''}
+
+  ${testRows ? `
+  <div class="section">
+    <div class="section-title">История тестов уровня</div>
+    <table>${testRows}</table>
+  </div>` : ''}
+
+  <div class="section">
+    <div class="section-title">Активность</div>
+    <table>
+      <tr><td style="padding:6px 0;font-size:13px">Стрик входа</td><td style="text-align:right;font-weight:700;font-size:13px">${userActivity.streak} дн.</td></tr>
+      <tr><td style="padding:6px 0;font-size:13px">Тестов пройдено</td><td style="text-align:right;font-weight:700;font-size:13px">${userActivity.testCount}</td></tr>
+      ${userActivity.lastTest ? `<tr><td style="padding:6px 0;font-size:13px">Последний тест</td><td style="text-align:right;font-weight:700;font-size:13px">${new Date(userActivity.lastTest).toLocaleDateString('ru-RU')}</td></tr>` : ''}
+    </table>
+  </div>
+
+  <div class="note" style="margin-top:24px">Данные из приложения «не один» · Только для личного использования</div>
+</body>
+</html>`;
+}
+
 // ─── Главный экран ────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen({ navigation }) {
@@ -429,6 +572,25 @@ export default function AnalyticsScreen({ navigation }) {
   const [userActivity, setUserActivity] = useState({ streak: 0, testCount: 0, lastTest: null });
   const [presence, setPresence] = useState({ daysHere: 0, helpedCount: 0, answersGiven: 0, invitedCount: 0 });
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      const html = buildPdfHtml({ metrics, prevDimScores, testHistory, moodHistory, metricsHistory, userActivity, presence });
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Психоаналитика' });
+      } else {
+        Alert.alert('Готово', `Файл сохранён: ${uri}`);
+      }
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось создать PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -565,7 +727,12 @@ export default function AnalyticsScreen({ navigation }) {
           <Ionicons name="arrow-back" size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Моя аналитика</Text>
-        <View style={styles.backBtn} />
+        <TouchableOpacity onPress={exportPdf} style={styles.backBtn} activeOpacity={0.7} disabled={exporting || loading}>
+          {exporting
+            ? <ActivityIndicator size="small" color={colors.accent} />
+            : <Ionicons name="share-outline" size={22} color={loading ? colors.muted : colors.accent} />
+          }
+        </TouchableOpacity>
       </View>
 
       {loading ? (
