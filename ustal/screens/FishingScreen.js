@@ -139,14 +139,14 @@ export default function FishingScreen() {
 
   useEffect(() => {
     if (!store.userId) return;
-    supabase.from('caught_fish').select('fish_name').eq('user_id', store.userId)
+    supabase.from('caught_fish').select('fish_name').eq('user_id', store.userId).limit(200)
       .then(({ data }) => setCollection([...new Set((data || []).map(r => r.fish_name))]));
 
     hasSeenHint('fishing').then(seen => {
       if (!seen) {
         markHintSeen('fishing');
         setShowHint(true);
-        setTimeout(() => setShowHint(false), 5000);
+        hintTimer.current = setTimeout(() => setShowHint(false), 5000);
       }
     });
   }, []);
@@ -163,6 +163,7 @@ export default function FishingScreen() {
 
   const waitTimer = useRef(null);
   const msgTimer  = useRef(null);
+  const hintTimer = useRef(null);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -173,6 +174,7 @@ export default function FishingScreen() {
       isMounted.current = false;
       clearTimeout(waitTimer.current);
       clearInterval(msgTimer.current);
+      clearTimeout(hintTimer.current);
     };
   }, []);
 
@@ -251,9 +253,9 @@ export default function FishingScreen() {
     const r = { ...fish, weight, note, isNew, time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) };
     setResult(r);
     setCatches(prev => [r, ...prev].slice(0, 20));
-    if (store.userId && fish.rarity !== 'trash' && fish.rarity !== 'special') {
+    if (store.userId && isNew) {
       supabase.from('caught_fish').insert({ user_id: store.userId, fish_name: fish.name }).then();
-      setCollection(prev => prev.includes(fish.name) ? prev : [...prev, fish.name]);
+      setCollection(prev => [...prev, fish.name]);
     }
     setPhase('result');
     resultAnim.setValue(0);

@@ -1,6 +1,6 @@
 import {
   StyleSheet, Text, View, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, Platform, Keyboard, Image,
+  TextInput, ActivityIndicator, Platform, Keyboard, Image, Linking,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { colors } from '../theme';
 import { sendPushNotification } from '../utils/notifications';
 import Avatar from '../components/Avatar';
 import { showAlert } from '../utils/alert';
+import { hasCrisis } from '../utils/crisis';
 
 function formatDate(str) {
   return new Date(str).toLocaleDateString('ru-RU', {
@@ -85,6 +86,10 @@ export default function PostScreen({ route, navigation }) {
   const sendComment = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (hasCrisis(trimmed)) {
+      showAlert('Звучит тяжело', 'Если тебе сейчас очень плохо — можно позвонить на 8-800-2000-122 (бесплатно, круглосуточно).');
+      Linking.openURL('tel:88002000122').catch(() => {});
+    }
     setSending(true);
     const { error } = await supabase.from('post_comments').insert({
       post_id: post.id,

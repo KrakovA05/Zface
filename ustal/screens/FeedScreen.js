@@ -16,6 +16,7 @@ import Avatar from '../components/Avatar';
 import { SYSTEM_AVATAR_URI } from '../systemAssets';
 import { showAlert } from '../utils/alert';
 import { logEvent } from '../utils/analytics';
+import { hasCrisis } from '../utils/crisis';
 
 const PAGE_SIZE = 20;
 const SUPABASE_URL = 'https://yincycmdsdluueqsxtwn.supabase.co';
@@ -216,6 +217,10 @@ export default function FeedScreen({ navigation }) {
   const post = async () => {
     if (!text.trim() && !mediaUri) return;
     if (mediaUploading) { showAlert('Подожди', 'Медиафайл ещё загружается...'); return; }
+    if (hasCrisis(text)) {
+      showAlert('Звучит тяжело', 'Если тебе сейчас очень плохо — можно позвонить на 8-800-2000-122 (бесплатно, круглосуточно).');
+      Linking.openURL('tel:88002000122').catch(() => {});
+    }
     setPosting(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {

@@ -10,17 +10,7 @@ import { SUPABASE_URL } from '@env';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
-
-const CRISIS_WORDS = [
-  'суицид', 'не хочу жить', 'хочу умереть', 'покончить',
-  'конец жизни', 'убить себя', 'убью себя',
-  'нет смысла жить', 'незачем жить',
-];
-
-function hasCrisisWord(text) {
-  const lower = text.toLowerCase();
-  return CRISIS_WORDS.some(w => lower.includes(w));
-}
+import { hasCrisis as hasCrisisWord } from '../utils/crisis';
 
 function MessageBubble({ item }) {
   const isUser = item.role === 'user';
