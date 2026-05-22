@@ -103,6 +103,21 @@ Deno.serve(async (req: Request) => {
 
     if (!message?.trim()) throw new Error('Empty message');
 
+    // Rate limiting: не более 10 сообщений в минуту
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const { count: recentCount } = await supabase
+      .from('ai_chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('role', 'user')
+      .gte('created_at', oneMinuteAgo);
+    if (recentCount && recentCount >= 10) {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'rate_limit', message: 'Подожди немного перед следующим сообщением.' }),
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
     // Загружаем расширенный профиль пользователя
     const [{ data: profile }, { data: metrics }, { data: moods }] = await Promise.all([
       supabase.from('users').select('level').eq('user_id', userId).single(),
@@ -230,7 +245,7 @@ ${userContext}
       body: JSON.stringify({
         model: GROQ_MODEL,
         messages,
-        max_tokens: 1024,
+        max_tokens: 800,
         temperature: 0.85,
       }),
     });

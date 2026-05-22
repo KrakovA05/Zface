@@ -2,7 +2,7 @@ import {
   StyleSheet, Text, View, FlatList,
   TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,34 +37,42 @@ export default function NotificationsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [items,   setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(false);
 
   useFocusEffect(useCallback(() => {
     load();
   }, []));
 
   const load = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(60);
-
-    // Отмечаем прочитанными до показа — badge сбрасывается до того как юзер уйдёт назад
-    if (data?.some(n => !n.read)) {
-      await supabase
+      const { data } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .select('*')
         .eq('user_id', user.id)
-        .eq('read', false);
-    }
+        .order('created_at', { ascending: false })
+        .limit(60);
 
-    setItems(data || []);
-    setLoading(false);
+      const hasUnread = data?.some(n => !n.read);
+      if (hasUnread) {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('user_id', user.id)
+          .eq('read', false);
+      }
+
+      // Показываем как прочитанные — не ждём повторного запроса
+      setItems((data || []).map(n => ({ ...n, read: true })));
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
   };
 
   const handleTap = async (notif) => {
