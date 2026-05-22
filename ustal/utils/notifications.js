@@ -143,7 +143,7 @@ export async function scheduleWeeklyReport(userId) {
 
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     const existing = scheduled.filter(n => n.content.data?.type === 'weekly_report');
-    if (existing.length > 0) return;
+    await Promise.all(existing.map(n => Notifications.cancelScheduledNotificationAsync(n.identifier)));
 
     const { supabase } = await import('../supabase');
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

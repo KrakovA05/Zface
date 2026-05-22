@@ -28,7 +28,9 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
     throw new Error(`Gemini ${res.status}: ${errText.slice(0, 300)}`);
   }
   const data = await res.json();
-  return data.candidates[0].content.parts[0].text;
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Gemini returned no content (safety block or empty)');
+  return text;
 }
 
 function cleanPlainText(raw: string): string {

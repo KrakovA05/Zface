@@ -49,7 +49,9 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
   });
   if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
   const data = await res.json();
-  return data.candidates[0].content.parts[0].text.trim();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error('Gemini returned no content (safety block or empty)');
+  return text.trim();
 }
 
 Deno.serve(async (req) => {
