@@ -2,6 +2,8 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 
 export function initCrashReporting() {
+  if (typeof ErrorUtils === 'undefined' || typeof ErrorUtils.getGlobalHandler !== 'function') return;
+
   const prev = ErrorUtils.getGlobalHandler();
 
   ErrorUtils.setGlobalHandler((error, isFatal) => {

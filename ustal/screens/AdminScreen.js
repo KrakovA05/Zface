@@ -112,7 +112,8 @@ function ReportsTab({ navigation }) {
   }
 
   async function applyBan(userId, username, { bannedUntil, reason }) {
-    await supabase.from('users').update({ banned_until: bannedUntil, ban_reason: reason || null }).eq('user_id', userId)
+    const { error } = await supabase.rpc('admin_apply_ban', { p_target_user_id: userId, p_banned_until: bannedUntil || null, p_reason: reason || null })
+    if (error) { showAlert('Ошибка', error.message); return; }
     const { error: fnErr } = await supabase.functions.invoke('ban-notify', { body: { userId, bannedUntil, reason } })
     if (fnErr) console.warn('ban-notify error:', fnErr)
     const msg = !bannedUntil ? `@${username} разбанен` :
@@ -259,13 +260,15 @@ function UsersTab({ navigation }) {
 
   async function toggleAdmin(userId, currentAdmin, username) {
     const newVal = !currentAdmin
-    await supabase.from('users').update({ is_admin: newVal }).eq('user_id', userId)
+    const { error } = await supabase.rpc('admin_toggle_admin', { p_target_user_id: userId, p_new_val: newVal })
+    if (error) { showAlert('Ошибка', error.message); return; }
     setAllUsers(prev => prev.map(u => u.user_id === userId ? { ...u, is_admin: newVal } : u))
     showAlert('Готово', `@${username} ${newVal ? 'получил права модератора' : 'лишён прав модератора'}`)
   }
 
   async function applyBan(userId, username, { bannedUntil, reason }) {
-    await supabase.from('users').update({ banned_until: bannedUntil, ban_reason: reason || null }).eq('user_id', userId)
+    const { error } = await supabase.rpc('admin_apply_ban', { p_target_user_id: userId, p_banned_until: bannedUntil || null, p_reason: reason || null })
+    if (error) { showAlert('Ошибка', error.message); return; }
     setAllUsers(prev => prev.map(u => u.user_id === userId ? { ...u, banned_until: bannedUntil } : u))
     const { error: fnErr } = await supabase.functions.invoke('ban-notify', { body: { userId, bannedUntil, reason } })
     if (fnErr) console.warn('ban-notify error:', fnErr)

@@ -138,7 +138,7 @@ export default function LetterScreen({ navigation, route }) {
     setReplyText('');
 
     if (!letter.opened) {
-      await supabase.from('anonymous_letters').update({ opened: true }).eq('id', letter.id);
+      await supabase.from('anonymous_letters').update({ opened: true }).eq('id', letter.id).eq('recipient_id', store.userId);
       setInbox(prev => prev.map(l => l.id === letter.id ? { ...l, opened: true } : l));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (letter.author_id) {
@@ -163,6 +163,7 @@ export default function LetterScreen({ navigation, route }) {
       .from('anonymous_letters')
       .update({ reply_text: replyText.trim(), replied_at: now })
       .eq('id', letter.id)
+      .eq('recipient_id', store.userId)
       .is('reply_text', null);
 
     if (!error) {

@@ -67,10 +67,14 @@ async function buildContext(userId: string, level: string): Promise<string> {
       .limit(7),
   ]);
 
+  const VALID_DIMENSIONS = new Set(['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment']);
+
   const m = metrics as MetricsRow | null;
   const parts: string[] = [`уровень ${level}`];
 
-  if (m?.dominant_dimension) parts.push(`доминирует ${m.dominant_dimension}`);
+  if (m?.dominant_dimension && VALID_DIMENSIONS.has(m.dominant_dimension)) {
+    parts.push(`доминирует ${m.dominant_dimension}`);
+  }
   if (m?.burnout_score != null && m.burnout_score > 65) parts.push(`выгорание ${m.burnout_score}/100`);
   if (m?.anxiety_score != null && m.anxiety_score > 65) parts.push(`тревога ${m.anxiety_score}/100`);
 

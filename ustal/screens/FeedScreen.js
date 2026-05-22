@@ -220,6 +220,7 @@ export default function FeedScreen({ navigation }) {
     if (hasCrisis(text)) {
       showAlert('Звучит тяжело', 'Если тебе сейчас очень плохо — можно позвонить на 8-800-2000-122 (бесплатно, круглосуточно).');
       Linking.openURL('tel:88002000122').catch(() => {});
+      return;
     }
     setPosting(true);
     const { data: { user } } = await supabase.auth.getUser();

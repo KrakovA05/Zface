@@ -48,7 +48,8 @@ Deno.serve(async (req) => {
 
   const { data: users, error: usersErr } = await supabase
     .from('users')
-    .select('user_id');
+    .select('user_id')
+    .limit(1000);
   if (usersErr) return new Response(JSON.stringify({ error: usersErr.message }), { status: 500 });
 
   let processed = 0;
