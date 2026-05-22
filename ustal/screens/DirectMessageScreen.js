@@ -90,7 +90,7 @@ export default function DirectMessageScreen({ route, navigation }) {
       })
       .subscribe();
 
-    return () => { subscription.unsubscribe(); };
+    return () => { supabase.removeChannel(subscription); };
   }, []);
 
   const fetchFriendOnline = async () => {
@@ -108,7 +108,8 @@ export default function DirectMessageScreen({ route, navigation }) {
     const { data: blockData } = await supabase
       .from('blocks')
       .select('blocker_id, blocked_id')
-      .or(`blocker_id.eq.${store.userId},blocked_id.eq.${store.userId}`);
+      .or(`blocker_id.eq.${store.userId},blocked_id.eq.${store.userId}`)
+      .limit(500);
     const blockedIds = new Set(
       (blockData || []).map(b => b.blocker_id === store.userId ? b.blocked_id : b.blocker_id)
     );

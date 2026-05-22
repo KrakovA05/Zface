@@ -53,7 +53,8 @@ export default function OnboardingMomentScreen({ route, navigation }) {
         .from('users')
         .select('user_id')
         .eq('level', level)
-        .neq('user_id', currentUserId);
+        .neq('user_id', currentUserId)
+        .limit(100);
 
       const ids = (sameLevel || []).map(u => u.user_id);
       if (ids.length > 0) {
@@ -91,8 +92,10 @@ export default function OnboardingMomentScreen({ route, navigation }) {
                 onPress={async () => {
                   setSavingGoal(true);
                   store.goal = g.id;
-                  const { data: { user } } = await supabase.auth.getUser();
-                  if (user) await supabase.from('users').update({ goal: g.id }).eq('user_id', user.id);
+                  try {
+                    const { data: authData } = await supabase.auth.getUser();
+                    if (authData?.user) await supabase.from('users').update({ goal: g.id }).eq('user_id', authData.user.id);
+                  } catch {}
                   navigation.replace('OnboardingCarousel');
                 }}
               >

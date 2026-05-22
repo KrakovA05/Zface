@@ -54,25 +54,25 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
     supabase.from('psych_test_results')
       .select('dimension, normalized_score')
       .eq('user_id', uid).gte('created_at', thirtyDaysAgo)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }).limit(100),
     // Уникальные DM-собеседники за 7 дней
     supabase.from('direct_messages')
       .select('conversation_id')
-      .eq('sender_id', uid).gte('created_at', sevenDaysAgo),
+      .eq('sender_id', uid).gte('created_at', sevenDaysAgo).limit(500),
     // Все сообщения за 7 дней (для msgCount и ночной активности)
     supabase.from('messages')
       .select('created_at')
-      .eq('sender_id', uid).gte('created_at', sevenDaysAgo),
+      .eq('sender_id', uid).gte('created_at', sevenDaysAgo).limit(500),
     // Чекины настроения за 7 дней
     supabase.from('mood_checkins')
       .select('score')
       .eq('user_id', uid).gte('checkin_date', sevenDaysAgoStr)
-      .order('checkin_date', { ascending: true }),
+      .order('checkin_date', { ascending: true }).limit(30),
     // Ежедневные тесты за 7 дней (с pack_id для маппинга на измерения)
     supabase.from('test_results')
       .select('score, pack_id')
       .eq('user_id', uid).gte('created_at', sevenDaysAgo)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }).limit(20),
   ]);
 
   // ── Валидированные психотесты: последний результат по каждому измерению ──────

@@ -17,9 +17,9 @@ import { SYSTEM_AVATAR_URI } from '../systemAssets';
 import { showAlert } from '../utils/alert';
 import { logEvent } from '../utils/analytics';
 import { hasCrisis } from '../utils/crisis';
+import { SUPABASE_URL } from '@env';
 
 const PAGE_SIZE = 20;
-const SUPABASE_URL = 'https://yincycmdsdluueqsxtwn.supabase.co';
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 function isVideo(url) {

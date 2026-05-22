@@ -37,7 +37,8 @@ export default function ResourcesScreen() {
 
   const loadResources = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user ?? null;
 
     const { data: resources } = await supabase.from('resources').select('*').limit(500);
     if (!resources) { setLoading(false); return; }
@@ -77,11 +78,13 @@ export default function ResourcesScreen() {
     const applyFocusBoost = !!currentFocus;
     const scored = resources.map(r => {
       let score = 0;
-      if (userMetrics && r.dimension_weights) {
-        for (const [dim, weight] of Object.entries(r.dimension_weights)) {
-          const boost = applyFocusBoost && dim === currentFocus ? 1.3 : 1;
-          score += (dimMap[dim] ?? 50) * weight * boost;
-        }
+      if (userMetrics && r.dimension_weights && typeof r.dimension_weights === 'object') {
+        try {
+          for (const [dim, weight] of Object.entries(r.dimension_weights)) {
+            const boost = applyFocusBoost && dim === currentFocus ? 1.3 : 1;
+            score += (dimMap[dim] ?? 50) * weight * boost;
+          }
+        } catch {}
       }
       return { ...r, _score: score };
     });

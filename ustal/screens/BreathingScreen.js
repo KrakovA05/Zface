@@ -50,7 +50,7 @@ export default function BreathingScreen({ navigation }) {
       setPhaseIdx(i => (i + 1) % PHASES.length);
     }, phase.duration);
 
-    return () => { clearInterval(interval); clearTimeout(timeout); };
+    return () => { clearInterval(interval); clearTimeout(timeout); scale.stopAnimation(); };
   }, [running, phaseIdx]);
 
   const start = () => { setRunning(true); setPhaseIdx(0); };
