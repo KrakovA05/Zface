@@ -173,10 +173,10 @@ export default function DirectMessageScreen({ route, navigation }) {
     if (!trimmed) return;
     setSending(true);
 
-    const { data: block } = await supabase
+    const { data: blocks } = await supabase
       .from('blocks').select('id')
-      .eq('blocker_id', store.userId).eq('blocked_id', friend.userId).maybeSingle();
-    if (block) { setSending(false); showAlert('Недоступно', 'Вы заблокировали этого пользователя'); return; }
+      .or(`and(blocker_id.eq.${store.userId},blocked_id.eq.${friend.userId}),and(blocker_id.eq.${friend.userId},blocked_id.eq.${store.userId})`);
+    if (blocks?.length) { setSending(false); showAlert('Недоступно', 'Переписка недоступна'); return; }
 
     setText('');
     const payload = { conversation_id: conversationId, sender_id: store.userId, sender_username: store.username, text: trimmed };

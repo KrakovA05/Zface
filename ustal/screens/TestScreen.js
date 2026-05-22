@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_DATA, LEVEL_COLORS, TEST_PACKS } from '../constants';
@@ -31,6 +31,7 @@ export default function TestScreen({ navigation }) {
   const [pack, setPack] = useState(null); // { title, questions }
   const [packId, setPackId] = useState(0);
   const [isFirstTest, setIsFirstTest] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     const check = async () => {
@@ -72,11 +73,12 @@ export default function TestScreen({ navigation }) {
   };
 
   const answer = async (isPessimistic) => {
-    if (finished || saving || !pack) return;
+    if (finished || saving || !pack || submittingRef.current) return;
     const newCount = pessimisticCount + (isPessimistic ? 1 : 0);
     setPessimisticCount(newCount);
 
     if (current + 1 >= pack.questions.length) {
+      submittingRef.current = true;
       let lvl;
       if (newCount <= 3) lvl = 'green';
       else if (newCount <= 7) lvl = 'yellow';

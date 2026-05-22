@@ -55,14 +55,18 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
 Deno.serve(async (req) => {
   // Проверка webhook secret
   const webhookSecret = Deno.env.get('WEBHOOK_SECRET');
-  if (webhookSecret) {
-    const incoming = req.headers.get('x-webhook-secret') || req.headers.get('authorization');
-    if (incoming !== webhookSecret && incoming !== `Bearer ${webhookSecret}`) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+  if (!webhookSecret) {
+    return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const incoming = req.headers.get('x-webhook-secret') || req.headers.get('authorization');
+  if (incoming !== webhookSecret && incoming !== `Bearer ${webhookSecret}`) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   try {
     const payload: WebhookPayload = await req.json();
@@ -108,14 +112,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const prompt = `Пост: "${post.text}"
-Комментарий пользователя: "${record.text}"
-Напиши короткий ответ на этот комментарий. Не советуй, не успокаивай. Реагируй честно, как живой человек рядом. Если не знаешь что сказать — задай один вопрос.`;
+    const safePost = post.text.slice(0, 500).replace(/[`"']/g, '');
+    const safeComment = record.text.slice(0, 300).replace(/[`"']/g, '');
+    const prompt = `Пост: ${safePost}\nКомментарий пользователя: ${safeComment}\nНапиши короткий ответ. Не советуй, не успокаивай. Реагируй честно, как живой человек рядом. Если не знаешь что сказать — задай один вопрос.`;
 
     const replyText = await callGemini(prompt, apiKey);
 
-    // Случайная задержка 10-60 минут
-    const delayMs = randomBetween(600_000, 3_600_000);
+    // Небольшая задержка для естественности (в пределах таймаута Edge Function)
+    const delayMs = randomBetween(10_000, 30_000);
     await sleep(delayMs);
 
     // Вставить ответ

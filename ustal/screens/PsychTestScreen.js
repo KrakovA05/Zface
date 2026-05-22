@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +14,14 @@ export default function PsychTestScreen({ route, navigation }) {
   const { testId, onComplete } = route.params;
   const test = PSYCH_TESTS[testId];
 
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const submittingRef = useRef(false);
+
+  useEffect(() => { logEvent('psych_test_start', { test_id: route.params?.testId }) }, [])
+
   if (!test) {
     return (
       <View style={styles.container}>
@@ -24,17 +32,12 @@ export default function PsychTestScreen({ route, navigation }) {
       </View>
     );
   }
-  const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
-
-  useEffect(() => { logEvent('psych_test_start', { test_id: route.params?.testId }) }, [])
 
   const scaleOptions = [];
   for (let v = test.scale.min; v <= test.scale.max; v++) scaleOptions.push(v);
 
   const handleAnswer = async (value) => {
+    if (saving || submittingRef.current) return;
     const newAnswers = [...answers, value];
     setAnswers(newAnswers);
 
@@ -43,6 +46,7 @@ export default function PsychTestScreen({ route, navigation }) {
       return;
     }
 
+    submittingRef.current = true;
     setSaving(true);
     const rawScore = computeRaw(test, newAnswers);
     const normalizedScore = test.normalize(rawScore);
