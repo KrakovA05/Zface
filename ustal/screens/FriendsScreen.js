@@ -35,7 +35,8 @@ export default function FriendsScreen({ navigation }) {
     const { data: rows } = await supabase
       .from('friendships')
       .select('*')
-      .or(`requester_id.eq.${store.userId},receiver_id.eq.${store.userId}`);
+      .or(`requester_id.eq.${store.userId},receiver_id.eq.${store.userId}`)
+      .limit(500);
 
     if (!rows?.length) {
       setFriends([]);

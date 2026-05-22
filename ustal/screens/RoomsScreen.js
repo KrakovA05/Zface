@@ -154,6 +154,7 @@ export default function RoomsScreen({ route, navigation }) {
     if (roomId !== userLevel && roomId !== 'night' && !isAdmin) return;
     enteringRoomRef.current = roomId;
     if (channelRef.current) {
+      channelRef.current.untrack().catch(() => {});
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
@@ -240,7 +241,10 @@ export default function RoomsScreen({ route, navigation }) {
 
   useEffect(() => {
     return () => {
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      if (channelRef.current) {
+        channelRef.current.untrack().catch(() => {});
+        supabase.removeChannel(channelRef.current);
+      }
       if (participantsChannelRef.current) supabase.removeChannel(participantsChannelRef.current);
     };
   }, []);

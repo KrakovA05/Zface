@@ -59,6 +59,7 @@ export default function FeedScreen({ navigation }) {
   const [levelMap, setLevelMap] = useState({});
   const [commentCounts, setCommentCounts] = useState({});
   const [likedPosts, setLikedPosts] = useState({});
+  const pendingLikesRef = useRef(new Set());
 
   const [mediaUri, setMediaUri] = useState(null);
   const [mediaType, setMediaType] = useState(null);
@@ -233,7 +234,8 @@ export default function FeedScreen({ navigation }) {
   };
 
   const toggleLike = async (postId) => {
-    if (!store.userId) return;
+    if (!store.userId || pendingLikesRef.current.has(postId)) return;
+    pendingLikesRef.current.add(postId);
     const isLiked = !!likedPosts[postId];
     setLikedPosts(prev => ({ ...prev, [postId]: !isLiked }));
     setPosts(prev => prev.map(p => p.id === postId
@@ -253,6 +255,7 @@ export default function FeedScreen({ navigation }) {
         : p
       ));
     }
+    pendingLikesRef.current.delete(postId);
     // DB trigger update_post_likes_count() maintains feed_posts.likes automatically
   };
 

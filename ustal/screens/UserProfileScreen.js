@@ -212,7 +212,7 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const sendReport = async (reason) => {
-    if (reportLoading) return;
+    if (reportLoading || user.user_id === store.userId) return;
     setReportLoading(true);
     const { error } = await supabase.from('reports').insert({
       reporter_id: store.userId, reported_user_id: user.user_id, reason,
