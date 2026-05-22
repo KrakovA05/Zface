@@ -84,7 +84,13 @@ export async function scheduleQuestNotifications(level) {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    // Отменяем только quest-уведомления, не трогаем return_reminder и room_digest
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter(n => n.content.data?.type === 'quest')
+        .map(n => Notifications.cancelScheduledNotificationAsync(n.identifier))
+    );
 
     const messages = QUEST_MESSAGES[level] || QUEST_MESSAGES.green;
     for (let i = 0; i < QUEST_HOURS.length; i++) {
@@ -251,10 +257,15 @@ export async function scheduleRoomDigestPush(level) {
 export async function sendPushNotification(token, title, body, data = {}) {
   if (!token) return;
   try {
-    await fetch('https://exp.host/--/api/v2/push/send', {
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: token, title, body, sound: 'default', data }),
     });
+    const result = await res.json();
+    if (result?.data?.details?.error === 'DeviceNotRegistered') {
+      const { supabase } = await import('../supabase');
+      await supabase.from('users').update({ push_token: null }).eq('push_token', token);
+    }
   } catch {}
 }

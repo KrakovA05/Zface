@@ -6,7 +6,7 @@ import {
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
-import { store } from '../store';
+import { store, clearStore } from '../store';
 import { colors } from '../theme';
 import { showAlert } from '../utils/alert';
 
@@ -20,8 +20,25 @@ export default function LoginScreen({ navigation }) {
   const [supportTopic, setSupportTopic] = useState('');
   const [supportText, setSupportText] = useState('');
   const [supportLoading, setSupportLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
 
   const openSupport = () => { setSupportEmail(email); setShowSupport(true); };
+
+  const openReset = () => { setResetEmail(email); setShowReset(true); };
+
+  const sendReset = async () => {
+    if (!resetEmail.trim()) return;
+    setResetLoading(true);
+    try {
+      await supabase.functions.invoke('reset-password', { body: { email: resetEmail.trim().toLowerCase() } });
+    } catch {}
+    setResetLoading(false);
+    setShowReset(false);
+    setResetEmail('');
+    showAlert('Готово', 'Если аккаунт с таким email существует, мы отправили временный пароль.');
+  };
 
   const sendSupport = async () => {
     if (!supportTopic.trim() || !supportText.trim()) return;
@@ -75,12 +92,13 @@ export default function LoginScreen({ navigation }) {
         ? 'Ваш аккаунт заблокирован навсегда за нарушение правил сообщества.'
         : `Ваш аккаунт заблокирован до ${until.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}.`
       if (until > new Date()) {
+        clearStore()
         await supabase.auth.signOut()
         showAlert('Аккаунт заблокирован', msg)
         return
       }
     }
-    navigation.navigate('Main');
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
   const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -145,6 +163,10 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.buttonText}>{loading ? 'Входим...' : 'Войти'}</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.forgotBtn} onPress={openReset}>
+          <Text style={styles.forgotText}>Забыл пароль</Text>
+        </TouchableOpacity>
+
         <View style={styles.registerRow}>
           <Text style={styles.registerHint}>Впервые здесь?</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -157,6 +179,35 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.supportBtnText}>Написать в поддержку</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={showReset} transparent animationType="slide" onRequestClose={() => setShowReset(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <TouchableOpacity style={styles.supportOverlay} activeOpacity={1} onPress={() => setShowReset(false)}>
+            <TouchableOpacity activeOpacity={1} style={styles.supportModal}>
+              <View style={styles.supportModalHandle} />
+              <Text style={styles.supportModalTitle}>Восстановление пароля</Text>
+              <Text style={styles.supportModalSub}>Введи email, на который зарегистрирован аккаунт</Text>
+              <TextInput
+                style={styles.supportInput}
+                placeholder="Email"
+                placeholderTextColor={colors.muted}
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={[styles.supportSendBtn, !resetEmail.trim() && { opacity: 0.4 }]}
+                onPress={sendReset}
+                disabled={!resetEmail.trim() || resetLoading}
+              >
+                <Text style={styles.supportSendText}>{resetLoading ? 'Отправляем...' : 'Отправить'}</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal visible={showSupport} transparent animationType="slide" onRequestClose={() => setShowSupport(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -262,6 +313,9 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.35 },
   buttonText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
+
+  forgotBtn: { alignSelf: 'center', marginBottom: 16, marginTop: -4 },
+  forgotText: { color: colors.muted, fontSize: 13 },
 
   registerRow: { flexDirection: 'row', alignItems: 'center' },
   registerHint: { color: colors.muted, fontSize: 15 },

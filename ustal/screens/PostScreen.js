@@ -55,7 +55,8 @@ export default function PostScreen({ route, navigation }) {
       .from('post_comments')
       .select('*')
       .eq('post_id', post.id)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(500);
     setComments(data || []);
     setLoading(false);
   };
@@ -96,10 +97,9 @@ export default function PostScreen({ route, navigation }) {
       showAlert('Ошибка', 'Не удалось отправить комментарий');
     } else {
       setText('');
-      await loadComments();
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 300);
       if (post.author_id && post.author_id !== store.userId) {
-        const { data: author } = await supabase.from('users').select('push_token').eq('user_id', post.author_id).single();
+        const { data: author } = await supabase.from('users').select('push_token').eq('user_id', post.author_id).maybeSingle();
         if (author?.push_token) sendPushNotification(author.push_token, 'Новый комментарий', `${store.username} прокомментировал твой пост`, { screen: 'Feed' });
       }
     }

@@ -2,7 +2,7 @@ import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -24,21 +24,29 @@ export default function SupportScreen({ navigation, route }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+  const sendingRef = useRef(false);
 
   const send = async () => {
-    if (!subject.trim() || !message.trim() || sending) return;
+    if (!subject.trim() || !message.trim() || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
 
     const categoryLabel = CATEGORIES.find(c => c.id === category)?.label || category;
 
-    // Сохраняем в БД напрямую (чтобы было видно в админ-панели)
-    await supabase.from('support_requests').insert({
+    const { error } = await supabase.from('support_requests').insert({
       user_id: store.userId || null,
       username: store.username || 'unknown',
       category: categoryLabel,
       subject: subject.trim(),
       message: message.trim(),
     });
+
+    if (error) {
+      sendingRef.current = false;
+      setSending(false);
+      Alert.alert('Ошибка', 'Не удалось отправить. Попробуй позже.');
+      return;
+    }
 
     // Дублируем на email через Edge Function (игнорируем ошибку — запись уже сохранена)
     supabase.functions.invoke('send-support-email', {
