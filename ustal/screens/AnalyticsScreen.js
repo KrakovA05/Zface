@@ -427,6 +427,42 @@ function ActivitySection({ userActivity }) {
   );
 }
 
+// Секция 6: Паттерны (Premium)
+function InsightsSection({ metricsHistory, moodHistory28, messageCounts }) {
+  if (!store.isPremium) {
+    return (
+      <SectionCard title="Паттерны">
+        <View style={styles.insightsLocked}>
+          <Ionicons name="lock-closed-outline" size={20} color="#A09080" />
+          <Text style={styles.insightsLockedTitle}>Доступно в Premium</Text>
+          <Text style={styles.insightsLockedExample}>
+            Например: «В недели когда ты больше общаешься, одиночество ниже на 14 пунктов»
+          </Text>
+        </View>
+      </SectionCard>
+    );
+  }
+  const insights = computeInsights({ metricsHistory, moodHistory28, messageCounts });
+  return (
+    <SectionCard title="Паттерны">
+      {insights.length === 0 ? (
+        <Text style={styles.emptyText}>
+          {metricsHistory.length >= 4
+            ? 'Паттернов пока не обнаружено — продолжай пользоваться'
+            : 'Появятся через несколько недель использования'}
+        </Text>
+      ) : (
+        insights.map((text, i) => (
+          <View key={i} style={[styles.insightRow, i > 0 && styles.insightRowBorder]}>
+            <View style={styles.insightDot} />
+            <Text style={styles.insightText}>{text}</Text>
+          </View>
+        ))
+      )}
+    </SectionCard>
+  );
+}
+
 // ─── PDF-генерация ────────────────────────────────────────────────────────────
 
 const DIMENSION_ORDER_PDF = ['anxiety', 'stress', 'apathy', 'loneliness', 'burnout', 'self_esteem', 'social_anxiety', 'attachment'];
@@ -812,6 +848,11 @@ export default function AnalyticsScreen({ navigation }) {
           <MoodSection moodHistory={moodHistory} />
           <ProfileSection metrics={metrics} prevDimScores={prevDimScores} navigation={navigation} />
           <TrendSection metricsHistory={metricsHistory} />
+          <InsightsSection
+            metricsHistory={metricsHistory}
+            moodHistory28={moodHistory}
+            messageCounts={messageCounts}
+          />
           <ActivitySection userActivity={userActivity} />
           <View style={styles.bottomPad} />
         </ScrollView>
@@ -1125,4 +1166,45 @@ const styles = StyleSheet.create({
   presenceNum: { fontSize: 26, fontWeight: '700', color: colors.white },
   presenceLabel: { fontSize: 11, color: colors.muted, textAlign: 'center', lineHeight: 15 },
   presenceDivider: { width: 1, height: 36, backgroundColor: '#E8DFD0' },
+  // Секция 6: Паттерны
+  insightsLocked: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  insightsLockedTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2C2420',
+  },
+  insightsLockedExample: {
+    fontSize: 13,
+    color: '#A09080',
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    gap: 10,
+  },
+  insightRowBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E8DFD0',
+  },
+  insightDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.accent,
+    marginTop: 6,
+    flexShrink: 0,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2C2420',
+    lineHeight: 20,
+  },
 });
