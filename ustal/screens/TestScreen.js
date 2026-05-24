@@ -182,6 +182,7 @@ export default function TestScreen({ navigation }) {
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: `${((current + 1) / pack.questions.length) * 100}%` }]} />
       </View>
+      <Text style={styles.honestHint}>Твои ответы видишь только ты — отвечай как есть</Text>
 
       <Text style={styles.question}>{q.question}</Text>
 
@@ -224,7 +225,14 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: colors.card,
     borderRadius: 2,
-    marginBottom: 48,
+    marginBottom: 10,
+  },
+  honestHint: {
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: 'center',
+    marginBottom: 36,
+    opacity: 0.8,
   },
   progressFill: {
     height: 4,
