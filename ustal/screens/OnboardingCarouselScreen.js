@@ -335,24 +335,26 @@ export default function OnboardingCarouselScreen({ navigation }) {
           <Visual />
         </View>
         <View style={[styles.textArea, { paddingBottom: insets.bottom + 16 }]}>
-          <Text style={styles.slideNum}>{String(index + 1).padStart(2, '0')} / {SLIDES.length}</Text>
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.desc}>{item.desc}</Text>
           <View style={styles.footer}>
-            {index > 0 ? (
-              <TouchableOpacity style={styles.btnBack} onPress={goPrev} activeOpacity={0.75}>
-                <Text style={styles.btnBackText}>← назад</Text>
+            <View style={styles.footerSide}>
+              {index > 0 && (
+                <TouchableOpacity style={styles.btnBack} onPress={goPrev} activeOpacity={0.75}>
+                  <Text style={styles.btnBackText}>← назад</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={styles.dots}>
+              {SLIDES.map((_, i) => (
+                <View key={i} style={[styles.dot, i === current && styles.dotActive]} />
+              ))}
+            </View>
+            <View style={[styles.footerSide, { alignItems: 'flex-end' }]}>
+              <TouchableOpacity style={styles.btn} onPress={goNext} activeOpacity={0.75}>
+                <Text style={styles.btnText}>{isLast ? 'начать' : 'дальше →'}</Text>
               </TouchableOpacity>
-            ) : (
-              <View style={styles.dots}>
-                {SLIDES.map((_, i) => (
-                  <View key={i} style={[styles.dot, i === current && styles.dotActive]} />
-                ))}
-              </View>
-            )}
-            <TouchableOpacity style={styles.btn} onPress={goNext} activeOpacity={0.75}>
-              <Text style={styles.btnText}>{isLast ? 'начать' : 'дальше →'}</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
@@ -400,10 +402,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  slideNum: { fontSize: 11, color: '#C0A882', fontWeight: '600', marginBottom: 6, letterSpacing: 0.5 },
   title: { fontSize: 22, fontWeight: '700', color: '#2C2420', marginBottom: 8 },
   desc: { fontSize: 14, color: '#6B5B4E', lineHeight: 21, marginBottom: 20 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  footerSide: { flex: 1 },
   dots: { flexDirection: 'row', gap: 4, alignItems: 'center' },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E8DFD0' },
   dotActive: { width: 20, backgroundColor: '#8B7355' },
