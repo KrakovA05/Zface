@@ -227,7 +227,9 @@ function SlideVisual5() {
               </View>
             ))}
           </View>
-          <Ionicons name="arrow-forward" size={14} color="#C0A882" />
+          <View style={{ height: 30, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="arrow-forward" size={14} color="#C0A882" />
+          </View>
           <View style={{ alignItems: 'center', gap: 4 }}>
             <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#c9a96e22', alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="person-outline" size={15} color="#c9a96e" />
