@@ -181,10 +181,11 @@ export default function DimensionHistoryScreen({ route, navigation }) {
   }, [dimension]));
 
   const current = liveScore;
-  const firstScore = chartPoints.filter(p => !p.isLive).length > 1
-    ? chartPoints.filter(p => !p.isLive)[0].score
+  const nonLivePoints = chartPoints.filter(p => !p.isLive);
+  const prevScore = nonLivePoints.length >= 1
+    ? nonLivePoints[nonLivePoints.length - 1].score
     : null;
-  const totalDelta = current !== null && firstScore !== null ? current - firstScore : null;
+  const totalDelta = current !== null && prevScore !== null ? current - prevScore : null;
 
   return (
     <View style={styles.safeArea}>
@@ -217,7 +218,7 @@ export default function DimensionHistoryScreen({ route, navigation }) {
                   <Text style={[styles.summaryValue, { color: totalDelta > 0 ? '#c0392b' : '#5DAA72' }]}>
                     {totalDelta > 0 ? `+${totalDelta}` : totalDelta}
                   </Text>
-                  <Text style={styles.summaryCaption}>за всё время</Text>
+                  <Text style={styles.summaryCaption}>от прошлого</Text>
                 </View>
               )}
               {daysCount > 0 && (
@@ -243,8 +244,8 @@ export default function DimensionHistoryScreen({ route, navigation }) {
                 />
                 <Text style={[styles.insightText, { color: totalDelta > 0 ? '#c0392b' : '#5DAA72' }]}>
                   {totalDelta > 0
-                    ? `Показатель вырос на ${totalDelta} пунктов — ситуация ухудшилась`
-                    : `Показатель снизился на ${Math.abs(totalDelta)} пунктов — ситуация улучшилась`
+                    ? `Показатель вырос на ${totalDelta} пунктов с прошлого замера — ситуация ухудшилась`
+                    : `Показатель снизился на ${Math.abs(totalDelta)} пунктов с прошлого замера — ситуация улучшилась`
                   }
                 </Text>
               </View>
