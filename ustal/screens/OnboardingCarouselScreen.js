@@ -149,10 +149,10 @@ function SlideVisual3() {
           ))}
         </View>
       </View>
-      <View style={[vis.card, { backgroundColor: '#F5F2ED' }]}>
-        <Ionicons name="bar-chart-outline" size={13} color="#A09080" />
-        <Text style={{ fontSize: 11, color: '#6B5B4E', flex: 1, lineHeight: 16 }}>
-          чекины настроения, слово дня, вопросы — всё это данные, из которых складывается твой профиль
+      <View style={[vis.card, vis.hint]}>
+        <Ionicons name="bar-chart-outline" size={13} color="#8B7355" />
+        <Text style={vis.hintText}>
+          каждое действие в приложении уточняет твой профиль — тест, чекин, время в чате в 2 ночи. вместе они дают картину точнее, чем один опросник
         </Text>
       </View>
     </View>
@@ -189,10 +189,10 @@ function SlideVisual4() {
           <Text style={[vis.cardText, { fontWeight: '700', color: '#5DAA72', flex: 0 }]}>↑ лучше</Text>
         </View>
       </View>
-      <View style={[vis.card, { backgroundColor: '#F5F2ED' }]}>
-        <Ionicons name="lock-closed-outline" size={13} color="#A09080" />
-        <Text style={{ fontSize: 11, color: '#6B5B4E', flex: 1, lineHeight: 16 }}>
-          отвечай честно — твои ответы видишь только ты. это нужно для точного результата
+      <View style={[vis.card, vis.hint]}>
+        <Ionicons name="lock-closed-outline" size={13} color="#8B7355" />
+        <Text style={vis.hintText}>
+          мы используем GAD-7, PSS-4, OLBI и другие клинические инструменты. твои ответы зашифрованы — мы их не продаём и не передаём
         </Text>
       </View>
     </View>
@@ -251,10 +251,10 @@ function SlideVisual5() {
           </View>
         ))}
       </View>
-      <View style={[vis.card, { backgroundColor: '#F5F2ED' }]}>
-        <Ionicons name="trending-up-outline" size={13} color="#A09080" />
-        <Text style={{ fontSize: 11, color: '#6B5B4E', flex: 1, lineHeight: 16 }}>
-          чем больше функций используешь — тем точнее профиль и персональные рекомендации
+      <View style={[vis.card, vis.hint]}>
+        <Ionicons name="trending-up-outline" size={13} color="#8B7355" />
+        <Text style={vis.hintText}>
+          это не трекер настроения. 8 клинических показателей — тревога, стресс, выгорание и ещё пять. точнее любого теста «как ты сейчас?»
         </Text>
       </View>
     </View>
@@ -294,6 +294,17 @@ const vis = StyleSheet.create({
     backgroundColor: '#c9a96e',
   },
   bubbleText: { fontSize: 12, color: '#2C2420', lineHeight: 17 },
+  hint: {
+    backgroundColor: '#EDE8DF',
+    borderColor: '#D4C9B8',
+  },
+  hintText: {
+    fontSize: 12,
+    color: '#3D2E26',
+    flex: 1,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
 });
 
 export default function OnboardingCarouselScreen({ navigation }) {
