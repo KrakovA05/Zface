@@ -20,4 +20,5 @@ export function clearStore() {
   store.goal = '';
   store.isAdmin = false;
   store.referralDiscountPct = 0;
+  store.refreshBadges = undefined;
 }

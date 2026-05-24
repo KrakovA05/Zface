@@ -35,7 +35,8 @@ export default function TestScreen({ navigation }) {
 
   useEffect(() => {
     const check = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
       if (user) {
         const { data } = await supabase
           .from('test_results')
@@ -63,7 +64,8 @@ export default function TestScreen({ navigation }) {
   }, []);
 
   const saveResult = async (lvl, score) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData?.user;
     if (user) {
       await supabase.from('test_results').insert({ user_id: user.id, level: lvl, score, pack_id: packId });
       // Пересчитываем composite из всех источников — он и становится users.level
@@ -87,9 +89,14 @@ export default function TestScreen({ navigation }) {
       setLevel(lvl);
       setFinished(true);
       setSaving(true);
-      await saveResult(lvl, newCount);
-      logEvent('test_complete', { level: lvl, score: newCount });
-      setSaving(false);
+      try {
+        await saveResult(lvl, newCount);
+        logEvent('test_complete', { level: lvl, score: newCount });
+      } catch (e) {
+        console.error('saveResult error:', e);
+      } finally {
+        setSaving(false);
+      }
     } else {
       setCurrent(current + 1);
     }

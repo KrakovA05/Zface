@@ -19,8 +19,12 @@ export default function PsychTestScreen({ route, navigation }) {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const submittingRef = useRef(false);
+  const isMounted = useRef(true);
 
-  useEffect(() => { logEvent('psych_test_start', { test_id: route.params?.testId }) }, [])
+  useEffect(() => {
+    logEvent('psych_test_start', { test_id: route.params?.testId });
+    return () => { isMounted.current = false; };
+  }, [])
 
   if (!test) {
     return (
@@ -53,6 +57,7 @@ export default function PsychTestScreen({ route, navigation }) {
 
     const userId = store.userId || (await supabase.auth.getUser())?.data?.user?.id;
     if (!userId) {
+      submittingRef.current = false;
       setSaving(false);
       showAlert('Ошибка', 'Сессия истекла. Войди снова.');
       return;
@@ -66,6 +71,7 @@ export default function PsychTestScreen({ route, navigation }) {
       answers: newAnswers,
     });
     if (error) {
+      submittingRef.current = false;
       setSaving(false);
       showAlert('Ошибка', 'Не удалось сохранить результат. Попробуй ещё раз.');
       return;
@@ -73,7 +79,7 @@ export default function PsychTestScreen({ route, navigation }) {
     setSaving(false);
     await AsyncStorage.setItem('profile_updated', 'true');
     await computeLiveProfile(userId, { updateLevel: true });
-    setDone(true);
+    if (isMounted.current) setDone(true);
   };
 
   if (done) {

@@ -288,7 +288,7 @@ export default function RoomsScreen({ route, navigation }) {
       payload.reply_to_username = replyTo.username;
       setReplyTo(null);
     }
-    const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id').single();
+    const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id').maybeSingle();
     if (error) {
       setSending(false);
       showAlert('Ошибка', 'Не удалось отправить сообщение');

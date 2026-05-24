@@ -36,7 +36,8 @@ export async function getNextTestId(userId) {
     .select('test_id, created_at')
     .eq('user_id', userId)
     .gte('created_at', startOfMonth.toISOString())
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   const passedThisMonth = new Set((results || []).map(r => r.test_id));
   const passedThisWeek = new Set(
@@ -54,7 +55,8 @@ export async function getNextTestId(userId) {
     .from('psych_test_results')
     .select('test_id')
     .eq('user_id', userId)
-    .in('test_id', ['ecr_short', 'mini_spin']);
+    .in('test_id', ['ecr_short', 'mini_spin'])
+    .limit(10);
 
   const passedEver = new Set((allResults || []).map(r => r.test_id));
   for (const tid of ['ecr_short', 'mini_spin']) {
@@ -81,7 +83,8 @@ export async function getNextTestId(userId) {
     .select('test_id, created_at')
     .eq('user_id', userId)
     .in('test_id', WEEKLY_TEST_ROTATION)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(100);
 
   const lastPassed = {};
   for (const r of allWeekly || []) {
