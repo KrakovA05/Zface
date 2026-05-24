@@ -246,7 +246,7 @@ function SlideVisual5() {
               <Text style={{ fontSize: 10, color: d.color, fontWeight: '600' }}>{d.value}</Text>
             </View>
             <View style={{ height: 4, backgroundColor: '#F0E8D8', borderRadius: 2 }}>
-              <View style={{ height: 4, width: `${d.value}%`, backgroundColor: d.color, borderRadius: 2 }} />
+              <View style={{ height: 4, width: '60%', backgroundColor: d.color, borderRadius: 2 }} />
             </View>
           </View>
         ))}
