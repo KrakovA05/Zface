@@ -1,6 +1,19 @@
 import { supabase } from '../supabase';
 import { store } from '../store';
 
+const PACK_DIMENSION_MAP = {
+  0: ['apathy', 'stress'],
+  1: ['burnout', 'apathy'],
+  2: ['loneliness', 'social_anxiety'],
+  3: ['self_esteem'],
+  4: ['apathy'],
+  5: ['anxiety', 'stress'],
+  6: ['apathy'],
+  7: ['anxiety'],
+  8: ['apathy', 'burnout'],
+  9: ['burnout', 'stress'],
+};
+
 const DIMENSION_WEIGHTS = {
   anxiety: 0.20, stress: 0.20, apathy: 0.15, loneliness: 0.15,
   burnout: 0.10, self_esteem: 0.10, social_anxiety: 0.05, attachment: 0.05,
@@ -35,6 +48,7 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
     { data: dmData },
     { data: messages },
     { data: checkinData },
+    { data: dailyTests },
   ] = await Promise.all([
     // Валидированные психотесты за 30 дней
     supabase.from('psych_test_results')
@@ -54,6 +68,11 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
       .select('score')
       .eq('user_id', uid).gte('checkin_date', sevenDaysAgoStr)
       .order('checkin_date', { ascending: true }).limit(30),
+    // Ежедневные тесты за 7 дней
+    supabase.from('test_results')
+      .select('score, pack_id')
+      .eq('user_id', uid).gte('created_at', sevenDaysAgo)
+      .order('created_at', { ascending: false }).limit(20),
   ]);
 
   // ── Валидированные психотесты: последний результат по каждому измерению ──────
@@ -82,7 +101,21 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
 
   // Признак «есть хоть какая-то активность за 7 дней»
   // Если нет — поведенческие сигналы дефолтятся в 50, а не в 100 (новый пользователь)
-  const hasActivity = msgCount > 0 || checkinScores.length > 0 || uniqueConvs > 0;
+  const hasActivity = msgCount > 0 || checkinScores.length > 0 || uniqueConvs > 0 || (dailyTests?.length ?? 0) > 0;
+
+  // ── Ежедневный тест → баллы по измерениям ────────────────────────────────────
+  const dailyDimAccum = {};
+  for (const t of dailyTests ?? []) {
+    const packScore = Math.round((t.score / 10) * 100);
+    for (const dim of PACK_DIMENSION_MAP[t.pack_id] ?? []) {
+      if (!dailyDimAccum[dim]) dailyDimAccum[dim] = [];
+      dailyDimAccum[dim].push(packScore);
+    }
+  }
+  const dailyScores = {};
+  for (const [dim, scores] of Object.entries(dailyDimAccum)) {
+    dailyScores[dim] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  }
 
   // ── Поведенческие сигналы ─────────────────────────────────────────────────────
   //
@@ -112,30 +145,34 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
     attachment:     50,
   };
 
-  // ── Итоговые баллы: psych > behavioral ───────────────────────────────────────
+  // ── Итоговые баллы: psych > daily > behavioral ───────────────────────────────
   //
-  // Приоритет источников:
-  //   1. Валидированный психотест (самый надёжный, окно 30 дней)
-  //   2. Поведенческий сигнал    (слабый прокси, дефолт 50 при отсутствии данных)
-  //
-  // 10-вопросный ежедневный тест намеренно исключён из composite —
-  // он слишком нестабилен, чтобы напрямую двигать уровень.
-  // Его данные хранятся в test_results для истории.
+  // Веса источников:
+  //   psych (30 дн)  + daily (7 дн)  + behavioral  →  итог
+  //   есть           есть             —             →  ps*0.6 + ds*0.25 + bs*0.15
+  //   есть           нет              —             →  ps*0.6 + bs*0.4
+  //   нет            есть             —             →  ds*0.3 + bs*0.7   ← daily теперь 30%, не 60%
+  //   нет            нет              —             →  bs
   const dimensionScores = {};
   for (const dim of Object.keys(DIMENSION_WEIGHTS)) {
-    const ps = psychScores[dim];  // валидированный психотест
-    const bs = behavioral[dim];   // поведение
+    const ps = psychScores[dim];
+    const ds = dailyScores[dim];
+    const bs = behavioral[dim];
 
-    // Для self_esteem/social_anxiety/attachment нет реального поведенческого сигнала —
-    // behavioral всегда 50 (заглушка). Если есть психотест — используем его напрямую.
     const noRealBehavioral = new Set(['self_esteem', 'social_anxiety', 'attachment']);
 
     if (ps !== undefined) {
       if (noRealBehavioral.has(dim)) {
-        dimensionScores[dim] = ps;
+        dimensionScores[dim] = ds !== undefined
+          ? Math.round(ps * 0.75 + ds * 0.25)
+          : ps;
       } else {
-        dimensionScores[dim] = Math.round(ps * 0.6 + bs * 0.4);
+        dimensionScores[dim] = ds !== undefined
+          ? Math.round(ps * 0.6 + ds * 0.25 + bs * 0.15)
+          : Math.round(ps * 0.6 + bs * 0.4);
       }
+    } else if (ds !== undefined) {
+      dimensionScores[dim] = Math.round(ds * 0.3 + bs * 0.7);
     } else {
       dimensionScores[dim] = bs;
     }
