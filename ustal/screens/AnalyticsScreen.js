@@ -13,6 +13,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { colors } from '../theme';
 import { computeLiveProfile } from '../utils/computeLiveProfile';
+import { computeInsights } from '../utils/computeInsights';
 
 // ─── Константы ───────────────────────────────────────────────────────────────
 
@@ -39,6 +40,14 @@ const WEEKLY_PHRASES = {
 };
 
 const LEVEL_COLORS = { green: '#5DAA72', yellow: '#AA7C00', red: '#c0392b' };
+
+function weekKey(dateStr) {
+  const d = new Date(dateStr);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
 
 function getMoodColor(score) {
   if (score >= 8) return '#5DAA72';
@@ -602,6 +611,7 @@ export default function AnalyticsScreen({ navigation }) {
   const [allPsychRows, setAllPsychRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [messageCounts, setMessageCounts] = useState([]);
 
   const exportPdf = async () => {
     setExporting(true);
@@ -644,6 +654,7 @@ export default function AnalyticsScreen({ navigation }) {
         { count: ansCount },
         { data: firstTest },
         { count: invitedCount },
+        { data: msgRows },
       ] = await Promise.all([
         computeLiveProfile(uid, { updateLevel: true }),
         supabase
@@ -680,7 +691,7 @@ export default function AnalyticsScreen({ navigation }) {
           .select('score, checkin_date')
           .eq('user_id', uid)
           .gte('checkin_date', (() => {
-            const d = new Date(); d.setDate(d.getDate() - 6);
+            const d = new Date(); d.setDate(d.getDate() - 27);
             return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
           })())
           .order('checkin_date', { ascending: true }),
@@ -689,6 +700,14 @@ export default function AnalyticsScreen({ navigation }) {
         supabase.from('test_results').select('created_at').eq('user_id', uid)
           .order('created_at', { ascending: true }).limit(1).maybeSingle(),
         supabase.from('users').select('user_id', { count: 'exact', head: true }).eq('referred_by', uid),
+        supabase
+          .from('messages')
+          .select('created_at')
+          .eq('sender_id', uid)
+          .gte('created_at', (() => {
+            const d = new Date(); d.setDate(d.getDate() - 56);
+            return d.toISOString();
+          })()),
       ]);
 
       // Измерения без реального поведенческого сигнала — только психотест
@@ -744,6 +763,16 @@ export default function AnalyticsScreen({ navigation }) {
         : 1;
       setPresence({ daysHere, helpedCount: helpCount || 0, answersGiven: ansCount || 0, invitedCount: invitedCount || 0 });
       setAllPsychRows(psychRows || []);
+      const msgCountMap = {};
+      for (const msg of msgRows || []) {
+        const wk = weekKey(msg.created_at);
+        msgCountMap[wk] = (msgCountMap[wk] || 0) + 1;
+      }
+      const msgCounts = Object.entries(msgCountMap)
+        .map(([week, cnt]) => ({ week, cnt }))
+        .sort((a, b) => b.week.localeCompare(a.week))
+        .slice(0, 8);
+      setMessageCounts(msgCounts);
       setLoading(false);
     }
 
