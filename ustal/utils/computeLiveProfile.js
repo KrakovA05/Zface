@@ -6,19 +6,6 @@ const DIMENSION_WEIGHTS = {
   burnout: 0.10, self_esteem: 0.10, social_anxiety: 0.05, attachment: 0.05,
 };
 
-// Какое измерение покрывает каждый пакет ежедневного теста (TEST_PACKS из constants.js)
-const PACK_DIMENSION_MAP = {
-  0: ['apathy', 'stress'],              // Общее настроение
-  1: ['burnout', 'apathy'],             // Энергия и сон
-  2: ['loneliness', 'social_anxiety'],  // Отношения с людьми
-  3: ['self_esteem'],                   // Самооценка
-  4: ['apathy'],                        // Мотивация и цели
-  5: ['anxiety', 'stress'],             // Тревога и стресс
-  6: ['apathy'],                        // Радость и удовольствие
-  7: ['anxiety'],                       // Здесь и сейчас
-  8: ['apathy', 'burnout'],             // Смысл и ценности
-  9: ['burnout', 'stress'],             // Тело и голова
-};
 
 function norm(value, min, max) {
   if (max === min) return 0;
@@ -48,7 +35,6 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
     { data: dmData },
     { data: messages },
     { data: checkinData },
-    { data: dailyTests },
   ] = await Promise.all([
     // Валидированные психотесты за 30 дней
     supabase.from('psych_test_results')
@@ -68,11 +54,6 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
       .select('score')
       .eq('user_id', uid).gte('checkin_date', sevenDaysAgoStr)
       .order('checkin_date', { ascending: true }).limit(30),
-    // Ежедневные тесты за 7 дней (с pack_id для маппинга на измерения)
-    supabase.from('test_results')
-      .select('score, pack_id')
-      .eq('user_id', uid).gte('created_at', sevenDaysAgo)
-      .order('created_at', { ascending: false }).limit(20),
   ]);
 
   // ── Валидированные психотесты: последний результат по каждому измерению ──────
@@ -101,23 +82,7 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
 
   // Признак «есть хоть какая-то активность за 7 дней»
   // Если нет — поведенческие сигналы дефолтятся в 50, а не в 100 (новый пользователь)
-  const hasActivity = msgCount > 0 || checkinScores.length > 0 || uniqueConvs > 0 || (dailyTests?.length ?? 0) > 0;
-
-  // ── Ежедневный тест → баллы по измерениям ────────────────────────────────────
-  // Каждый пак нормализуется: pessimisticCount / 10 * 100 → 0-100
-  // Несколько паков за 7 дней → среднее по каждому измерению
-  const dailyDimAccum = {};
-  for (const t of dailyTests ?? []) {
-    const packScore = Math.round((t.score / 10) * 100);
-    for (const dim of PACK_DIMENSION_MAP[t.pack_id] ?? []) {
-      if (!dailyDimAccum[dim]) dailyDimAccum[dim] = [];
-      dailyDimAccum[dim].push(packScore);
-    }
-  }
-  const dailyScores = {};
-  for (const [dim, scores] of Object.entries(dailyDimAccum)) {
-    dailyScores[dim] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-  }
+  const hasActivity = msgCount > 0 || checkinScores.length > 0 || uniqueConvs > 0;
 
   // ── Поведенческие сигналы ─────────────────────────────────────────────────────
   //
@@ -147,16 +112,18 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
     attachment:     50,
   };
 
-  // ── Итоговые баллы: psych > daily > behavioral ────────────────────────────────
+  // ── Итоговые баллы: psych > behavioral ───────────────────────────────────────
   //
   // Приоритет источников:
   //   1. Валидированный психотест (самый надёжный, окно 30 дней)
-  //   2. Ежедневный пак-тест     (умеренно надёжный, окно 7 дней)
-  //   3. Поведенческий сигнал    (слабый прокси, дефолт 50 при отсутствии данных)
+  //   2. Поведенческий сигнал    (слабый прокси, дефолт 50 при отсутствии данных)
+  //
+  // 10-вопросный ежедневный тест намеренно исключён из composite —
+  // он слишком нестабилен, чтобы напрямую двигать уровень.
+  // Его данные хранятся в test_results для истории.
   const dimensionScores = {};
   for (const dim of Object.keys(DIMENSION_WEIGHTS)) {
     const ps = psychScores[dim];  // валидированный психотест
-    const ds = dailyScores[dim];  // ежедневный пак
     const bs = behavioral[dim];   // поведение
 
     // Для self_esteem/social_anxiety/attachment нет реального поведенческого сигнала —
@@ -165,17 +132,11 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
 
     if (ps !== undefined) {
       if (noRealBehavioral.has(dim)) {
-        // Только психотест — поведенческая заглушка не даёт информации
         dimensionScores[dim] = ps;
       } else {
-        // Психотест + реальный поведенческий сигнал
-        dimensionScores[dim] = Math.round(ps * 0.6 + (ds !== undefined ? ds : bs) * 0.4);
+        dimensionScores[dim] = Math.round(ps * 0.6 + bs * 0.4);
       }
-    } else if (ds !== undefined) {
-      // Пак-тест без психотеста
-      dimensionScores[dim] = Math.round(ds * 0.6 + bs * 0.4);
     } else {
-      // Только поведение (или 50 если нет данных)
       dimensionScores[dim] = bs;
     }
   }
