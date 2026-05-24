@@ -318,6 +318,14 @@ export default function OnboardingCarouselScreen({ navigation }) {
     }
   };
 
+  const goPrev = () => {
+    if (current > 0) {
+      const prev = current - 1;
+      flatRef.current?.scrollToIndex({ index: prev, animated: true });
+      setCurrent(prev);
+    }
+  };
+
   const renderSlide = ({ item, index }) => {
     const Visual = VISUALS[index];
     const isLast = index === SLIDES.length - 1;
@@ -331,11 +339,17 @@ export default function OnboardingCarouselScreen({ navigation }) {
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.desc}>{item.desc}</Text>
           <View style={styles.footer}>
-            <View style={styles.dots}>
-              {SLIDES.map((_, i) => (
-                <View key={i} style={[styles.dot, i === current && styles.dotActive]} />
-              ))}
-            </View>
+            {index > 0 ? (
+              <TouchableOpacity style={styles.btnBack} onPress={goPrev} activeOpacity={0.75}>
+                <Text style={styles.btnBackText}>← назад</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.dots}>
+                {SLIDES.map((_, i) => (
+                  <View key={i} style={[styles.dot, i === current && styles.dotActive]} />
+                ))}
+              </View>
+            )}
             <TouchableOpacity style={styles.btn} onPress={goNext} activeOpacity={0.75}>
               <Text style={styles.btnText}>{isLast ? 'начать' : 'дальше →'}</Text>
             </TouchableOpacity>
@@ -400,4 +414,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   btnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
+  btnBack: { paddingVertical: 10, paddingHorizontal: 4 },
+  btnBackText: { color: '#A09080', fontSize: 14 },
 });
