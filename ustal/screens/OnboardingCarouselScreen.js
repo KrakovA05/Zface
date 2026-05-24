@@ -302,6 +302,7 @@ const vis = StyleSheet.create({
     fontSize: 12,
     color: '#3D2E26',
     flex: 1,
+    minWidth: 0,
     lineHeight: 18,
     fontWeight: '500',
   },
