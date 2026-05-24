@@ -18,7 +18,7 @@ const SLIDES = [
   {
     key: '2',
     title: 'Поговори',
-    desc: 'Комнаты по уровню, глобальный чат и @один — ИИ, который просто слушает.',
+    desc: 'Комнаты по уровню, личные переписки и @один — ИИ, который просто слушает.',
   },
   {
     key: '3',
@@ -28,34 +28,62 @@ const SLIDES = [
   {
     key: '4',
     title: 'Следи за собой',
-    desc: 'Тест раз в сутки определяет твой уровень. Динамика видна — становится лучше или хуже.',
+    desc: 'Тест раз в сутки добавляет данные в твой профиль. После трёх тестов появится уровень — и станет видна динамика.',
   },
   {
     key: '5',
-    title: 'Приложение учится вместе с тобой',
-    desc: 'Мы анализируем твою активность — и подстраиваем рекомендации, контент и подсказки именно под тебя.',
+    title: 'Всё под рукой',
+    desc: 'Психологические материалы, ежедневные чекины настроения и личная аналитика — всё подстраивается под тебя.',
   },
 ];
 
 function SlideVisual1() {
+  const posts = [
+    { name: 'А', color: '#c0392b', level: 'красный', levelColor: '#c0392b', text: 'сегодня просто не могу заставить себя выйти из дома', likes: 14, comments: 3 },
+    { name: 'М', color: '#AA7C00', level: 'жёлтый', levelColor: '#AA7C00', text: 'кто-нибудь ещё чувствует что устал от всего вокруг?', likes: 8, comments: 5 },
+  ];
   return (
     <View style={vis.wrap}>
-      {[
-        { name: 'А', color: '#c9a96e', text: 'сегодня просто не могу заставить себя выйти из дома' },
-        { name: 'М', color: '#AA7C00', text: 'кто-нибудь ещё чувствует что устал от всего' },
-      ].map((item, i) => (
+      {posts.map((item, i) => (
         <View key={i} style={vis.card}>
           <View style={[vis.avatar, { backgroundColor: item.color }]}>
             <Text style={vis.avatarText}>{item.name}</Text>
           </View>
-          <Text style={vis.cardText}>{item.text}</Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <Text style={[vis.cardText, { fontWeight: '700', flex: 0 }]}>аноним</Text>
+              <View style={{ backgroundColor: item.levelColor + '22', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
+                <Text style={{ fontSize: 9, color: item.levelColor, fontWeight: '600' }}>{item.level}</Text>
+              </View>
+            </View>
+            <Text style={vis.cardText}>{item.text}</Text>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Ionicons name="heart-outline" size={11} color="#A09080" />
+                <Text style={{ fontSize: 10, color: '#A09080' }}>{item.likes}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Ionicons name="chatbubble-outline" size={11} color="#A09080" />
+                <Text style={{ fontSize: 10, color: '#A09080' }}>{item.comments}</Text>
+              </View>
+            </View>
+          </View>
         </View>
       ))}
+      <View style={[vis.card, { backgroundColor: '#F5F0E8' }]}>
+        <Ionicons name="people-outline" size={12} color="#A09080" />
+        <Text style={{ fontSize: 11, color: '#A09080', flex: 1, lineHeight: 16 }}>сегодня 24 человека с твоим уровнем заходили</Text>
+      </View>
     </View>
   );
 }
 
 function SlideVisual2() {
+  const rooms = [
+    { color: '#5DAA72', label: 'Зелёная', desc: 'держимся', icon: 'leaf-outline' },
+    { color: '#AA7C00', label: 'Жёлтая', desc: 'тяжеловато', icon: 'partly-sunny-outline' },
+    { color: '#c0392b', label: 'Красная', desc: 'совсем плохо', icon: 'thunderstorm-outline' },
+  ];
   return (
     <View style={vis.wrap}>
       <View style={vis.card}>
@@ -63,17 +91,31 @@ function SlideVisual2() {
           <Text style={[vis.avatarText, { fontSize: 14 }]}>✦</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[vis.cardText, { fontWeight: '700' }]}>@один</Text>
-          <Text style={[vis.cardText, { color: colors.muted, fontSize: 11 }]}>я здесь каждый день</Text>
+          <Text style={[vis.cardText, { fontWeight: '700', flex: 0 }]}>@один</Text>
+          <View style={{ paddingTop: 6, gap: 5 }}>
+            <View style={vis.bubble}>
+              <Text style={vis.bubbleText}>как ты сейчас?</Text>
+            </View>
+            <View style={[vis.bubble, vis.bubbleRight]}>
+              <Text style={[vis.bubbleText, { color: '#FFFFFF' }]}>не очень. просто устал</Text>
+            </View>
+            <View style={vis.bubble}>
+              <Text style={vis.bubbleText}>расскажи — я слушаю</Text>
+            </View>
+          </View>
         </View>
       </View>
-      <View style={{ paddingHorizontal: 12, gap: 6 }}>
-        <View style={vis.bubble}>
-          <Text style={vis.bubbleText}>как ты сейчас?</Text>
-        </View>
-        <View style={[vis.bubble, vis.bubbleRight]}>
-          <Text style={[vis.bubbleText, { color: '#FFFFFF' }]}>не очень. просто устал</Text>
-        </View>
+      <View style={[vis.card, { flexDirection: 'column', gap: 6 }]}>
+        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, flex: 0 }]}>КОМНАТЫ ПО УРОВНЮ</Text>
+        {rooms.map(r => (
+          <View key={r.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: r.color + '22', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={r.icon} size={12} color={r.color} />
+            </View>
+            <Text style={{ fontSize: 11, color: '#2C2420', fontWeight: '600', width: 56 }}>{r.label}</Text>
+            <Text style={{ fontSize: 10, color: '#A09080', flex: 1 }}>{r.desc}</Text>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -82,19 +124,30 @@ function SlideVisual2() {
 function SlideVisual3() {
   return (
     <View style={vis.wrap}>
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-        <View style={[vis.card, { flex: 1, alignItems: 'center', flexDirection: 'column' }]}>
-          <Ionicons name="radio-button-on-outline" size={28} color={colors.accent} />
-          <Text style={[vis.cardText, { marginTop: 4, flex: 0 }]}>дыхание</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={[vis.card, { flex: 1, flexDirection: 'column', alignItems: 'center', gap: 6 }]}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#c9a96e', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, borderColor: '#c9a96e88', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#c9a96e55' }} />
+            </View>
+          </View>
+          <Text style={[vis.cardText, { flex: 0, fontSize: 11, textAlign: 'center' }]}>дыхание{'\n'}4-4-4-4</Text>
         </View>
-        <View style={[vis.card, { flex: 1, alignItems: 'center', flexDirection: 'column' }]}>
-          <Ionicons name="fish-outline" size={28} color={colors.accent} />
-          <Text style={[vis.cardText, { marginTop: 4, flex: 0 }]}>рыбалка</Text>
+        <View style={[vis.card, { flex: 1, flexDirection: 'column', alignItems: 'center', gap: 6 }]}>
+          <Ionicons name="fish-outline" size={32} color="#c9a96e" />
+          <Text style={[vis.cardText, { flex: 0, fontSize: 11, textAlign: 'center' }]}>медита-{'\n'}тивная рыбалка</Text>
         </View>
       </View>
       <View style={[vis.card, { flexDirection: 'column' }]}>
-        <Text style={[vis.cardText, { color: colors.muted, fontSize: 10, marginBottom: 4, flex: 0 }]}>АНОНИМНАЯ МЫСЛЬ ДНЯ</Text>
-        <Text style={[vis.cardText, { fontStyle: 'italic' }]}>«иногда просто хочется чтобы кто-то спросил как дела»</Text>
+        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, marginBottom: 6, flex: 0 }]}>АНОНИМНАЯ МЫСЛЬ ДНЯ</Text>
+        <Text style={[vis.cardText, { fontStyle: 'italic', marginBottom: 10 }]}>«иногда просто хочется чтобы кто-то спросил как дела»</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {['я понимаю', 'я тоже', 'держись'].map(r => (
+            <View key={r} style={{ backgroundColor: '#F0E8D8', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }}>
+              <Text style={{ fontSize: 9, color: '#6B5B4E' }}>{r}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -113,7 +166,7 @@ function SlideVisual4() {
   return (
     <View style={vis.wrap}>
       <View style={[vis.card, { flexDirection: 'column' }]}>
-        <Text style={[vis.cardText, { color: colors.muted, fontSize: 10, marginBottom: 8, flex: 0 }]}>ИСТОРИЯ УРОВНЕЙ</Text>
+        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, marginBottom: 8, flex: 0 }]}>ИСТОРИЯ УРОВНЕЙ — ПОСЛЕ 3 ТЕСТОВ</Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 48, gap: 4 }}>
           {bars.map((b, i) => (
             <View key={i} style={{ flex: 1, height: `${b.h}%`, backgroundColor: b.color, borderRadius: 4 }} />
@@ -122,33 +175,55 @@ function SlideVisual4() {
       </View>
       <View style={[vis.card, { justifyContent: 'space-between' }]}>
         <View>
-          <Text style={[vis.cardText, { color: colors.muted, fontSize: 10, flex: 0 }]}>сейчас</Text>
+          <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, flex: 0 }]}>сейчас</Text>
           <Text style={[vis.cardText, { fontWeight: '700', color: '#AA7C00', flex: 0 }]}>жёлтый</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[vis.cardText, { color: colors.muted, fontSize: 10, flex: 0 }]}>динамика</Text>
+          <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, flex: 0 }]}>динамика</Text>
           <Text style={[vis.cardText, { fontWeight: '700', color: '#5DAA72', flex: 0 }]}>↑ лучше</Text>
         </View>
+      </View>
+      <View style={[vis.card, { backgroundColor: '#F5F2ED' }]}>
+        <Ionicons name="time-outline" size={14} color="#A09080" />
+        <Text style={{ fontSize: 11, color: '#6B5B4E', flex: 1, lineHeight: 16 }}>
+          уровень появится после 3 тестов или одного клинического — психологические опросники
+        </Text>
       </View>
     </View>
   );
 }
 
 function SlideVisual5() {
+  const dims = [
+    { label: 'тревога', value: 62, color: '#c0392b' },
+    { label: 'стресс', value: 45, color: '#AA7C00' },
+    { label: 'апатия', value: 28, color: '#5DAA72' },
+    { label: 'одиночество', value: 55, color: '#AA7C00' },
+  ];
   return (
     <View style={vis.wrap}>
       <View style={[vis.card, { flexDirection: 'column' }]}>
-        <Text style={[vis.cardText, { color: colors.muted, fontSize: 10, marginBottom: 8, flex: 0 }]}>ДЛЯ ТЕБЯ СЕЙЧАС</Text>
-        {[1, 2, 3].map(i => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }} />
-            <View style={{ height: 8, backgroundColor: '#F0E8D8', borderRadius: 4, width: `${90 - i * 10}%` }} />
+        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, marginBottom: 8, flex: 0 }]}>ПЕРСОНАЛЬНАЯ АНАЛИТИКА</Text>
+        {dims.map(d => (
+          <View key={d.label} style={{ marginBottom: 5 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+              <Text style={{ fontSize: 10, color: '#6B5B4E' }}>{d.label}</Text>
+              <Text style={{ fontSize: 10, color: d.color, fontWeight: '600' }}>{d.value}</Text>
+            </View>
+            <View style={{ height: 4, backgroundColor: '#F0E8D8', borderRadius: 2 }}>
+              <View style={{ height: 4, width: `${d.value}%`, backgroundColor: d.color, borderRadius: 2 }} />
+            </View>
           </View>
         ))}
       </View>
       <View style={[vis.card, { flexDirection: 'column' }]}>
-        <Text style={[vis.cardText, { color: colors.muted, fontSize: 10, marginBottom: 4, flex: 0 }]}>@один знает что тебе нужно</Text>
-        <Text style={vis.cardText}>Твои паттерны → персональные советы и контент</Text>
+        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, marginBottom: 4, flex: 0 }]}>ДЛЯ ТЕБЯ СЕЙЧАС</Text>
+        {['Работа с тревогой', 'Техники заземления', 'Дыхательные практики'].map((t, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#c9a96e' }} />
+            <Text style={{ fontSize: 11, color: '#2C2420' }}>{t}</Text>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -178,9 +253,9 @@ const vis = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#F0E8D8',
     borderRadius: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    maxWidth: '80%',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    maxWidth: '85%',
   },
   bubbleRight: {
     alignSelf: 'flex-end',
