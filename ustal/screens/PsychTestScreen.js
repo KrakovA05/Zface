@@ -128,7 +128,10 @@ export default function PsychTestScreen({ route, navigation }) {
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
       </View>
-      <Text style={styles.progressText}>{current + 1} / {test.questions.length}</Text>
+      <View style={styles.progressRow}>
+        <Text style={styles.honestHint}>Твои ответы видишь только ты</Text>
+        <Text style={styles.progressText}>{current + 1} / {test.questions.length}</Text>
+      </View>
 
       <Text style={styles.question}>{q}</Text>
 
@@ -179,7 +182,9 @@ const styles = StyleSheet.create({
   intro: { fontSize: 15, color: colors.white, opacity: 0.75, marginBottom: 20, lineHeight: 22 },
   progressBar: { height: 4, backgroundColor: colors.border, borderRadius: 2, marginBottom: 8 },
   progressFill: { height: 4, backgroundColor: colors.accent, borderRadius: 2 },
-  progressText: { fontSize: 12, color: colors.muted, marginBottom: 24, textAlign: 'right' },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  honestHint: { fontSize: 11, color: colors.muted, opacity: 0.7 },
+  progressText: { fontSize: 12, color: colors.muted },
   question: { fontSize: 17, color: colors.white, lineHeight: 26, marginBottom: 32, fontWeight: '500' },
   scaleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   scaleLabel: { fontSize: 11, color: colors.muted, maxWidth: 100 },
