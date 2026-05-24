@@ -163,7 +163,7 @@ const focusStyles = StyleSheet.create({
 });
 
 export default function HomeScreen({ navigation }) {
-  const [level,        setLevel]        = useState(store.level || 'green');
+  const [level,        setLevel]        = useState(store.level || null);
   const [history,      setHistory]      = useState([]);
   const [loading,      setLoading]      = useState(true);
 
@@ -281,6 +281,7 @@ export default function HomeScreen({ navigation }) {
           { data: proactive },
           { data: notice },
           testIdResult,
+          { data: userRow },
         ] = await Promise.all([
           supabase.from('test_results').select('level, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
           supabase.from('anonymous_letters').select('*', { count: 'exact', head: true }).eq('recipient_id', user.id).eq('opened', false),
@@ -298,14 +299,15 @@ export default function HomeScreen({ navigation }) {
           supabase.from('ai_proactive_messages').select('id, text, created_at').eq('user_id', user.id).is('read_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('moderation_notices').select('id, message_preview, created_at, type').eq('user_id', user.id).is('read_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
           testJustDoneRef.current ? Promise.resolve(null) : getNextTestId(user.id),
+          supabase.from('users').select('level').eq('user_id', user.id).maybeSingle(),
         ]);
 
-        // Уровень из последнего теста
-        let currentLevel = store.level || 'green';
+        // Уровень из users.level (composite) — null пока не накоплено достаточно данных
+        const dbLevel = userRow?.level || null;
+        setLevel(dbLevel);
+        store.level = dbLevel;
+        const currentLevel = dbLevel;
         if (recent?.length) {
-          currentLevel = recent[0].level;
-          setLevel(currentLevel);
-          store.level = currentLevel;
           setHistory(recent);
           checkNavHint(recent);
         }
@@ -357,12 +359,12 @@ export default function HomeScreen({ navigation }) {
         // Фаза 2: уровень-зависимые запросы параллельно
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
         await Promise.all([
-          recent?.length
+          dbLevel && recent?.length
             ? supabase.from('users').select('*', { count: 'exact', head: true })
-                .eq('level', currentLevel).gte('last_seen', todayStart.toISOString()).neq('user_id', user.id)
+                .eq('level', dbLevel).gte('last_seen', todayStart.toISOString()).neq('user_id', user.id)
                 .then(({ count: cc }) => setCommunityCount(cc || 0))
             : Promise.resolve(),
-          findSimilarUser(user.id, currentLevel),
+          dbLevel ? findSimilarUser(user.id, dbLevel) : Promise.resolve(),
           myMood
             ? (setMoodScore(myMood.score),
                setMoodNote(myMood.note ?? ''),
@@ -616,7 +618,7 @@ export default function HomeScreen({ navigation }) {
     return parts.join(' · ');
   };
 
-  const lvlColor    = LEVEL_COLORS[level];
+  const lvlColor    = LEVEL_COLORS[level] || '#A09080';
   const dynamic     = getDynamic(history);
   const moduleItems = getModuleItems(store.goal);
 
@@ -809,6 +811,16 @@ export default function HomeScreen({ navigation }) {
         {/* ── Статус уровня — тихая справка ── */}
         {loading ? (
           <ActivityIndicator color={colors.accent} style={{ marginVertical: 16 }} />
+        ) : !level ? (
+          <View style={[styles.statusCard, { borderLeftColor: '#A09080' }]}>
+            <View style={[styles.statusIconWrap, { backgroundColor: 'rgba(160,144,128,0.12)' }]}>
+              <Ionicons name="time-outline" size={16} color="#A09080" />
+            </View>
+            <View style={styles.statusInfo}>
+              <Text style={[styles.statusLevel, { color: '#A09080' }]}>Уровень появится</Text>
+              <Text style={styles.statusDesc}>Чем больше тестов пройдёшь — тем точнее он станет</Text>
+            </View>
+          </View>
         ) : (
           <View style={[styles.statusCard, { borderLeftColor: lvlColor }]}>
             <View style={[styles.statusIconWrap, { backgroundColor: lvlColor + '18' }]}>
@@ -825,14 +837,11 @@ export default function HomeScreen({ navigation }) {
                 )}
               </View>
               <Text style={styles.statusDesc}>{LEVEL_TEXTS[level]}</Text>
-              {!history.length && (
-                <Text style={styles.noTestHint}>Пройди тест чтобы узнать своё состояние</Text>
-              )}
             </View>
           </View>
         )}
 
-        {!loading && communityCount > 0 && (
+        {!loading && level && communityCount > 0 && (
           <View style={styles.communityStrip}>
             <Ionicons name="people-outline" size={13} color={colors.muted} />
             <Text style={styles.communityText}>

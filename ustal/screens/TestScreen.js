@@ -68,8 +68,13 @@ export default function TestScreen({ navigation }) {
     const user = authData?.user;
     if (user) {
       await supabase.from('test_results').insert({ user_id: user.id, level: lvl, score, pack_id: packId });
-      // Пересчитываем composite из всех источников — он и становится users.level
-      const profile = await computeLiveProfile(user.id, { updateLevel: true });
+      // Уровень разблокируется только начиная с 3-го теста
+      const { count: totalCount } = await supabase
+        .from('test_results')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      const shouldUpdateLevel = (totalCount ?? 0) >= 3;
+      const profile = await computeLiveProfile(user.id, { updateLevel: shouldUpdateLevel, saveMetrics: true });
       scheduleQuestNotifications(profile.level);
     }
   };

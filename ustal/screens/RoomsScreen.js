@@ -59,7 +59,7 @@ function formatTime(dateStr) {
 }
 
 export default function RoomsScreen({ route, navigation }) {
-  const userLevel = store.level || 'green';
+  const userLevel = store.level || null;
   const openRoom = route?.params?.openRoom;
   const insets = useSafeAreaInsets();
   const isAdmin = store.isAdmin || false;
