@@ -151,7 +151,7 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
   //   psych (30 дн)  + daily (7 дн)  + behavioral  →  итог
   //   есть           есть             —             →  ps*0.6 + ds*0.25 + bs*0.15
   //   есть           нет              —             →  ps*0.6 + bs*0.4
-  //   нет            есть             —             →  ds*0.3 + bs*0.7   ← daily теперь 30%, не 60%
+  //   нет            есть             —             →  ds*0.15 + bs*0.85
   //   нет            нет              —             →  bs
   const dimensionScores = {};
   for (const dim of Object.keys(DIMENSION_WEIGHTS)) {
@@ -172,7 +172,7 @@ export async function computeLiveProfile(uid, { updateLevel = false, saveMetrics
           : Math.round(ps * 0.6 + bs * 0.4);
       }
     } else if (ds !== undefined) {
-      dimensionScores[dim] = Math.round(ds * 0.3 + bs * 0.7);
+      dimensionScores[dim] = Math.round(ds * 0.15 + bs * 0.85);
     } else {
       dimensionScores[dim] = bs;
     }
