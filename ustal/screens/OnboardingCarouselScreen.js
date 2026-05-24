@@ -13,27 +13,27 @@ const SLIDES = [
   {
     key: '1',
     title: 'Найди своих',
-    desc: 'Лента и комнаты — только для людей с твоим уровнем. Здесь не притворяются.',
+    desc: 'Лента и комнаты — только для людей с твоим уровнем. Здесь не нужно притворяться.',
   },
   {
     key: '2',
     title: 'Поговори',
-    desc: 'Комнаты по уровню, личные переписки и @один — ИИ, который просто слушает.',
+    desc: 'Комнаты по уровню, личные переписки и @один — ИИ, который слушает без советов и осуждения.',
   },
   {
     key: '3',
     title: 'Выдохни',
-    desc: 'Коробочное дыхание, медитативная рыбалка и анонимные мысли — когда слов нет.',
+    desc: 'Дыхание, рыбалка, анонимные мысли — когда слов нет. Твои отметки настроения и активность в приложении тоже идут в аналитику.',
   },
   {
     key: '4',
     title: 'Следи за собой',
-    desc: 'Тест раз в сутки добавляет данные в твой профиль. После трёх тестов появится уровень — и станет видна динамика.',
+    desc: 'Тест раз в сутки. Уровень появится после трёх тестов. Отвечай честно — твои ответы видишь только ты, они нужны для точности.',
   },
   {
     key: '5',
-    title: 'Всё под рукой',
-    desc: 'Психологические материалы, ежедневные чекины настроения и личная аналитика — всё подстраивается под тебя.',
+    title: 'Работает на тебя',
+    desc: 'Из тестов, чекинов и активности мы строим профиль по 8 показателям. Чем больше функций используешь — тем точнее рекомендации, материалы и подсказки.',
   },
 ];
 
@@ -149,6 +149,12 @@ function SlideVisual3() {
           ))}
         </View>
       </View>
+      <View style={[vis.card, { backgroundColor: '#F5F2ED' }]}>
+        <Ionicons name="bar-chart-outline" size={13} color="#A09080" />
+        <Text style={{ fontSize: 11, color: '#6B5B4E', flex: 1, lineHeight: 16 }}>
+          чекины настроения, слово дня, вопросы — всё это данные, из которых складывается твой профиль
+        </Text>
+      </View>
     </View>
   );
 }
@@ -184,9 +190,9 @@ function SlideVisual4() {
         </View>
       </View>
       <View style={[vis.card, { backgroundColor: '#F5F2ED' }]}>
-        <Ionicons name="time-outline" size={14} color="#A09080" />
+        <Ionicons name="lock-closed-outline" size={13} color="#A09080" />
         <Text style={{ fontSize: 11, color: '#6B5B4E', flex: 1, lineHeight: 16 }}>
-          уровень появится после 3 тестов или одного клинического — психологические опросники
+          отвечай честно — твои ответы видишь только ты. это нужно для точного результата
         </Text>
       </View>
     </View>
@@ -200,10 +206,37 @@ function SlideVisual5() {
     { label: 'апатия', value: 28, color: '#5DAA72' },
     { label: 'одиночество', value: 55, color: '#AA7C00' },
   ];
+  const sources = [
+    { icon: 'clipboard-outline', label: 'тесты' },
+    { icon: 'sunny-outline', label: 'чекины' },
+    { icon: 'chatbubble-outline', label: 'активность' },
+  ];
   return (
     <View style={vis.wrap}>
+      {/* Схема: откуда берутся данные */}
+      <View style={[vis.card, { flexDirection: 'column', gap: 8 }]}>
+        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, flex: 0 }]}>КАК ЭТО РАБОТАЕТ</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          {sources.map((s, i) => (
+            <View key={i} style={{ alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#F0E8D8', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={s.icon} size={15} color="#8B7355" />
+              </View>
+              <Text style={{ fontSize: 9, color: '#6B5B4E' }}>{s.label}</Text>
+            </View>
+          ))}
+          <Ionicons name="arrow-forward" size={14} color="#C0A882" />
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#c9a96e22', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="person-outline" size={15} color="#c9a96e" />
+            </View>
+            <Text style={{ fontSize: 9, color: '#6B5B4E' }}>профиль</Text>
+          </View>
+        </View>
+      </View>
+      {/* Профиль по измерениям */}
       <View style={[vis.card, { flexDirection: 'column' }]}>
-        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, marginBottom: 8, flex: 0 }]}>ПЕРСОНАЛЬНАЯ АНАЛИТИКА</Text>
+        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, marginBottom: 6, flex: 0 }]}>8 ПОКАЗАТЕЛЕЙ СОСТОЯНИЯ</Text>
         {dims.map(d => (
           <View key={d.label} style={{ marginBottom: 5 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
@@ -216,14 +249,11 @@ function SlideVisual5() {
           </View>
         ))}
       </View>
-      <View style={[vis.card, { flexDirection: 'column' }]}>
-        <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, marginBottom: 4, flex: 0 }]}>ДЛЯ ТЕБЯ СЕЙЧАС</Text>
-        {['Работа с тревогой', 'Техники заземления', 'Дыхательные практики'].map((t, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#c9a96e' }} />
-            <Text style={{ fontSize: 11, color: '#2C2420' }}>{t}</Text>
-          </View>
-        ))}
+      <View style={[vis.card, { backgroundColor: '#F5F2ED' }]}>
+        <Ionicons name="trending-up-outline" size={13} color="#A09080" />
+        <Text style={{ fontSize: 11, color: '#6B5B4E', flex: 1, lineHeight: 16 }}>
+          чем больше функций используешь — тем точнее профиль и персональные рекомендации
+        </Text>
       </View>
     </View>
   );
