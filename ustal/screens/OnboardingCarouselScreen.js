@@ -216,15 +216,17 @@ function SlideVisual5() {
       {/* Схема: откуда берутся данные */}
       <View style={[vis.card, { flexDirection: 'column', gap: 8 }]}>
         <Text style={[vis.cardText, { color: '#A09080', fontSize: 10, flex: 0 }]}>КАК ЭТО РАБОТАЕТ</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          {sources.map((s, i) => (
-            <View key={i} style={{ alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#F0E8D8', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={s.icon} size={15} color="#8B7355" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-evenly' }}>
+            {sources.map((s, i) => (
+              <View key={i} style={{ alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#F0E8D8', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={s.icon} size={15} color="#8B7355" />
+                </View>
+                <Text style={{ fontSize: 9, color: '#6B5B4E' }}>{s.label}</Text>
               </View>
-              <Text style={{ fontSize: 9, color: '#6B5B4E' }}>{s.label}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
           <Ionicons name="arrow-forward" size={14} color="#C0A882" />
           <View style={{ alignItems: 'center', gap: 4 }}>
             <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#c9a96e22', alignItems: 'center', justifyContent: 'center' }}>
