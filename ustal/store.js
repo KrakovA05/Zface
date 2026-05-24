@@ -8,6 +8,7 @@ export const store = {
   goal: '',
   isAdmin: false,
   referralDiscountPct: 0,
+  isPremium: false,
 };
 
 export function clearStore() {
@@ -21,4 +22,5 @@ export function clearStore() {
   store.isAdmin = false;
   store.referralDiscountPct = 0;
   store.refreshBadges = undefined;
+  store.isPremium = false;
 }
