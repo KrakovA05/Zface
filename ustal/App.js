@@ -58,6 +58,7 @@ import AchievementsScreen from './screens/AchievementsScreen';
 import AnalyticsPreviewScreen from './screens/AnalyticsPreviewScreen';
 import DimensionHistoryScreen from './screens/DimensionHistoryScreen';
 import InviteScreen from './screens/InviteScreen';
+import InitialAssessmentScreen from './screens/InitialAssessmentScreen';
 
 function parseInviteCode(url) {
   const match = url?.match(/invite\/([^/?#]+)/);
@@ -376,7 +377,7 @@ export default function App() {
         if (session?.user) {
           const { data: userData, error: userError } = await supabase
             .from('users')
-            .select('username, level, email, avatar_url, status, login_streak, last_login_date, goal, is_admin, banned_until')
+            .select('username, level, email, avatar_url, status, login_streak, last_login_date, goal, is_admin, banned_until, initial_assessment_done')
             .eq('user_id', session.user.id)
             .single();
           if (userError) throw userError;
@@ -420,7 +421,7 @@ export default function App() {
             if (newStreak > 1) setStreakData(newStreak);
           }
 
-          setInitialRoute('Main');
+          setInitialRoute(userData.initial_assessment_done === false ? 'InitialAssessment' : 'Main');
 
           // Алерт удовлетворённости — показываем один раз на 3-м визите
           const shownKey = 'feedback_alert_shown';
@@ -572,6 +573,7 @@ export default function App() {
             <Stack.Screen name="AnalyticsPreview"   component={AnalyticsPreviewScreen}   options={{ headerShown: false }} />
             <Stack.Screen name="DimensionHistory"   component={DimensionHistoryScreen}   options={{ headerShown: false }} />
             <Stack.Screen name="Invite"              component={InviteScreen}              options={{ headerShown: false }} />
+            <Stack.Screen name="InitialAssessment"   component={InitialAssessmentScreen}   options={{ headerShown: false, gestureEnabled: false }} />
           </Stack.Navigator>
         </NavigationContainer>
         <StreakModal streak={streakData} visible={!!streakData} onClose={() => setStreakData(null)} />
