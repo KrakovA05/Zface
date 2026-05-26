@@ -1008,17 +1008,18 @@ export default function HomeScreen({ navigation }) {
           </View>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Модули</Text>
-        <View style={styles.grid}>
-          {moduleItems.map(m => (
-            <TouchableOpacity
-              key={m.route}
-              style={styles.moduleButton}
-              onPress={() => navigation.navigate(m.route)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={m.icon} size={24} color={colors.accent} />
-              <Text style={styles.moduleLabel}>{m.label}</Text>
+        <View style={styles.toolsRow}>
+          {[
+            { icon: 'sync-outline',    label: 'Дыхание',   route: 'Breathing' },
+            { icon: 'fish-outline',    label: 'Рыбалка',   route: 'Fishing' },
+            { icon: 'pencil-outline',  label: 'Мысли',     route: 'Thoughts' },
+            { icon: 'library-outline', label: 'Материалы', route: 'Resources' },
+          ].map(t => (
+            <TouchableOpacity key={t.route} style={styles.toolBtn} onPress={() => navigation.navigate(t.route)} activeOpacity={0.7}>
+              <View style={styles.toolIconWrap}>
+                <Ionicons name={t.icon} size={22} color={colors.accent} />
+              </View>
+              <Text style={styles.toolLabel}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1478,6 +1479,19 @@ const styles = StyleSheet.create({
     marginTop: 16, paddingTop: 16,
     borderTopWidth: 1, borderTopColor: colors.border,
   },
+
+  // ToolsRow
+  toolsRow: {
+    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28,
+  },
+  toolBtn: { alignItems: 'center', flex: 1, gap: 6 },
+  toolIconWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07, shadowRadius: 4, elevation: 2,
+  },
+  toolLabel: { fontSize: 11, color: colors.muted, fontWeight: '500' },
 
   profileUpdatedCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
