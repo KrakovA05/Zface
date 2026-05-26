@@ -818,7 +818,7 @@ export default function HomeScreen({ navigation }) {
             </View>
             <View style={styles.statusInfo}>
               <Text style={[styles.statusLevel, { color: '#A09080' }]}>Уровень появится</Text>
-              <Text style={styles.statusDesc}>Чем больше функций используешь — тем точнее станет твой профиль и рекомендации. Нужно от трёх тестов для старта.</Text>
+              <Text style={styles.statusDesc}>Проходи тесты — через несколько измерений уровень определится точнее.</Text>
             </View>
           </View>
         ) : (

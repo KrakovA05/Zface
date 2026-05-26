@@ -25,7 +25,7 @@ export default function EmailConfirmScreen({ route, navigation }) {
         store.userId = data.user.id;
         store.username = username;
         store.email = email;
-        navigation.navigate('Test');
+        navigation.navigate('InitialAssessment');
       } else if (error?.message?.toLowerCase().includes('email')) {
         showAlert(
           'Письмо ещё не подтверждено',

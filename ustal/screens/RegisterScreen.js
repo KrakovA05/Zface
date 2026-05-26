@@ -125,7 +125,7 @@ export default function RegisterScreen({ navigation }) {
     store.userId = data.user.id;
     store.username = name.trim();
     store.email = email;
-    navigation.navigate('Test');
+    navigation.navigate('InitialAssessment');
   };
 
   return (
