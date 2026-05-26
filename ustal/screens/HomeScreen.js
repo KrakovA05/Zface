@@ -185,8 +185,6 @@ export default function HomeScreen({ navigation }) {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showStreakInfo, setShowStreakInfo]   = useState(false);
   const scrollRef    = useRef(null);
-  const [moodCardY,  setMoodCardY]  = useState(0);
-  const [dailyCardY, setDailyCardY] = useState(0);
   const [nextTestId,    setNextTestId]    = useState(null);
   const [lastDoneTestId, setLastDoneTestId] = useState(null);
   const [proactiveMsg, setProactiveMsg] = useState(null);
@@ -690,66 +688,27 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         )}
 
-        {!loading && (hasUnreadLetter || dailyAnswered === false || moodScore === null) && (
-          (() => {
-            let icon, text, sub, onPress;
-            if (hasUnreadLetter) {
-              icon = 'mail-outline';
-              text = 'тебе пришло письмо';
-              sub = 'кто-то написал тебе';
-              onPress = () => navigation.navigate('Letter');
-            } else if (dailyAnswered === false) {
-              icon = 'chatbubble-ellipses-outline';
-              text = 'вопрос дня ждёт';
-              sub = dailyQuestion;
-              onPress = () => scrollRef.current?.scrollTo({ y: dailyCardY, animated: true });
-            } else {
-              icon = 'heart-outline';
-              text = 'как ты сейчас?';
-              sub = 'оцени своё состояние';
-              onPress = () => scrollRef.current?.scrollTo({ y: moodCardY, animated: true });
-            }
-            return (
+        {/* ── MainCard — единая карточка действий ── */}
+        {!loading && (
+          <View style={[styles.mainCard, { borderLeftColor: lvlColor }]}>
+            {hasUnreadLetter ? (
               <TouchableOpacity
-                style={[styles.focusCard, { borderLeftColor: lvlColor }]}
-                onPress={onPress}
+                style={styles.mainCardRow}
+                onPress={() => navigation.navigate('Letter')}
                 activeOpacity={0.75}
               >
-                <View style={[styles.focusIconWrap, { backgroundColor: lvlColor + '18' }]}>
-                  <Ionicons name={icon} size={22} color={lvlColor} />
+                <View style={[styles.mainCardIconWrap, { backgroundColor: lvlColor + '18' }]}>
+                  <Ionicons name="mail-outline" size={22} color={lvlColor} />
                 </View>
-                <View style={styles.focusInfo}>
-                  <Text style={[styles.focusTitle, { color: lvlColor }]}>{text}</Text>
-                  <Text style={styles.focusSub} numberOfLines={2}>{sub}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.mainCardTitle, { color: lvlColor }]}>тебе пришло письмо</Text>
+                  <Text style={styles.mainCardSub}>кто-то написал тебе</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </TouchableOpacity>
-            );
-          })()
-        )}
-
-        {/* ── Профиль обновился ── */}
-        {!loading && profileUpdated && (
-          <TouchableOpacity
-            style={styles.profileUpdatedCard}
-            onPress={async () => {
-              await AsyncStorage.removeItem('profile_updated');
-              setProfileUpdated(false);
-              navigation.navigate('Analytics');
-            }}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.profileUpdatedText}>твой профиль обновился</Text>
-            <Ionicons name="chevron-forward" size={14} color={colors.muted} />
-          </TouchableOpacity>
-        )}
-
-        {/* ── Чекин настроения — сразу под фокусом ── */}
-        {!loading && (
-          <View style={styles.moodCard} onLayout={e => setMoodCardY(e.nativeEvent.layout.y)}>
-            {moodScore === null ? (
+            ) : moodScore === null ? (
               <>
-                <Text style={styles.moodLabel}>как ты сейчас?</Text>
+                <Text style={styles.mainCardLabel}>как ты сейчас?</Text>
                 <View style={styles.moodRow}>
                   {[1,2,3,4,5,6,7,8,9,10].map(n => (
                     <TouchableOpacity key={n} style={[styles.moodBtn, { borderColor: getMoodColor(n) }]} onPress={() => tapMood(n)} activeOpacity={0.7} hitSlop={{ top: 6, bottom: 6, left: 1, right: 1 }}>
@@ -779,16 +738,47 @@ export default function HomeScreen({ navigation }) {
                   <Text style={styles.moodChipSkipText}>пропустить</Text>
                 </TouchableOpacity>
               </>
+            ) : dailyAnswered === false ? (
+              <>
+                <Text style={styles.mainCardLabel}>Вопрос дня</Text>
+                <Text style={styles.dailyQuestion}>{dailyQuestion}</Text>
+                <View style={styles.dailyInputRow}>
+                  <TextInput
+                    style={styles.dailyInput}
+                    placeholder="Ответь честно..."
+                    placeholderTextColor={colors.muted}
+                    value={dailyAnswer}
+                    onChangeText={setDailyAnswer}
+                    maxLength={300}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={[styles.dailySendBtn, !dailyAnswer.trim() && { opacity: 0.4 }]}
+                    onPress={submitDailyAnswer}
+                    disabled={!dailyAnswer.trim() || dailySubmitting}
+                  >
+                    {dailySubmitting
+                      ? <ActivityIndicator color={colors.onAccent} size="small" />
+                      : <Ionicons name="arrow-forward" size={18} color={colors.onAccent} />
+                    }
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.dailyGateHint}>
+                  <Ionicons name="eye-outline" size={11} color={colors.muted} />
+                  <Text style={styles.dailyGateText}>ответь — увидишь что написали другие</Text>
+                </View>
+              </>
             ) : (
               <>
-                <Text style={[styles.moodDoneScore, { color: getMoodColor(moodScore) }]}>
-                  ты на {moodScore} из 10
-                </Text>
-                {moodNote ? (
-                  <Text style={styles.moodNoteTag}>{moodNote}</Text>
-                ) : null}
+                <View style={styles.mainCardAllDone}>
+                  <Ionicons name="checkmark-circle-outline" size={20} color={colors.accent} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.allDoneTitle}>на сегодня всё</Text>
+                    <Text style={styles.allDoneSub}>{buildDiaryLine()}</Text>
+                  </View>
+                </View>
                 {moodCount > 1 && (
-                  <Text style={styles.moodDoneCount}>
+                  <Text style={[styles.moodDoneCount, { marginTop: 4 }]}>
                     ты и ещё {moodCount - 1} {pluralPeople(moodCount - 1)} сегодня чувствуют себя так же
                   </Text>
                 )}
@@ -803,10 +793,60 @@ export default function HomeScreen({ navigation }) {
                     <Ionicons name="arrow-forward" size={13} color={colors.accent} />
                   </TouchableOpacity>
                 )}
+                {wordTapped !== 'no' && (
+                  <View style={styles.wordInCard}>
+                    <Text style={styles.wordLabel}>Слово дня</Text>
+                    <Text style={[styles.wordText, { color: lvlColor }]}>{todayWord}</Text>
+                    {wordTapped === 'yes' ? (
+                      <>
+                        <Text style={styles.wordCount}>
+                          ты и ещё {wordCount > 1 ? wordCount - 1 : 0} {pluralPeople(wordCount - 1)} чувствуют то же
+                        </Text>
+                        <Text style={styles.wordContext}>{todayWordContext}</Text>
+                      </>
+                    ) : (
+                      <View style={styles.wordBtns}>
+                        <TouchableOpacity style={[styles.wordBtn, { borderColor: lvlColor }]} onPress={() => tapWord('yes')}>
+                          <Text style={[styles.wordBtnText, { color: lvlColor }]}>да, это про меня</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.wordBtnNo} onPress={() => tapWord('no')}>
+                          <Text style={styles.wordBtnNoText}>мимо</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                )}
+                {!!dailyAnswered && (
+                  <View style={[styles.dailyOthersBlock, { marginTop: 16 }]}>
+                    <Text style={styles.dailyOthersLabel}>
+                      {otherAnswers.length > 0 ? 'Другие сегодня' : 'Ты пока единственный кто ответил'}
+                    </Text>
+                    {otherAnswers.map((a, i) => (
+                      <Text key={i} style={styles.dailyOtherAnswer}>«{a}»</Text>
+                    ))}
+                  </View>
+                )}
               </>
             )}
           </View>
         )}
+
+        {/* ── Профиль обновился ── */}
+        {!loading && profileUpdated && (
+          <TouchableOpacity
+            style={styles.profileUpdatedCard}
+            onPress={async () => {
+              await AsyncStorage.removeItem('profile_updated');
+              setProfileUpdated(false);
+              navigation.navigate('Analytics');
+            }}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.profileUpdatedText}>твой профиль обновился</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+          </TouchableOpacity>
+        )}
+
 
         {/* ── Статус уровня — тихая справка ── */}
         {loading ? (
@@ -878,48 +918,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        <View style={styles.ctaRow}>
-          <TouchableOpacity
-            style={[styles.ctaPrimary, { backgroundColor: lvlColor }]}
-            onPress={() => navigation.navigate('Test')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="clipboard-outline" size={17} color="#fff" />
-            <Text style={styles.ctaPrimaryText} numberOfLines={1} adjustsFontSizeToFit>Как ты сейчас?</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.ctaSecondary}
-            onPress={() => navigation.navigate('Recommendations', { level })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="bulb-outline" size={16} color={colors.muted} />
-            <Text style={styles.ctaSecondaryText}>Рекомендации</Text>
-          </TouchableOpacity>
-        </View>
 
-        {!loading && wordTapped !== 'no' && (
-          <View style={styles.wordCard}>
-            <Text style={styles.wordLabel}>Слово дня</Text>
-            <Text style={[styles.wordText, { color: lvlColor }]}>{todayWord}</Text>
-            {wordTapped === 'yes' ? (
-              <>
-                <Text style={styles.wordCount}>
-                  ты и ещё {wordCount > 1 ? wordCount - 1 : 0} {pluralPeople(wordCount - 1)} чувствуют то же
-                </Text>
-                <Text style={styles.wordContext}>{todayWordContext}</Text>
-              </>
-            ) : (
-              <View style={styles.wordBtns}>
-                <TouchableOpacity style={[styles.wordBtn, { borderColor: lvlColor }]} onPress={() => tapWord('yes')}>
-                  <Text style={[styles.wordBtnText, { color: lvlColor }]}>да, это про меня</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.wordBtnNo} onPress={() => tapWord('no')}>
-                  <Text style={styles.wordBtnNoText}>мимо</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
 
         {!!navHint && (
           <View style={hintStyles.card}>
@@ -933,64 +932,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {!loading && (
-          <View style={styles.dailyCard} onLayout={e => setDailyCardY(e.nativeEvent.layout.y)}>
-            <Text style={styles.sectionLabel}>Вопрос дня</Text>
-            <Text style={styles.dailyQuestion}>{dailyQuestion}</Text>
-            {dailyAnswered === false ? (
-              <>
-                <View style={styles.dailyInputRow}>
-                  <TextInput
-                    style={styles.dailyInput}
-                    placeholder="Ответь честно..."
-                    placeholderTextColor={colors.muted}
-                    value={dailyAnswer}
-                    onChangeText={setDailyAnswer}
-                    maxLength={300}
-                    multiline
-                  />
-                  <TouchableOpacity
-                    style={[styles.dailySendBtn, !dailyAnswer.trim() && { opacity: 0.4 }]}
-                    onPress={submitDailyAnswer}
-                    disabled={!dailyAnswer.trim() || dailySubmitting}
-                  >
-                    {dailySubmitting
-                      ? <ActivityIndicator color={colors.onAccent} size="small" />
-                      : <Ionicons name="arrow-forward" size={18} color={colors.onAccent} />
-                    }
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.dailyGateHint}>
-                  <Ionicons name="eye-outline" size={11} color={colors.muted} />
-                  <Text style={styles.dailyGateText}>ответь — увидишь что написали другие</Text>
-                </View>
-              </>
-            ) : dailyAnswered ? (
-              <View>
-                <Text style={styles.dailyAnswerText}>«{dailyAnswered}»</Text>
-                <View style={styles.dailyOthersBlock}>
-                  <Text style={styles.dailyOthersLabel}>
-                    {otherAnswers.length > 0 ? 'Другие сегодня' : 'Ты пока единственный кто ответил'}
-                  </Text>
-                  {otherAnswers.map((a, i) => (
-                    <Text key={i} style={styles.dailyOtherAnswer}>«{a}»</Text>
-                  ))}
-                </View>
-              </View>
-            ) : null}
-          </View>
-        )}
 
-        {!loading && moodScore !== null && moodNote !== null && wordTapped && dailyAnswered && (
-          <View style={styles.allDoneCard}>
-            <Ionicons name="checkmark-circle-outline" size={22} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.allDoneTitle}>на сегодня всё</Text>
-              <Text style={styles.allDoneSub}>{buildDiaryLine()}</Text>
-              <Text style={[styles.allDoneSub, { marginTop: 3, opacity: 0.5 }]}>ты был здесь — это уже что-то</Text>
-            </View>
-          </View>
-        )}
 
         {showFocusAsk && (
           <FocusAskCard
@@ -1508,6 +1450,33 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
     fontSize: 15,
+  },
+
+  // MainCard
+  mainCard: {
+    backgroundColor: colors.card, borderRadius: 16,
+    padding: 16, marginBottom: 16,
+    shadowColor: '#8B7B6B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+    borderLeftWidth: 3,
+  },
+  mainCardLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12,
+  },
+  mainCardRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  mainCardIconWrap: {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  mainCardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 3 },
+  mainCardSub: { fontSize: 13, color: colors.muted, lineHeight: 18 },
+  mainCardAllDone: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8,
+  },
+  wordInCard: {
+    marginTop: 16, paddingTop: 16,
+    borderTopWidth: 1, borderTopColor: colors.border,
   },
 
   profileUpdatedCard: {
