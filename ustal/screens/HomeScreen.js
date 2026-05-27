@@ -44,6 +44,17 @@ function getModuleItems(goal) {
   });
 }
 
+const DIMENSION_HINTS = {
+  anxiety:        { text: 'тревога даёт о себе знать — 4 минуты дыхания могут помочь', route: 'Breathing' },
+  stress:         { text: 'стресс накапливается. закинь удочку — медитативно и без давления', route: 'Fishing' },
+  apathy:         { text: 'апатия — это сигнал. в комнатах можно просто сидеть молча', route: 'Rooms' },
+  loneliness:     { text: 'одиночество — приходи в комнату. там не надо ничего говорить', route: 'Rooms' },
+  burnout:        { text: 'выгорание требует паузы. рыбалка без цели и давления', route: 'Fishing' },
+  self_esteem:    { text: 'нелегко с собой. посмотри что пишут другие — ты не один с этим', route: 'Feed' },
+  social_anxiety: { text: 'тяжело общаться? в ленте можно просто читать, не писать', route: 'Feed' },
+  attachment:     { text: 'тревога в отношениях знакома многим здесь. комнаты открыты', route: 'Rooms' },
+};
+
 const wordTapCache = {};
 let wordTapCacheDate = '';
 
@@ -198,7 +209,7 @@ export default function HomeScreen({ navigation }) {
   const todayWord = getTodayWord();
   const todayWordContext = getTodayWordContext();
 
-  const checkNavHint = async (recentHistory) => {
+  const checkNavHint = async (recentHistory, userId) => {
     const todayStr = getTodayDate();
     const lastShown = await AsyncStorage.getItem('nav_hint_last_shown');
     if (lastShown === todayStr) return;
@@ -208,7 +219,7 @@ export default function HomeScreen({ navigation }) {
       const scores = recentHistory.slice(0, 3).map(r => levelOrder[r.level] ?? 1);
       const isWorsening = scores[0] < scores[1] && scores[1] <= scores[2];
       if (isWorsening) {
-        setNavHint({ text: 'несколько дней подряд нелегко. в ленте есть посты для таких моментов' });
+        setNavHint({ text: 'несколько дней подряд нелегко. в ленте есть посты для таких моментов', route: 'Feed' });
         await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
         return;
       }
@@ -218,9 +229,23 @@ export default function HomeScreen({ navigation }) {
     if (lastBreathing) {
       const daysSince = (Date.now() - new Date(lastBreathing)) / 86400000;
       if (daysSince >= 3) {
-        setNavHint({ text: 'ты уже 3 дня не заходил на дыхание — может быть сейчас?' });
+        setNavHint({ text: 'ты уже 3 дня не заходил на дыхание — может быть сейчас?', route: 'Breathing' });
         await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
         return;
+      }
+    }
+
+    if (userId) {
+      const { data: metric } = await supabase
+        .from('user_metrics')
+        .select('dominant_dimension')
+        .eq('user_id', userId)
+        .order('week_start', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (metric?.dominant_dimension && DIMENSION_HINTS[metric.dominant_dimension]) {
+        setNavHint(DIMENSION_HINTS[metric.dominant_dimension]);
+        await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
       }
     }
   };
@@ -307,7 +332,7 @@ export default function HomeScreen({ navigation }) {
         const currentLevel = dbLevel;
         if (recent?.length) {
           setHistory(recent);
-          checkNavHint(recent);
+          checkNavHint(recent, user.id);
         }
 
         // Простые состояния
@@ -921,15 +946,22 @@ export default function HomeScreen({ navigation }) {
 
 
         {!!navHint && (
-          <View style={hintStyles.card}>
+          <TouchableOpacity
+            style={hintStyles.card}
+            onPress={() => { if (navHint.route) navigation.navigate(navHint.route); setNavHint(null); }}
+            activeOpacity={navHint.route ? 0.75 : 1}
+          >
             <View style={hintStyles.avatarWrap}>
               <Text style={hintStyles.avatarIcon}>✦</Text>
             </View>
-            <Text style={hintStyles.text}>{navHint.text}</Text>
-            <TouchableOpacity onPress={() => setNavHint(null)} activeOpacity={0.6} style={hintStyles.dismiss}>
-              <Ionicons name="close" size={14} color={colors.muted} />
-            </TouchableOpacity>
-          </View>
+            <Text style={[hintStyles.text, { flex: 1 }]}>{navHint.text}</Text>
+            {navHint.route
+              ? <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+              : <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setNavHint(null); }} activeOpacity={0.6} style={hintStyles.dismiss}>
+                  <Ionicons name="close" size={14} color={colors.muted} />
+                </TouchableOpacity>
+            }
+          </TouchableOpacity>
         )}
 
 
