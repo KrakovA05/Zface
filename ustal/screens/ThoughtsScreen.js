@@ -5,6 +5,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { store } from '../store';
@@ -51,6 +52,7 @@ export default function ThoughtsScreen({ navigation }) {
   }, []);
 
   useFocusEffect(useCallback(() => {
+    AsyncStorage.setItem('last_thoughts_visit', new Date().toISOString()).catch(() => {});
     load();
   }, []));
 

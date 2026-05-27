@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabase';
 import { colors } from '../theme';
 import { logEvent } from '../utils/analytics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -32,6 +33,7 @@ export default function ResourcesScreen() {
 
   useFocusEffect(useCallback(() => {
     logEvent('resources_open');
+    AsyncStorage.setItem('last_resources_visit', new Date().toISOString()).catch(() => {});
     loadResources();
   }, []));
 

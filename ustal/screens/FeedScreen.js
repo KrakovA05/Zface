@@ -6,6 +6,7 @@ import {
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../supabase';
@@ -173,6 +174,7 @@ export default function FeedScreen({ navigation }) {
   }, [filter]);
 
   useFocusEffect(useCallback(() => {
+    AsyncStorage.setItem('last_feed_visit', new Date().toISOString()).catch(() => {});
     loadPosts(true);
     inputRef.current?.blur();
     return () => { Keyboard.dismiss(); };

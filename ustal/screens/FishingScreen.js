@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, TouchableOpacity, Animated, ScrollView, Dimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -135,7 +136,10 @@ export default function FishingScreen() {
   const [collection, setCollection] = useState([]);
   const [showHint, setShowHint] = useState(false);
 
-  useEffect(() => { logEvent('fishing_open') }, [])
+  useEffect(() => {
+    logEvent('fishing_open');
+    AsyncStorage.setItem('last_fishing_visit', new Date().toISOString()).catch(() => {});
+  }, [])
 
   useEffect(() => {
     if (!store.userId) return;
