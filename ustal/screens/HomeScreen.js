@@ -8,7 +8,7 @@ import { supabase } from '../supabase';
 import { store } from '../store';
 import { LEVEL_COLORS, DAILY_QUESTIONS, DAILY_QUESTIONS_RED, DAILY_QUESTIONS_GREEN, DAILY_WORDS, DAILY_WORDS_CONTEXT } from '../constants';
 import { colors } from '../theme';
-import { scheduleLowMoodPush } from '../utils/notifications';
+import { scheduleLowMoodPush, scheduleFeatureDiscoveryPush } from '../utils/notifications';
 import { logEvent } from '../utils/analytics';
 import { getNextTestId } from '../utils/psychScheduler';
 import { PSYCH_TESTS, WEEKLY_PHRASES } from '../utils/psychTests';
@@ -225,13 +225,41 @@ export default function HomeScreen({ navigation }) {
       }
     }
 
-    const lastBreathing = await AsyncStorage.getItem('last_breathing_visit');
-    if (lastBreathing) {
-      const daysSince = (Date.now() - new Date(lastBreathing)) / 86400000;
-      if (daysSince >= 3) {
-        setNavHint({ text: 'ты уже 3 дня не заходил на дыхание — может быть сейчас?', route: 'Breathing' });
-        await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
-        return;
+    const FEATURE_CHECKS = [
+      { key: 'last_breathing_visit',  route: 'Breathing', gapDays: 4,  pushFeature: 'breathing',
+        neverText: 'ещё не пробовал дыхание? 4 минуты — и немного полегче',
+        gapText:   'давно не дышал с нами — может сейчас самое время?' },
+      { key: 'last_fishing_visit',    route: 'Fishing',   gapDays: 7,  pushFeature: 'fishing',
+        neverText: 'в приложении есть медитативная рыбалка — попробуй когда нужна пауза',
+        gapText:   'давно не заходил на рыбалку — медитативно и без давления' },
+      { key: 'last_thoughts_visit',   route: 'Thoughts',  gapDays: 10, pushFeature: 'thoughts',
+        neverText: 'можно написать анонимную мысль дня — тебя поймут',
+        gapText:   'давно не писал мыслей — там ждут люди которые поймут' },
+      { key: 'last_resources_visit',  route: 'Resources', gapDays: 14, pushFeature: 'resources',
+        neverText: 'есть материалы подобранные под твоё состояние — ещё не заходил',
+        gapText:   'давно не заходил в материалы — там есть кое-что для тебя' },
+      { key: 'last_feed_visit',       route: 'Feed',      gapDays: 7,  pushFeature: 'feed',
+        neverText: 'в ленте посты от людей с таким же уровнем — загляни',
+        gapText:   'давно не заходил в ленту — там пишут люди как ты' },
+    ];
+
+    const hasHistory = recentHistory && recentHistory.length >= 2;
+    if (hasHistory) {
+      for (const feat of FEATURE_CHECKS) {
+        const lastVisit = await AsyncStorage.getItem(feat.key);
+        if (!lastVisit) {
+          setNavHint({ text: feat.neverText, route: feat.route });
+          await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
+          scheduleFeatureDiscoveryPush(feat.pushFeature, 'never');
+          return;
+        }
+        const daysSince = (Date.now() - new Date(lastVisit)) / 86400000;
+        if (daysSince >= feat.gapDays) {
+          setNavHint({ text: feat.gapText, route: feat.route });
+          await AsyncStorage.setItem('nav_hint_last_shown', todayStr);
+          scheduleFeatureDiscoveryPush(feat.pushFeature, 'gap');
+          return;
+        }
       }
     }
 
