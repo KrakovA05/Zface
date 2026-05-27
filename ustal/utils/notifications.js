@@ -269,3 +269,55 @@ export async function sendPushNotification(token, title, body, data = {}) {
     }
   } catch {}
 }
+
+const FEATURE_PUSH_MESSAGES = {
+  breathing: {
+    never: { title: 'попробуй дыхание', body: '4 минуты — и немного полегче. ещё ни разу не пробовал.' },
+    gap:   { title: 'давно не дышал', body: 'возвращайся. 4 минуты — и немного полегче.' },
+  },
+  fishing: {
+    never: { title: 'в приложении есть рыбалка', body: 'медитативно, без давления. попробуй когда нужна пауза.' },
+    gap:   { title: 'давно не заходил на рыбалку', body: 'медитативно и без давления. рыбы ждут.' },
+  },
+  thoughts: {
+    never: { title: 'напиши мысль дня', body: 'анонимно. тебя поймут люди с таким же состоянием.' },
+    gap:   { title: 'давно не писал мыслей', body: 'там ждут люди которые поймут.' },
+  },
+  resources: {
+    never: { title: 'есть материалы для тебя', body: 'подобраны под твоё состояние. ещё не заходил.' },
+    gap:   { title: 'давно не заходил в материалы', body: 'там есть кое-что для тебя сейчас.' },
+  },
+  feed: {
+    never: { title: 'загляни в ленту', body: 'посты от людей с таким же уровнем — ты не один.' },
+    gap:   { title: 'давно не заходил в ленту', body: 'там пишут люди как ты. зайди.' },
+  },
+};
+
+export async function scheduleFeatureDiscoveryPush(feature, type) {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const existing = scheduled.filter(n => n.content.data?.type === 'feature_discovery');
+    if (existing.length > 0) return;
+
+    const msg = FEATURE_PUSH_MESSAGES[feature]?.[type];
+    if (!msg) return;
+
+    const tonight = new Date();
+    tonight.setHours(19, 0, 0, 0);
+    if (tonight <= new Date()) tonight.setDate(tonight.getDate() + 1);
+    const secondsUntil = Math.floor((tonight.getTime() - Date.now()) / 1000);
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: msg.title,
+        body: msg.body,
+        sound: true,
+        data: { type: 'feature_discovery', feature },
+      },
+      trigger: { seconds: secondsUntil },
+    });
+  } catch {}
+}
