@@ -165,14 +165,9 @@ export default function ProfileScreen({ navigation }) {
     if (!store.userId) return;
     try {
       const uid = store.userId;
-      const thirtyAgo = new Date();
-      thirtyAgo.setDate(thirtyAgo.getDate() - 30);
-      const thirtyAgoStr = thirtyAgo.toISOString().split('T')[0];
-
       const [
         { data: existing },
         { count: testCount },
-        { data: recentTests },
         { count: friendCount },
         { count: dmCount },
         { count: postCount },
@@ -185,10 +180,11 @@ export default function ProfileScreen({ navigation }) {
         { data: psychResults },
         { data: userRow },
         { data: checkinData },
+        { count: sentLetterCount },
+        { count: repliedLetterCount },
       ] = await Promise.all([
         supabase.from('user_achievements').select('achievement_id').eq('user_id', uid),
         supabase.from('test_results').select('*', { count: 'exact', head: true }).eq('user_id', uid),
-        supabase.from('test_results').select('level').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
         supabase.from('friendships').select('*', { count: 'exact', head: true }).or(`requester_id.eq.${uid},receiver_id.eq.${uid}`).eq('status', 'accepted'),
         supabase.from('direct_messages').select('*', { count: 'exact', head: true }).eq('sender_id', uid),
         supabase.from('feed_posts').select('*', { count: 'exact', head: true }).eq('author_id', uid),
@@ -200,26 +196,19 @@ export default function ProfileScreen({ navigation }) {
         supabase.from('caught_fish').select('fish_name').eq('user_id', uid),
         supabase.from('psych_test_results').select('test_id').eq('user_id', uid),
         supabase.from('users').select('login_streak, status, avatar_url').eq('user_id', uid).single(),
-        supabase.from('mood_checkins').select('checkin_date').eq('user_id', uid).gte('checkin_date', thirtyAgoStr),
+        supabase.from('mood_checkins').select('checkin_date').eq('user_id', uid).order('checkin_date', { ascending: false }),
+        supabase.from('anonymous_letters').select('*', { count: 'exact', head: true }).eq('author_id', uid),
+        supabase.from('anonymous_letters').select('*', { count: 'exact', head: true }).eq('author_id', uid).not('reply_text', 'is', null),
       ]);
 
       const earned = new Set((existing || []).map(e => e.achievement_id));
       const toAward = [];
-      const levels = (recentTests || []).map(t => t.level);
 
       // Путь
       if ((testCount || 0) >= 1  && !earned.has('first_test'))   toAward.push('first_test');
       if ((testCount || 0) >= 5  && !earned.has('five_tests'))   toAward.push('five_tests');
       if ((testCount || 0) >= 10 && !earned.has('ten_tests'))    toAward.push('ten_tests');
       if ((testCount || 0) >= 20 && !earned.has('twenty_tests')) toAward.push('twenty_tests');
-      if (!earned.has('comeback')) {
-        for (let i = 0; i < levels.length - 1; i++) {
-          if (levels[i] !== 'red' && levels[i + 1] === 'red') { toAward.push('comeback'); break; }
-        }
-      }
-      if (!earned.has('stable') && levels.length >= 3 && levels.slice(0, 3).every(l => l === 'green')) {
-        toAward.push('stable');
-      }
 
       // Каждый день
       const dailyStreak = calcDateStreak(dailyAnswers, 'question_date');
@@ -227,6 +216,7 @@ export default function ProfileScreen({ navigation }) {
       if ((checkinData || []).length >= 1 && !earned.has('checkin_first')) toAward.push('checkin_first');
       if (checkinStreak >= 7  && !earned.has('checkin_7'))  toAward.push('checkin_7');
       if (dailyStreak   >= 7  && !earned.has('daily_7'))   toAward.push('daily_7');
+      if (dailyStreak   >= 14 && !earned.has('daily_14'))  toAward.push('daily_14');
       if (dailyStreak   >= 30 && !earned.has('daily_30'))  toAward.push('daily_30');
       const loginStreak = userRow?.login_streak || 0;
       if (loginStreak   >= 14 && !earned.has('streak_14')) toAward.push('streak_14');
@@ -236,6 +226,8 @@ export default function ProfileScreen({ navigation }) {
       if ((postCount || 0) >= 1 && !earned.has('first_post')) toAward.push('first_post');
       if ((myThoughts || []).length >= 1 && !earned.has('first_thought')) toAward.push('first_thought');
       if ((myThoughtReacts || []).length >= 1 && !earned.has('first_reaction')) toAward.push('first_reaction');
+      if ((sentLetterCount   || 0) >= 1 && !earned.has('first_letter'))   toAward.push('first_letter');
+      if ((repliedLetterCount || 0) >= 1 && !earned.has('letter_replied')) toAward.push('letter_replied');
       if (!earned.has('thought_reactions_5') && (myThoughts || []).length > 0) {
         const ids = myThoughts.map(t => t.id);
         const { count: rxCount } = await supabase
