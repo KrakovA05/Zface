@@ -106,7 +106,6 @@ export const PSYCH_TESTS = {
       'Мне важно то что происходит со мной.',
     ],
     maxRaw: 20,
-    reverseAll: true,
     normalize: (rawSum) => Math.round(Math.max(0, Math.min(100, ((20 - rawSum) / 15) * 100))),
   },
 
@@ -151,7 +150,7 @@ export const PSYCH_TESTS = {
       'Во время работы я часто чувствую себя беспомощным.',
     ],
     maxRaw: 32,
-    normalize: (rawSum) => Math.round((rawSum / 32) * 100),
+    normalize: (rawSum) => Math.round(((rawSum - 8) / 24) * 100),
   },
 
   rosenberg: {

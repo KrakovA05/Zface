@@ -613,11 +613,12 @@ export default function HomeScreen({ navigation }) {
     setMoodNote(noteVal);
     setMoodSuggested(getMoodSuggestion(moodScore));
     const { data: { user } } = await supabase.auth.getUser();
-    if (user && noteVal) {
+    if (user) {
       await supabase.from('mood_checkins')
-        .update({ note: noteVal })
-        .eq('user_id', user.id)
-        .eq('checkin_date', getTodayDate());
+        .upsert(
+          { user_id: user.id, checkin_date: getTodayDate(), score: moodScore, note: noteVal || null },
+          { onConflict: 'user_id,checkin_date' }
+        );
     }
     const { count: mc } = await supabase
       .from('mood_checkins').select('*', { count: 'exact', head: true })

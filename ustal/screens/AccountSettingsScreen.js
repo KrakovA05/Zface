@@ -64,6 +64,7 @@ export default function AccountSettingsScreen({ navigation }) {
       if (error) throw error
       setNewPassword('')
       setConfirmPassword('')
+      supabase.functions.invoke('password-notify')
       showAlert('Готово', 'Пароль изменён')
     } catch (e) {
       showAlert('Ошибка', e.message || 'Не удалось изменить пароль')

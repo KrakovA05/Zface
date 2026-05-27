@@ -229,7 +229,7 @@ function GlobalChat({ navigation }) {
                 delayLongPress={350}
               >
                 <View style={[s.msgRow, isMe && s.msgRowMe]}>
-                  <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: avatarUri || null, status: '' } })}>
+                  <TouchableOpacity onPress={() => item.sender_id && navigation.navigate('UserProfile', { user: { user_id: item.sender_id, username: item.username, level: item.level, avatar_url: avatarUri || null, status: '' } })}>
                     <Avatar uri={avatarUri} username={item.username} level={item.level} size={32} />
                   </TouchableOpacity>
                   <View style={[s.bubble, isMe ? s.bubbleMe : s.bubbleOther]}>
