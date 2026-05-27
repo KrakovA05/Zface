@@ -151,6 +151,12 @@ Deno.serve(async (req) => {
 
     const level = scoreToLevel(composite);
 
+    const { data: prevUser } = await supabase
+      .from('users')
+      .select('level, push_token')
+      .eq('user_id', uid)
+      .maybeSingle();
+
     await supabase.from('user_metrics').upsert({
       user_id: uid,
       week_start: weekStartStr,
@@ -168,6 +174,25 @@ Deno.serve(async (req) => {
     }, { onConflict: 'user_id,week_start' });
 
     await supabase.from('users').update({ level }).eq('user_id', uid);
+
+    // Пуш при ухудшении уровня
+    const levelOrder: Record<string, number> = { green: 0, yellow: 1, red: 2 };
+    const prevLevel = prevUser?.level;
+    const pushToken = prevUser?.push_token;
+    if (pushToken && prevLevel && prevLevel !== level && (levelOrder[level] ?? 1) > (levelOrder[prevLevel] ?? 1)) {
+      const levelMessages: Record<string, { title: string; body: string }> = {
+        yellow: { title: 'всё немного сложнее', body: 'твой уровень изменился. посмотри как ты сейчас.' },
+        red:    { title: 'сейчас тяжело', body: 'твой уровень изменился. мы здесь.' },
+      };
+      const msg = levelMessages[level];
+      if (msg) {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: pushToken, title: msg.title, body: msg.body, sound: 'default', data: { screen: 'Home' } }),
+        });
+      }
+    }
 
     processed++;
   }
